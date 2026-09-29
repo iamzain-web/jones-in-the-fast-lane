@@ -1,0 +1,28 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:Jones.App.ViewModels"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:views="using:Jones.App.Views"
+        xmlns:app="using:Jones.App"
+        mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+        x:Class="Jones.App.Views.MainWindow"
+        Icon="/Assets/avalonia-logo.ico"
+        Title="Jones.App"
+        Background="Black"
+        WindowStartupLocation="CenterScreen"
+        Width="{x:Static app:RenderScale.WindowWidth}"
+        Height="{x:Static app:RenderScale.WindowHeight}">
+        <!-- 1280x800 is exactly 4x the original's 320x200 playfield, so the Viewbox in
+             MainView fills the window edge to edge with no letterboxing. At the 4x render
+             scale the upscaled art is then drawn one bitmap pixel per screen pixel, with
+             no resampling at all; at 1x every game pixel maps onto a whole 4x4 block, so
+             the original look is exact too. The window size is the SAME either way, which
+             is the point - switching RenderScale.Requested changes how the art is sampled
+             and nothing else, so the two can be compared honestly.
+             The Viewbox stays Stretch="Uniform", so dragging the window to some other
+             shape re-introduces a margin rather than stretching the art out of its 8:5
+             aspect. Distorting Sierra's pixels to chase the last few rows of black would
+             be the wrong trade. -->
+        <views:MainView />
+</Window>

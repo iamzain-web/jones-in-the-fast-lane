@@ -1,0 +1,670 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="clr-namespace:Jones.App.ViewModels"
+             xmlns:app="clr-namespace:Jones.App"
+             mc:Ignorable="d" d:DesignWidth="1280" d:DesignHeight="800"
+             x:Class="Jones.App.Views.MainView"
+             x:DataType="vm:MainViewModel"
+             Background="Black">
+
+  <Design.DataContext>
+    <vm:MainViewModel />
+  </Design.DataContext>
+
+  <UserControl.Styles>
+    <Style Selector="Button.bare">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="CornerRadius" Value="0" />
+    </Style>
+    <!-- Selecting a line highlights it, as the original's DIcon hilite does. The fill is
+         drawn UNDER the text (the text layer is painted before the hotspot layer), so
+         the wash tints the glyphs rather than covering them. -->
+    <Style Selector="Button.hotspot">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderBrush" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="CornerRadius" Value="0" />
+    </Style>
+    <Style Selector="Button.hotspot:pointerover /template/ ContentPresenter">
+      <Setter Property="Background" Value="#33000080" />
+    </Style>
+    <Style Selector="Button.hotspot:pressed /template/ ContentPresenter">
+      <Setter Property="Background" Value="#80FFD700" />
+    </Style>
+    <Style Selector="Button.menu">
+      <Setter Property="HorizontalAlignment" Value="Stretch" />
+      <Setter Property="HorizontalContentAlignment" Value="Left" />
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="Padding" Value="2,0" />
+      <Setter Property="FontSize" Value="7" />
+      <Setter Property="Foreground" Value="#000080" />
+      <Setter Property="CornerRadius" Value="0" />
+    </Style>
+    <Style Selector="Button.menu:pointerover /template/ ContentPresenter">
+      <Setter Property="Background" Value="#000080" />
+      <Setter Property="TextElement.Foreground" Value="White" />
+    </Style>
+
+    <!-- The sound switches. 44x44 is a finger, not a mouse: this control is shared with
+         the Android head, where there is no F2 and no pointer to hover with. -->
+    <Style Selector="ToggleButton.snd">
+      <Setter Property="Width" Value="44" />
+      <Setter Property="Height" Value="44" />
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="CornerRadius" Value="6" />
+      <Setter Property="HorizontalContentAlignment" Value="Center" />
+      <Setter Property="VerticalContentAlignment" Value="Center" />
+    </Style>
+    <Style Selector="ToggleButton.snd /template/ ContentPresenter">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="CornerRadius" Value="6" />
+    </Style>
+    <Style Selector="ToggleButton.snd:checked /template/ ContentPresenter">
+      <Setter Property="Background" Value="Transparent" />
+    </Style>
+    <Style Selector="ToggleButton.snd:pointerover /template/ ContentPresenter">
+      <Setter Property="Background" Value="#33FFFFFF" />
+    </Style>
+    <Style Selector="ToggleButton.snd:pressed /template/ ContentPresenter">
+      <Setter Property="Background" Value="#55FFFFFF" />
+    </Style>
+
+  </UserControl.Styles>
+
+  <!-- The whole game lives in the original's 320x200 space and is scaled as one unit,
+       so every ported coordinate lands exactly where Sierra put it.
+
+       The CANVAS is that space multiplied by RenderScale.Factor: 320x200 at 1x, 1280x800
+       at 4x. Every Canvas.Left, Canvas.Top, Width and Height below therefore goes through
+       RenderScale.Scale, and every bitmap through RenderScale.HighRes, which hands back
+       the 4x resample of the cel the view model measured. The view models themselves
+       never leave the original's space — see RenderScale for why that separation is not
+       negotiable.
+
+       The Viewbox still fits the whole thing to the window, and still defaults to
+       nearest-neighbour; the art layers override that below. -->
+  <DockPanel>
+
+  <!-- THE MENU BAR - `MenuBar::init`, `Menu.sc:121-137`.
+
+       EVERY WORD ON IT IS THE SCRIPT'S. The four titles and the sixteen item labels come
+       from SciMenuBar in Jones.Core, which holds the four AddMenu strings exactly as
+       `assets/raw/script/997.script` has them, and the view binds to those rather than
+       spelling any of them again. The first menu's title is not a word at all: it is
+       character 1 of font 0, a 9x8 shape, so it is drawn as the bitmap the font gives.
+
+       NO ACCELERATOR COLUMN. The strings carry no right-hand text - SCI's convention for
+       one is an `=` in the item and none of Jones's items has it - so whether the 1990
+       interpreter drew "F5" beside "Save Game" cannot be settled from the scripts, and
+       printing it anyway would be inventing user-visible text. The keys are listed where
+       the game lists them, in the Help box (text 997[6] and 997[7]), which this bar can
+       now open.
+
+       DOCKED, NOT OVERLAID. The original's bar is the top ten rows of the same 320x200
+       framebuffer the game draws into (`Main.sc:965` reads a click at y >= 10 as being in
+       the game), which is why it hides itself between uses. This port's window is not that
+       framebuffer: the bar sits outside the Viewbox, like the sound switches, so docking it
+       above the playfield costs the game nothing and leaves the 320x200 composition
+       untouched. It is also the only way a head with no Esc key can reach it.
+
+       Esc still opens it, as text 997[7] says - see MainView.axaml.cs, which offers Esc to
+       the game first and hands it here only if nothing else claimed it. -->
+  <Border DockPanel.Dock="Top" Background="#E6101010"
+          BorderBrush="#FF2E2E2E" BorderThickness="0,0,0,1">
+    <Menu x:Name="GameMenu" Background="Transparent" Padding="2,0"
+          MinHeight="{x:Static app:TouchUi.BarHeight}">
+
+      <!-- (AddMenu { \01 } {About JONES `#0:Help `#1}) -->
+      <MenuItem x:Name="FirstMenu"
+                MinHeight="{x:Static app:TouchUi.BarHeight}"
+                FontSize="{x:Static app:TouchUi.FontSize}" Foreground="#F0F0F0">
+        <MenuItem.Header>
+          <Image Source="{Binding MenuAboutGlyph}" Width="18" Height="16"
+                 RenderOptions.BitmapInterpolationMode="None" />
+        </MenuItem.Header>
+        <MenuItem Header="{Binding MenuAbout.Label}" Command="{Binding MenuAbout.Command}"
+                  IsEnabled="{Binding MenuAbout.IsEnabled}"
+                  MinHeight="{x:Static app:TouchUi.ItemHeight}"
+                  FontSize="{x:Static app:TouchUi.FontSize}" />
+        <MenuItem Header="{Binding MenuHelp.Label}" Command="{Binding MenuHelp.Command}"
+                  IsEnabled="{Binding MenuHelp.IsEnabled}"
+                  MinHeight="{x:Static app:TouchUi.ItemHeight}"
+                  FontSize="{x:Static app:TouchUi.FontSize}" />
+      </MenuItem>
+
+      <!-- The second AddMenu call: Save Game, Set Save Directory, Restore Game, a separator,
+           Quit and Restart. See SciMenuBar for the string itself; it cannot be quoted in
+           an XML comment, because the separator mark is two hyphens and a bang. That
+           separator is a real item and it consumes an item number, which is why Quit is
+           menu id 517 and not 516. -->
+      <MenuItem Header="{Binding MenuTitleGame}"
+                MinHeight="{x:Static app:TouchUi.BarHeight}"
+                FontSize="{x:Static app:TouchUi.FontSize}" Foreground="#F0F0F0">
+        <MenuItem Header="{Binding MenuSaveGame.Label}" Command="{Binding MenuSaveGame.Command}"
+                  IsEnabled="{Binding MenuSaveGame.IsEnabled}"
+                  MinHeight="{x:Static app:TouchUi.ItemHeight}"
+                  FontSize="{x:Static app:TouchUi.FontSize}" />
+        <MenuItem Header="{Binding MenuSetSaveDirectory.Label}"
+                  Command="{Binding MenuSetSaveDirectory.Command}"
+                  IsEnabled="{Binding MenuSetSaveDirectory.IsEnabled}"
+                  MinHeight="{x:Static app:TouchUi.ItemHeight}"
+                  FontSize="{x:Static app:TouchUi.FontSize}" />
+        <MenuItem Header="{Binding MenuRestoreGame.Label}"
+                  Command="{Binding MenuRestoreGame.Command}"
+                  IsEnabled="{Binding MenuRestoreGame.IsEnabled}"
+                  MinHeight="{x:Static app:TouchUi.ItemHeight}"
+                  FontSize="{x:Static app:TouchUi.FontSize}" />
+        <Separator />
+        <MenuItem Header="{Binding MenuQuit.Label}" Command="{Binding MenuQuit.Command}"
+                  IsEnabled="{Binding MenuQuit.IsEnabled}"
+                  MinHeight="{x:Static app:TouchUi.ItemHeight}"
+                  FontSize="{x:Static app:TouchUi.FontSize}" />
+        <MenuItem Header="{Binding MenuRestart.Label}" Command="{Binding MenuRestart.Command}"
+                  IsEnabled="{Binding MenuRestart.IsEnabled}"
+                  MinHeight="{x:Static app:TouchUi.ItemHeight}"
+                  FontSize="{x:Static app:TouchUi.FontSize}" />
+      </MenuItem>
+
+      <!-- The third AddMenu call: Delete Current Player, Change Animation Speed, Graphics
+           Detail Level, a separator, Change Volume and Turn Messages Off. The string is in
+           SciMenuBar, for the reason given above.
+           Four of these five live items are permanently greyed; see `Unimplemented` in
+           MainViewModel.MenuBar.cs for what each one would need. -->
+      <MenuItem Header="{Binding MenuTitleOptions}"
+                MinHeight="{x:Static app:TouchUi.BarHeight}"
+                FontSize="{x:Static app:TouchUi.FontSize}" Foreground="#F0F0F0">
+        <MenuItem Header="{Binding MenuDeletePlayer.Label}"
+                  Command="{Binding MenuDeletePlayer.Command}"
+                  IsEnabled="{Binding MenuDeletePlayer.IsEnabled}"
+                  MinHeight="{x:Static app:TouchUi.ItemHeight}"
+                  FontSize="{x:Static app:TouchUi.FontSize}" />
+        <MenuItem Header="{Binding MenuAnimationSpeed.Label}"
+                  Command="{Binding MenuAnimationSpeed.Command}"
+                  IsEnabled="{Binding MenuAnimationSpeed.IsEnabled}"
+                  MinHeight="{x:Static app:TouchUi.ItemHeight}"
+                  FontSize="{x:Static app:TouchUi.FontSize}" />
+        <MenuItem Header="{Binding MenuGraphicsDetail.Label}"
+                  Command="{Binding MenuGraphicsDetail.Command}"
+                  IsEnabled="{Binding MenuGraphicsDetail.IsEnabled}"
+                  MinHeight="{x:Static app:TouchUi.ItemHeight}"
+                  FontSize="{x:Static app:TouchUi.FontSize}" />
+        <Separator />
+        <MenuItem Header="{Binding MenuVolume.Label}" Command="{Binding MenuVolume.Command}"
+                  IsEnabled="{Binding MenuVolume.IsEnabled}"
+                  MinHeight="{x:Static app:TouchUi.ItemHeight}"
+                  FontSize="{x:Static app:TouchUi.FontSize}" />
+        <MenuItem Header="{Binding MenuTurnMessages.Label}"
+                  Command="{Binding MenuTurnMessages.Command}"
+                  IsEnabled="{Binding MenuTurnMessages.IsEnabled}"
+                  MinHeight="{x:Static app:TouchUi.ItemHeight}"
+                  FontSize="{x:Static app:TouchUi.FontSize}" />
+      </MenuItem>
+
+      <!-- (AddMenu { Status } {Statistics`#4:Goals`#6}) - the two screens the phone could
+           not reach at all before, and the reason the two bespoke touch buttons that used
+           to sit over the board are gone. -->
+      <MenuItem Header="{Binding MenuTitleStatus}"
+                MinHeight="{x:Static app:TouchUi.BarHeight}"
+                FontSize="{x:Static app:TouchUi.FontSize}" Foreground="#F0F0F0">
+        <MenuItem Header="{Binding MenuStatistics.Label}"
+                  Command="{Binding MenuStatistics.Command}"
+                  IsEnabled="{Binding MenuStatistics.IsEnabled}"
+                  MinHeight="{x:Static app:TouchUi.ItemHeight}"
+                  FontSize="{x:Static app:TouchUi.FontSize}" />
+        <MenuItem Header="{Binding MenuGoals.Label}" Command="{Binding MenuGoals.Command}"
+                  IsEnabled="{Binding MenuGoals.IsEnabled}"
+                  MinHeight="{x:Static app:TouchUi.ItemHeight}"
+                  FontSize="{x:Static app:TouchUi.FontSize}" />
+      </MenuItem>
+
+    </Menu>
+  </Border>
+
+  <Panel>
+  <Viewbox Stretch="Uniform" RenderOptions.BitmapInterpolationMode="None">
+    <Canvas x:Name="GameCanvas"
+            Width="{x:Static app:RenderScale.CanvasWidth}"
+            Height="{x:Static app:RenderScale.CanvasHeight}"
+            Background="Black" ClipToBounds="True"
+            PointerMoved="Canvas_PointerMoved" PointerReleased="Canvas_PointerReleased">
+
+      <!-- The town board. Drawn straight from SciArt rather than from a view model, so
+           the high-resolution swap happens there rather than through a converter. -->
+      <Image Source="{x:Static app:SciArt.Board}"
+             Canvas.Left="0" Canvas.Top="0"
+             Width="{x:Static app:RenderScale.CanvasWidth}"
+             Height="{x:Static app:RenderScale.CanvasHeight}"
+             IsVisible="{Binding ShowBoard}"
+             RenderOptions.BitmapInterpolationMode="{x:Static app:RenderScale.ArtInterpolation}" />
+
+      <!-- NOTE on positioning: an ItemsControl wraps every item in a ContentPresenter,
+           so Canvas.Left/Top set inside the ItemTemplate lands on the template's root
+           element and never reaches the container that the Canvas actually positions.
+           Everything then stacks at (0,0). The attached properties must be set on the
+           ContentPresenter via a style, as below. -->
+
+      <!-- Sprites: the original's DIcons, walker, marble and clock -->
+      <ItemsControl ItemsSource="{Binding Sprites}" Canvas.Left="0" Canvas.Top="0"
+                    Width="{x:Static app:RenderScale.CanvasWidth}"
+                    Height="{x:Static app:RenderScale.CanvasHeight}">
+        <ItemsControl.Styles>
+          <Style Selector="ContentPresenter" x:DataType="vm:SpriteVm">
+            <Setter Property="Canvas.Left" Value="{Binding X, Converter={x:Static app:RenderScale.Scale}}" />
+            <Setter Property="Canvas.Top" Value="{Binding Y, Converter={x:Static app:RenderScale.Scale}}" />
+          </Style>
+        </ItemsControl.Styles>
+        <ItemsControl.ItemsPanel>
+          <ItemsPanelTemplate><Canvas /></ItemsPanelTemplate>
+        </ItemsControl.ItemsPanel>
+        <ItemsControl.ItemTemplate>
+          <DataTemplate x:DataType="vm:SpriteVm">
+            <Panel>
+              <Image Source="{Binding Image, Converter={x:Static app:RenderScale.HighRes}}"
+                     Width="{Binding W, Converter={x:Static app:RenderScale.Scale}}"
+                     Height="{Binding H, Converter={x:Static app:RenderScale.Scale}}"
+                     RenderOptions.BitmapInterpolationMode="{x:Static app:RenderScale.ArtInterpolation}" />
+              <Button Classes="bare" Command="{Binding Command}"
+                      IsVisible="{Binding IsClickable}"
+                      Width="{Binding W, Converter={x:Static app:RenderScale.Scale}}"
+                      Height="{Binding H, Converter={x:Static app:RenderScale.Scale}}"
+                      ToolTip.Tip="{Binding Tooltip}" />
+            </Panel>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+
+      <!-- Clickable regions LAST, so they sit above the art. Anything earlier in the
+           canvas is painted over them and swallows the click, which is why the store
+           backdrop made every item unclickable. -->
+      <ItemsControl ItemsSource="{Binding Hotspots}" Canvas.Left="0" Canvas.Top="0"
+                    Width="{x:Static app:RenderScale.CanvasWidth}"
+                    Height="{x:Static app:RenderScale.CanvasHeight}">
+        <ItemsControl.Styles>
+          <Style Selector="ContentPresenter" x:DataType="vm:HotspotVm">
+            <Setter Property="Canvas.Left" Value="{Binding X, Converter={x:Static app:RenderScale.Scale}}" />
+            <Setter Property="Canvas.Top" Value="{Binding Y, Converter={x:Static app:RenderScale.Scale}}" />
+          </Style>
+        </ItemsControl.Styles>
+        <ItemsControl.ItemsPanel>
+          <ItemsPanelTemplate><Canvas /></ItemsPanelTemplate>
+        </ItemsControl.ItemsPanel>
+        <ItemsControl.ItemTemplate>
+          <DataTemplate x:DataType="vm:HotspotVm">
+            <Button Classes="hotspot"
+                    Width="{Binding W, Converter={x:Static app:RenderScale.Scale}}"
+                    Height="{Binding H, Converter={x:Static app:RenderScale.Scale}}"
+                    ToolTip.Tip="{Binding Tooltip}"
+                    Command="{Binding Command}" />
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+
+      <!-- Goal sliders: dragged, exactly as StarSlider::track. No step buttons — the
+           original has none. -->
+      <ItemsControl ItemsSource="{Binding GoalTracks}" Canvas.Left="0" Canvas.Top="0"
+                    Width="{x:Static app:RenderScale.CanvasWidth}"
+                    Height="{x:Static app:RenderScale.CanvasHeight}">
+        <ItemsControl.Styles>
+          <Style Selector="ContentPresenter" x:DataType="vm:GoalTrackVm">
+            <Setter Property="Canvas.Left" Value="{Binding X, Converter={x:Static app:RenderScale.Scale}}" />
+            <Setter Property="Canvas.Top" Value="{Binding Y, Converter={x:Static app:RenderScale.Scale}}" />
+          </Style>
+        </ItemsControl.Styles>
+        <ItemsControl.ItemsPanel>
+          <ItemsPanelTemplate><Canvas /></ItemsPanelTemplate>
+        </ItemsControl.ItemsPanel>
+        <ItemsControl.ItemTemplate>
+          <DataTemplate x:DataType="vm:GoalTrackVm">
+            <Border Background="Transparent"
+                    Width="{Binding W, Converter={x:Static app:RenderScale.Scale}}"
+                    Height="{Binding H, Converter={x:Static app:RenderScale.Scale}}"
+                    Tag="{Binding}"
+                    PointerPressed="GoalTrack_Pressed"
+                    Cursor="Hand" />
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+
+      <!-- Clickable text lines. Both colours are pre-rendered and swapped on PRESS:
+           `WButton::hilite` and `WButton::track` (WButton.sc:67-114) switch to flashColor
+           while the mouse button is held and back to textColor on release. The original
+           has NO hover state at all — the blue-on-hover this used to do was invented.
+           This layer is ABOVE the plain text layer, and is the only text that takes
+           clicks. -->
+      <ItemsControl ItemsSource="{Binding MenuLines}" Canvas.Left="0" Canvas.Top="0"
+                    Width="{x:Static app:RenderScale.CanvasWidth}"
+                    Height="{x:Static app:RenderScale.CanvasHeight}">
+        <ItemsControl.Styles>
+          <Style Selector="ContentPresenter" x:DataType="vm:MenuLineVm">
+            <Setter Property="Canvas.Left" Value="{Binding X, Converter={x:Static app:RenderScale.Scale}}" />
+            <Setter Property="Canvas.Top" Value="{Binding Y, Converter={x:Static app:RenderScale.Scale}}" />
+          </Style>
+        </ItemsControl.Styles>
+        <ItemsControl.ItemsPanel>
+          <ItemsPanelTemplate><Canvas /></ItemsPanelTemplate>
+        </ItemsControl.ItemsPanel>
+        <ItemsControl.ItemTemplate>
+          <DataTemplate x:DataType="vm:MenuLineVm">
+            <!-- The two colours are swapped by binding straight to the button's own
+                 IsPressed. A style selector reaching into the template's named
+                 elements does not cross the DataTemplate namescope, which is why the
+                 earlier attempt drew an opaque block instead of highlighted text. -->
+            <!-- Text: the bitmap swapped in is the pixel-DOUBLED glyph set, and the
+                 interpolation stays None. Smoothing a 6-pixel face is the one place
+                 where the upscale would make things worse, not better. -->
+            <!-- IsHitTestVisible follows `state` bit 0: `Item::handleEvent`
+                 (Interface.sc:407-420) drops every event on a control whose bit 0 is
+                 clear, and the control is still drawn. IsEnabled would grey the content;
+                 the original does not, so the line keeps its own colours. -->
+            <!-- THE HIT RECTANGLE AND THE DRAWN BOX ARE NOT THE SAME RECTANGLE, and that is
+                 the point of the zero-sized Canvas. `W`/`H` are always font 10's, so every
+                 line in the game keeps exactly the clickable area `WButton::setTextSize`
+                 gives it; the image inside is positioned by `ImageDx`/`ImageDy` and may be
+                 taller than the button, because an outline face has ascenders above font
+                 10's capital line and descenders below its six-row box. With the bitmap face
+                 the offsets are zero and the two rectangles coincide, as they always did. -->
+            <Button Classes="line bare" Command="{Binding Command}"
+                    ToolTip.Tip="{Binding Tooltip}"
+                    Background="Transparent"
+                    IsHitTestVisible="{Binding Enabled}"
+                    HorizontalContentAlignment="Left" VerticalContentAlignment="Top"
+                    Width="{Binding W, Converter={x:Static app:RenderScale.Scale}}"
+                    Height="{Binding H, Converter={x:Static app:RenderScale.Scale}}">
+              <!-- TWO PANELS, ONE PER SAMPLING MODE, and only one of them is ever visible.
+
+                   This wants to be one Image with its interpolation bound, and it cannot be:
+                   `RenderOptions.BitmapInterpolationMode` is an attached property the XAML
+                   compiler takes no binding for (AVLN3000) and exposes no field a Style
+                   setter can name (AVLN2000). An `x:Static` would compile and would be
+                   wrong, because the interface face is a LIVE switch — a static is read once
+                   when the view loads, so after a toggle the old mode would still be
+                   sampling the new bitmaps. RenderOptions INHERITS, so setting it on a panel
+                   and choosing the panel is the same thing with a working binding.
+
+                   `None` is not negotiable for the game's own font: font 10's glyphs were
+                   drawn a pixel at a time to be legible at six pixels and a resample turns
+                   its one-pixel stems into grey smudges. The outline face is the opposite
+                   case — rasterised ABOVE the screen's scale and fitted down (UiFont.
+                   TextScale), which is the one place in this port where resampling is right,
+                   and the only thing that makes it legible on Android, where the playfield
+                   is nearest-enlarged 3.375x from 320x200. -->
+              <Canvas Width="0" Height="0" ClipToBounds="False">
+                <Panel Canvas.Left="{Binding ImageDx, Converter={x:Static app:RenderScale.Scale}}"
+                       Canvas.Top="{Binding ImageDy, Converter={x:Static app:RenderScale.Scale}}"
+                       Width="{Binding ImageW, Converter={x:Static app:RenderScale.Scale}}"
+                       Height="{Binding ImageH, Converter={x:Static app:RenderScale.Scale}}"
+                       IsVisible="{Binding !Smooth}"
+                       RenderOptions.BitmapInterpolationMode="None">
+                  <Image Source="{Binding Normal, Converter={x:Static app:RenderScale.HighRes}}"
+                         IsVisible="{Binding !$parent[Button].IsPressed}" />
+                  <Image Source="{Binding Pressed, Converter={x:Static app:RenderScale.HighRes}}"
+                         IsVisible="{Binding $parent[Button].IsPressed}" />
+                </Panel>
+                <Panel Canvas.Left="{Binding ImageDx, Converter={x:Static app:RenderScale.Scale}}"
+                       Canvas.Top="{Binding ImageDy, Converter={x:Static app:RenderScale.Scale}}"
+                       Width="{Binding ImageW, Converter={x:Static app:RenderScale.Scale}}"
+                       Height="{Binding ImageH, Converter={x:Static app:RenderScale.Scale}}"
+                       IsVisible="{Binding Smooth}"
+                       RenderOptions.BitmapInterpolationMode="HighQuality">
+                  <Image Source="{Binding Normal, Converter={x:Static app:RenderScale.HighRes}}"
+                         IsVisible="{Binding !$parent[Button].IsPressed}" />
+                  <Image Source="{Binding Pressed, Converter={x:Static app:RenderScale.HighRes}}"
+                         IsVisible="{Binding $parent[Button].IsPressed}" />
+                </Panel>
+              </Canvas>
+            </Button>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+
+      <!-- Plain positioned text, as the original's Display calls. Never takes clicks:
+           left hit-testable it would sit over the buttons and swallow them. -->
+      <ItemsControl ItemsSource="{Binding Texts}" Canvas.Left="0" Canvas.Top="0"
+                    Width="{x:Static app:RenderScale.CanvasWidth}"
+                    Height="{x:Static app:RenderScale.CanvasHeight}"
+                    IsHitTestVisible="False">
+        <ItemsControl.Styles>
+          <!-- ImageX/ImageY, not X/Y: with the outline face the drawn box starts a pixel
+               left of and a pixel above the coordinate the script gives, because the glyphs
+               have real ascenders. The script's coordinate is still X/Y and is still what
+               every caller positions with; only the bitmap is offset. With the bitmap face
+               the two are identical. -->
+          <Style Selector="ContentPresenter" x:DataType="vm:TextVm">
+            <Setter Property="Canvas.Left" Value="{Binding ImageX, Converter={x:Static app:RenderScale.Scale}}" />
+            <Setter Property="Canvas.Top" Value="{Binding ImageY, Converter={x:Static app:RenderScale.Scale}}" />
+          </Style>
+        </ItemsControl.Styles>
+        <ItemsControl.ItemsPanel>
+          <ItemsPanelTemplate><Canvas /></ItemsPanelTemplate>
+        </ItemsControl.ItemsPanel>
+        <ItemsControl.ItemTemplate>
+          <DataTemplate x:DataType="vm:TextVm">
+            <!-- One panel per sampling mode, as the clickable lines above; see there for
+                 why this cannot simply be a bound interpolation mode. -->
+            <Panel>
+              <Image Source="{Binding Image, Converter={x:Static app:RenderScale.HighRes}}"
+                     IsVisible="{Binding !Smooth}"
+                     Width="{Binding ImageW, Converter={x:Static app:RenderScale.Scale}}"
+                     Height="{Binding ImageH, Converter={x:Static app:RenderScale.Scale}}"
+                     RenderOptions.BitmapInterpolationMode="None" />
+              <Image Source="{Binding Image, Converter={x:Static app:RenderScale.HighRes}}"
+                     IsVisible="{Binding Smooth}"
+                     Width="{Binding ImageW, Converter={x:Static app:RenderScale.Scale}}"
+                     Height="{Binding ImageH, Converter={x:Static app:RenderScale.Scale}}"
+                     RenderOptions.BitmapInterpolationMode="HighQuality" />
+            </Panel>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+
+      <!-- The speech balloon: BubbleWindow (script 113), which every Print in the game
+           goes through. The parts arrive already positioned in the 320x200 space and in
+           the order the original paints them — the five fills, the four corner cels, the
+           1px outline, the tail cel, then the text — so this just draws the list.
+           A part is either a flat colour (Fill) or a cel/text bitmap (Image).
+
+           This doubles as the subtitle: the CD build speaks these lines and draws no
+           balloon, but the floppy build printed every one of them, so showing the text
+           here keeps the game playable with the sound off. -->
+      <ItemsControl ItemsSource="{Binding Balloon}" Canvas.Left="0" Canvas.Top="0"
+                    Width="{x:Static app:RenderScale.CanvasWidth}"
+                    Height="{x:Static app:RenderScale.CanvasHeight}"
+                    IsHitTestVisible="False">
+        <ItemsControl.Styles>
+          <Style Selector="ContentPresenter" x:DataType="vm:BalloonPartVm">
+            <Setter Property="Canvas.Left" Value="{Binding X, Converter={x:Static app:RenderScale.Scale}}" />
+            <Setter Property="Canvas.Top" Value="{Binding Y, Converter={x:Static app:RenderScale.Scale}}" />
+          </Style>
+        </ItemsControl.Styles>
+        <ItemsControl.ItemsPanel>
+          <ItemsPanelTemplate><Canvas /></ItemsPanelTemplate>
+        </ItemsControl.ItemsPanel>
+        <ItemsControl.ItemTemplate>
+          <!-- The 1px outline and the 12x12 corner cels scale with everything else, so
+               the balloon keeps its exact proportions; at 4x the outline is 4px, which is
+               what a 1px line looks like on a 1280-wide screen showing a 320-wide game.
+               Interpolation stays None here: most of what this layer draws is TEXT, and
+               the corner cels are flat-coloured shapes that gain nothing from smoothing. -->
+          <DataTemplate x:DataType="vm:BalloonPartVm">
+            <Panel Width="{Binding W, Converter={x:Static app:RenderScale.Scale}}"
+                   Height="{Binding H, Converter={x:Static app:RenderScale.Scale}}">
+              <Border Background="{Binding Fill}" />
+              <Image Source="{Binding Image, Converter={x:Static app:RenderScale.HighRes}}"
+                     Width="{Binding W, Converter={x:Static app:RenderScale.Scale}}"
+                     Height="{Binding H, Converter={x:Static app:RenderScale.Scale}}"
+                     RenderOptions.BitmapInterpolationMode="None" />
+            </Panel>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+
+      <!-- The original's Print is modal: Dialog::doit runs its own event loop and
+           handleEvent claims ANY mouse button for a text-only balloon, so nothing else on
+           screen is clickable while the shopkeeper is talking, and clicking anywhere
+           dismisses it. -->
+      <Button Classes="bare" Canvas.Left="0" Canvas.Top="0"
+              Width="{x:Static app:RenderScale.CanvasWidth}"
+              Height="{x:Static app:RenderScale.CanvasHeight}"
+              Background="Transparent"
+              IsVisible="{Binding IsBalloonShowing}"
+              Command="{Binding DismissBalloonCommand}" />
+
+      <!-- The balloon's buttons — Print's `#button`, keyword 81. Their frames and labels
+           are already in the Balloon list; these are the hit rectangles, and they come
+           AFTER the click-to-dismiss layer so they sit above it. A balloon with buttons
+           is not dismissed by clicking it (Dialog::handleEvent's claim-anything branch is
+           gated on the dialog having no selectable item), so the layer below only blocks
+           the rest of the screen while the question is up. -->
+      <ItemsControl ItemsSource="{Binding BalloonButtons}" Canvas.Left="0" Canvas.Top="0"
+                    Width="{x:Static app:RenderScale.CanvasWidth}"
+                    Height="{x:Static app:RenderScale.CanvasHeight}">
+        <ItemsControl.Styles>
+          <Style Selector="ContentPresenter" x:DataType="vm:BalloonButtonVm">
+            <Setter Property="Canvas.Left" Value="{Binding X, Converter={x:Static app:RenderScale.Scale}}" />
+            <Setter Property="Canvas.Top" Value="{Binding Y, Converter={x:Static app:RenderScale.Scale}}" />
+          </Style>
+        </ItemsControl.Styles>
+        <ItemsControl.ItemsPanel>
+          <ItemsPanelTemplate><Canvas /></ItemsPanelTemplate>
+        </ItemsControl.ItemsPanel>
+        <ItemsControl.ItemTemplate>
+          <DataTemplate x:DataType="vm:BalloonButtonVm">
+            <Button Classes="hotspot"
+                    Width="{Binding W, Converter={x:Static app:RenderScale.Scale}}"
+                    Height="{Binding H, Converter={x:Static app:RenderScale.Scale}}"
+                    Command="{Binding Command}" />
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+
+      <!-- NOTHING ELSE IS DRAWN HERE.
+           There was a status strip along the bottom with the clock, stats and a running
+           commentary. None of it exists in the original: the clock is the view-270 dial
+           already on the board, the money is the calculator sprite, and the game speaks
+           its messages rather than printing them. Invented chrome comes out. -->
+      <Button Classes="bare" Canvas.Left="0" Canvas.Top="0" Width="1" Height="1"
+              Command="{Binding EndTurnCommand}" IsVisible="False" />
+
+    </Canvas>
+  </Viewbox>
+
+  <!-- THE SOUND SWITCHES. Not Sierra's, and deliberately not dressed as Sierra's.
+
+       The original's are keyboard-only — `Turn Music Off `#2` and `Turn Sound Effects Off
+       `#3` on the floppy's Options menu (`Menu.sc:128`), master volume on Ctrl-V — and
+       this port is heading for Android, where there is no keyboard. There is no speech
+       switch in the game at all; muting dialogue leaves the subtitle and the mouth
+       running, which is what the floppy build did anyway by printing every line.
+
+       Drawn OUTSIDE the Viewbox on purpose. Everything inside it is in the original's
+       320x200 space and scales as one unit; putting these in there would both scale them
+       down to six pixels on a phone and make them look like 1990 art to whoever reads
+       this next. Out here they are unmistakably modern chrome, and the game's own
+       coordinate space is untouched.
+
+       A slash means muted. No captions: every label here would be wording I made up. -->
+  <Border HorizontalAlignment="Right" VerticalAlignment="Top" Margin="10"
+          Background="#99000000" CornerRadius="8" Padding="3">
+    <StackPanel Orientation="Horizontal" Spacing="2">
+
+      <!-- Sound effects: the button click, the stings, the chimes. F3. -->
+      <ToggleButton Classes="snd" IsChecked="{Binding EffectsOn, Mode=TwoWay}"
+                    ToolTip.Tip="Sound effects">
+        <Panel Width="26" Height="26">
+          <Path Fill="#F0F0F0" Data="M4,10 L8,10 L13,5 L13,21 L8,16 L4,16 Z" />
+          <Path Stroke="#F0F0F0" StrokeThickness="1.6" StrokeLineCap="Round"
+                Data="M16,9 A5.5,5.5 0 0 1 16,17" />
+          <Path Stroke="#F0F0F0" StrokeThickness="1.6" StrokeLineCap="Round"
+                Data="M19,6 A9.5,9.5 0 0 1 19,20" />
+          <Path Stroke="#FF4B4B" StrokeThickness="2.6" StrokeLineCap="Round"
+                Data="M4,22 L22,4" IsVisible="{Binding !EffectsOn}" />
+        </Panel>
+      </ToggleButton>
+
+      <!-- Music: the location beds and the board theme. F2. -->
+      <ToggleButton Classes="snd" IsChecked="{Binding MusicOn, Mode=TwoWay}"
+                    ToolTip.Tip="Music">
+        <Panel Width="26" Height="26">
+          <Path Stroke="#F0F0F0" StrokeThickness="1.8" StrokeLineCap="Round"
+                Data="M11,19 L11,5 L20,3 L20,16" />
+          <Ellipse Fill="#F0F0F0" Width="7" Height="5.5"
+                   HorizontalAlignment="Left" VerticalAlignment="Top" Margin="4.5,16.5,0,0" />
+          <Ellipse Fill="#F0F0F0" Width="7" Height="5.5"
+                   HorizontalAlignment="Left" VerticalAlignment="Top" Margin="13.5,13.5,0,0" />
+          <Path Stroke="#FF4B4B" StrokeThickness="2.6" StrokeLineCap="Round"
+                Data="M4,22 L22,4" IsVisible="{Binding !MusicOn}" />
+        </Panel>
+      </ToggleButton>
+
+      <!-- Speech: the shopkeepers' recorded lines. No key in the original. -->
+      <ToggleButton Classes="snd" IsChecked="{Binding SpeechOn, Mode=TwoWay}"
+                    ToolTip.Tip="Speech">
+        <Panel Width="26" Height="26">
+          <Path Fill="#F0F0F0"
+                Data="M4,5 L22,5 L22,17 L12,17 L7,22 L7,17 L4,17 Z" />
+          <Path Stroke="#FF4B4B" StrokeThickness="2.6" StrokeLineCap="Round"
+                Data="M4,22 L22,4" IsVisible="{Binding !SpeechOn}" />
+        </Panel>
+      </ToggleButton>
+
+      <!-- THE INTERFACE FACE. Off - the default - is the game's own font 10, and the port
+           draws exactly what it always drew. On swaps the interface text (font 10 only; the
+           balloon, the newspaper, the goals screens and the calculator keep their own faces)
+           for Quicksand, with every price and wage column re-measured onto the stop font 10
+           gives it.
+
+           IT IS HERE, NOT ON A KEY, AND THAT WAS CHECKED. Text 997[6] and 997[7] are the
+           game's own list of what it binds - F1 and F4-F10, Ctrl-Q/S/T/V/Y/Z, Esc and the two
+           mouse modifiers - this port has taken F2 and F3 for the floppy's music and effects
+           items, and every list in the game binds the digits as accelerators. Only F11 and
+           F12 are free, and the game never mentions them; making one up is what working rule
+           1 exists to stop. The sound switches beside it are the port's own chrome for
+           exactly the same reason, and this is the only surface a phone can reach.
+
+           The glyph is a lower-case "a" twice: blocky on the left, round on the right. -->
+      <ToggleButton Classes="snd" IsChecked="{Binding QuicksandFont, Mode=TwoWay}"
+                    IsVisible="{x:Static vm:MainViewModel.QuicksandFontAvailable}"
+                    ToolTip.Tip="Interface font: the game's own, or Quicksand">
+        <Panel Width="26" Height="26">
+          <TextBlock Text="a" FontFamily="Consolas,Courier New,monospace"
+                     FontSize="15" FontWeight="Bold" Foreground="#F0F0F0"
+                     HorizontalAlignment="Left" VerticalAlignment="Center" Margin="3,0,0,0" />
+          <TextBlock Text="a" FontFamily="avares://Jones.App/Assets/fonts#Quicksand"
+                     FontSize="17" FontWeight="Medium" Foreground="#F0F0F0"
+                     HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,3,0" />
+          <Path Stroke="#FF4B4B" StrokeThickness="2.6" StrokeLineCap="Round"
+                Data="M4,22 L22,4" IsVisible="{Binding !QuicksandFont}" />
+        </Panel>
+      </ToggleButton>
+
+    </StackPanel>
+  </Border>
+
+  <!-- GOALS AND STATS USED TO BE HERE, as two bespoke buttons drawn only on a touch head.
+
+       They are gone, and the menu bar above is why. They existed because text 997[7]
+       reaches those two screens with "Middle Mouse/CTRL-Left" and "Right Mouse/SHIFT-Left"
+       and 997[6] with F4 and F6, and a phone has none of the six - so the screens were
+       unreachable. But the game does not reach them that way either: `MenuBar::init`
+       (`Menu.sc:131`) puts both on a Status menu, and F4 and F6 are that menu's
+       accelerators. Two invented buttons standing in for a menu the game already has, next
+       to that menu, would be one affordance too many - and the menu's labels are the
+       script's own where the buttons' were transcribed out of a help string.
+
+       The sound switches above STAY. They are not on this build's bar: the CD's Options
+       menu has no music or effects item, only the floppy's does
+       (`jones-dos-1.000.060/src/Menu.sc:128`), so F2 and F3 have nothing here to be
+       accelerators for and a touch head has no other way to reach them. -->
+  </Panel>
+
+  </DockPanel>
+</UserControl>
+

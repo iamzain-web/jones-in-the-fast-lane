@@ -386,6 +386,13 @@ test-results/
 *.dmg
 *.app
 
+# ...but `*.app` above also matches this solution's own `Jones.App` DIRECTORY, which
+# silently kept the entire shared UI layer — MainViewModel.cs, StoreLayout.cs, every
+# screen and layout — out of version control. Re-include it. The directory itself has to
+# be un-ignored before anything inside it can be, which is why this is `Jones.App/` and
+# not a pattern for the files.
+!Jones.App/
+
 # content below from: https://github.com/github/gitignore/blob/master/Global/macOS.gitignore
 # General
 .DS_Store
