@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>Jones.Tools.Upscale</RootNamespace>
+
+    <!-- This tool sits outside src/, so it must not pick up the app's central package
+         management. Versions are declared here directly. -->
+    <ManagePackageVersionsCentrally>false</ManagePackageVersionsCentrally>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- SkiaSharp rather than Pillow: PyPI is unreachable from this machine, and Skia is
+         already in the dependency tree underneath Avalonia. It also decodes PNG straight
+         to PREMULTIPLIED alpha, which is exactly what stops a resampler bleeding the
+         colours hiding under transparent pixels into the visible edges. -->
+    <PackageReference Include="SkiaSharp" Version="2.88.8" />
+    <PackageReference Include="SkiaSharp.NativeAssets.Win32" Version="2.88.8" />
+  </ItemGroup>
+
+</Project>

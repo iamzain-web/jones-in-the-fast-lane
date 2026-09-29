@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- NO PERMISSIONS. The template asked for INTERNET; this game has never talked to a
+     network and the assets all travel inside the APK, so the request came out. -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" android:installLocation="auto">
+	<application android:label="Jones in the Fast Lane" android:icon="@drawable/Icon" />
+</manifest>

@@ -1,0 +1,15 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- The save/restore round-trip tests set state that only Game.Restore may set -
+         the clock, the crash/boom flags - and read SaveFormat.Options. -->
+    <InternalsVisibleTo Include="Jones.Tests" />
+  </ItemGroup>
+
+</Project>

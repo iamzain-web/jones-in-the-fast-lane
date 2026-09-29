@@ -1,0 +1,34 @@
+# Build output
+bin/
+obj/
+.vs/
+*.user
+
+# Python
+__pycache__/
+*.pyc
+
+# A mis-parsed `dotnet` command on 23 Sep 2026 created a directory literally named
+# "--nologo" and wrote 34 .wav files (69 MB) into it. Junk, not part of the port.
+/--nologo/
+
+# SIERRA'S DATA, NOT THIS PORT'S CODE.
+#
+# `assets/` is the extracted game — speech, art, fonts, raw resources — and `original/`
+# is the shipped game itself. Neither is this project's work to redistribute, and
+# together they are ~545 MB. Anyone building the port extracts their own copy from their
+# own disks with tools/extract_resources.py and tools/extract_speech.py.
+#
+# `scripts/` IS tracked: it is the decompiled listing this port is written against, and
+# every source file cites it by line. Remove it from the repository if that judgement
+# turns out to be wrong.
+/assets/
+/original/
+
+# Generated output, not source: frame strips and composed comparison images.
+/tools/samples/
+
+# The upscaler's native runtime (~79 MB of .dll/.dylib) — fetched, not authored.
+/tools/Upscale/*
+!/tools/Upscale/*.cs
+!/tools/Upscale/*.csproj

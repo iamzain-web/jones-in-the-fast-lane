@@ -1,0 +1,12 @@
+﻿<Solution>
+  <Project Path="Jones.App.Android/Jones.App.Android.csproj">
+    <Deploy />
+  </Project>
+  <Project Path="Jones.App.Browser/Jones.App.Browser.csproj" />
+  <Project Path="Jones.App.Desktop/Jones.App.Desktop.csproj" />
+  <Project Path="Jones.App.iOS/Jones.App.iOS.csproj">
+    <Deploy />
+  </Project>
+  <Project Path="Jones.App/Jones.App.csproj" />
+  <Project Path="../Jones.Audio/Jones.Audio.csproj" />
+</Solution>

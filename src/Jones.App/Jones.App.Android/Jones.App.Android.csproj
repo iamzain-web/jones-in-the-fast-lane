@@ -1,0 +1,99 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0-android</TargetFramework>
+    <!-- 23 is what AudioTrack.Builder needs, and it is the template's own floor. -->
+    <SupportedOSPlatformVersion>23</SupportedOSPlatformVersion>
+    <Nullable>enable</Nullable>
+    <ApplicationId>com.jones.fastlane</ApplicationId>
+    <ApplicationVersion>1</ApplicationVersion>
+    <ApplicationDisplayVersion>1.0</ApplicationDisplayVersion>
+    <AndroidPackageFormat>apk</AndroidPackageFormat>
+    <AndroidEnableProfiledAot>false</AndroidEnableProfiledAot>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <AndroidResource Include="Icon.png">
+      <Link>Resources\drawable\Icon.png</Link>
+    </AndroidResource>
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Avalonia.Android" />
+    <PackageReference Include="Xamarin.AndroidX.Core.SplashScreen" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Jones.App\Jones.App.csproj" />
+    <!-- The OPL2 synthesiser. Portable net8.0, no platform APIs; this head supplies only
+         the sink (AudioTrackStream), exactly as the Windows head supplies WaveOutStream. -->
+    <ProjectReference Include="..\..\Jones.Audio\Jones.Audio.csproj" />
+  </ItemGroup>
+
+  <!-- ==================================================================
+       ASSETS
+
+       The desktop head finds `assets/` by walking up the directory tree from the
+       executable. An APK has no tree to walk, so the assets have to be carried inside
+       it. They are carried two different ways, because they are two different problems.
+
+       1. SPEECH (533 WAVs, 21.5MB) ships as loose AndroidAssets under `speech/` and is
+          NEVER copied out. Nothing in the shared code reads a speech file - the head's
+          own IAudioPlayer does - so this head reads them straight off the AssetManager.
+          `.wav` is on aapt's no-compress list, so they sit in the APK uncompressed and
+          open instantly. Extracting them instead would cost a 21MB first-run copy and
+          43MB of the phone's storage for no gain.
+
+       2. EVERYTHING ELSE (raw/text, raw/patch, raw/sound, audio/sync, subtitles.json -
+          about 300KB across ~620 files) is zipped at build time and unpacked into the
+          app's private files directory on first run. This set has to become real FILES
+          because the code that reads it is shared and takes a filesystem path:
+          SciText.Load, LipSync.SetDirectory, Subtitles.Load and
+          SciSoundLibrary.FromAssetRoot all call System.IO.File. Rewriting those to take
+          streams would mean changing Jones.App and Jones.Audio; unpacking 300KB does not.
+
+       NOT SHIPPED: assets/png4x, the 24MB upscaled art. RenderScale falls back to Factor
+       1 when no `png{N}x` directory is found, which is the original's own pixels blown up
+       by the Viewbox with interpolation None - a legitimate look, and the one this first
+       cut ships. To include it later, add it to JonesDataFile below (and expect the APK
+       to roughly double); RenderScale.UseAssetRoot(GameAssets.Root(...)) in JonesRuntime
+       is the other half.
+       ================================================================== -->
+
+  <PropertyGroup>
+    <JonesAssetRoot>$(MSBuildThisFileDirectory)..\..\..\assets\</JonesAssetRoot>
+    <JonesDataStage>$(MSBuildThisFileDirectory)obj\jonesdata\</JonesDataStage>
+    <JonesDataZip>$(MSBuildThisFileDirectory)obj\jones-data.zip</JonesDataZip>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- The speech clips, read through AssetManager by AndroidAudioPlayer. -->
+    <AndroidAsset Include="$(JonesAssetRoot)audio\speech\*.wav"
+                  Link="Assets\speech\%(Filename)%(Extension)" />
+
+    <!-- The zip built by PackJonesData below. Declared as a literal path so the item
+         survives evaluation on a clean tree, where the file does not exist yet. -->
+    <AndroidAsset Include="$(JonesDataZip)" Link="Assets\jones-data.zip" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- StagePath is the path the file must have INSIDE the zip, which is the path it
+         must have under the asset root once unpacked - the shared loaders build
+         `<root>/raw/text/<n>.text` and friends. -->
+    <JonesDataFile Include="$(JonesAssetRoot)raw\text\*.text"      StagePath="raw\text\" />
+    <JonesDataFile Include="$(JonesAssetRoot)raw\patch\*.patch"    StagePath="raw\patch\" />
+    <JonesDataFile Include="$(JonesAssetRoot)raw\sound\*.sound"    StagePath="raw\sound\" />
+    <JonesDataFile Include="$(JonesAssetRoot)audio\sync\*.sync"    StagePath="audio\sync\" />
+    <JonesDataFile Include="$(JonesAssetRoot)audio\subtitles.json" StagePath="audio\" />
+  </ItemGroup>
+
+  <Target Name="PackJonesData" BeforeTargets="BeforeBuild"
+          Inputs="@(JonesDataFile)" Outputs="$(JonesDataZip)">
+    <!-- Cleared rather than merged, so a file deleted from assets/ leaves the zip too. -->
+    <RemoveDir Directories="$(JonesDataStage)" />
+    <Copy SourceFiles="@(JonesDataFile)"
+          DestinationFiles="@(JonesDataFile->'$(JonesDataStage)%(StagePath)%(Filename)%(Extension)')" />
+    <ZipDirectory SourceDirectory="$(JonesDataStage)" DestinationFile="$(JonesDataZip)"
+                  Overwrite="true" />
+  </Target>
+</Project>
