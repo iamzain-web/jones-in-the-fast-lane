@@ -364,10 +364,7 @@ public class AudioSpectrumTests
         var score = ScoreLibrary.Load("res05-town-board");
         var viaFile = MonoFromStereo(score.Render(new OriginalSynth(Rate), Rate, tailSeconds: 0.5));
 
-        var mixer = new JonesAudioMixer(null, new OriginalSoundBank(Rate))
-        {
-            Source = AudioSource.Original,
-        };
+        var mixer = new JonesAudioMixer(new OriginalSoundBank(Rate));
         mixer.PlayMusic(5, loop: true);
 
         var frames = viaFile.Length;
@@ -388,11 +385,10 @@ public class AudioSpectrumTests
         Console.WriteLine($"  file path  rms {Dbfs(Rms(viaFile)),6:F1}  {a}");
         Console.WriteLine($"  game path  rms {Dbfs(Rms(viaGame)),6:F1}  {b}");
         Console.WriteLine($"  sample rate: synth {OriginalSynth.SampleRate}, " +
-                          $"mixer {JonesAudioMixer.SampleRate}, AdLib {SciSoundEngine.SampleRate}");
+                          $"mixer {JonesAudioMixer.SampleRate}");
 
         // Every stage must run at one rate. A resample would show as a shifted spectrum.
         Assert.Equal(OriginalSynth.SampleRate, JonesAudioMixer.SampleRate);
-        Assert.Equal(SciSoundEngine.SampleRate, JonesAudioMixer.SampleRate);
 
         foreach (var (name, x, y) in new (string, double, double)[]
                  {

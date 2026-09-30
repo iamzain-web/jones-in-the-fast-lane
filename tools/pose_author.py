@@ -164,16 +164,62 @@ BUILDS = {
 # Contact frames put the feet at +-0.072 of the figure's height, which on a 1.75m person is
 # a 25cm stride: a walk, not a march. Pass frames bring them to +-0.015, the swinging one
 # lifted 0.048 and its knee 0.034, which is the foot clearing the ground by about 8cm.
+#
+# A WALK IS NOT A LEG MOTION WITH A STATIC BODY ON TOP, and the first version of this table
+# was exactly that: it moved the ankles and the knees and left the head, shoulders, arms and
+# torso identical in all four cels. Played back, the user's description was "it doesn't look
+# like walking at all, it looks like he is just wriggling his legs", and that is precisely
+# what the table produced.
+#
+# `step` could not see it. step is a whole-frame pixel difference and the legs dominate it,
+# so a cycle that moves only the legs scores 17.92 against the original's 20.38 and looks
+# healthy while being wrong. The acceptance criterion was measuring the one thing that was
+# already working.
+#
+# MEASURED OFF THE 1990 ART, across the four cels of views 280, 282, 284, 290, 292 and 296,
+# as fractions of the figure's own height:
+#
+#   vertical bob      the figure's HEIGHT varies by 1-2%, and it varies on cels 1 and 3
+#   lateral sway      the shoulder centre moves 3.5-4.5px on a 40px cel - 8-10% of the
+#                     cel's width, about 3.7% of the figure's height
+#   arm swing         the silhouette's extent at the wrist line moves 3.2-8.6% of height
+#   counter-rotation  shoulder centre against hip centre, +-1.5% of height
+#
+# The old table had zero of the first, second and fourth, and 1.6% of the third on only two
+# of the four cels. The amplitudes below are those measurements, taken at the low end of
+# each range because the measured spread includes the props these figures carry.
+#
+# THE CROWN IS NO LONGER PINNED. The old comment argued that a constant span keeps one scale
+# and one offset valid for the whole loop - true, and right for the FIT, but it is the fit's
+# job to absorb that (fit_walkers.refit_for already maps a loop by the union of its four
+# extents for exactly this reason). Pinning it there bought tidiness in the wrong place and
+# cost the animation its bob.
+# THE FOUR MOTIONS ARE PHASED AGAINST EACH OTHER, NOT MERELY PRESENT. In the original they
+# all come from one real stride, so they peak together; four correct amplitudes out of phase
+# would read as a puppet rather than a walk. The phasing below is the gait, not a guess:
+#
+#   rise   peaks at the PASS, because that is when the supporting leg is vertical and the
+#          body is at the top of its arc. Zero at contact, when the legs are apart and the
+#          pelvis is at its lowest. The measurement agrees: the original's cels 1 and 3 are
+#          1-2% SHORTER than 0 and 2, so its contacts are its short frames, as here.
+#   sway   peaks at the PASS too, and in the direction of the SUPPORTING foot - the body is
+#          balanced over one leg there. Zero at contact, when the weight is between both.
+#   arm    peaks at CONTACT, opposed to the leading leg, and passes through neutral at the
+#          pass exactly as the legs do.
+#   twist  shoulders against hips, in phase with the arms, because it is the same rotation.
+#
+# So it is a quarter-cycle offset: legs and arms extreme at 0 and 2, body extreme at 1 and 3.
+# That is what makes it a stride rather than four poses.
 CONTACT, PASS = "contact", "pass"
 CYCLE = [
-    # phase,   lead,  (ankle_r, ankle_l), (knee_r, knee_l), lift_side, bob
-    (CONTACT, "l", (-0.072, 0.072), (-0.048, 0.048), None, 0.000),
-    (PASS,    "r", (-0.014, 0.018), (-0.026, 0.020), "r",  0.010),
-    (CONTACT, "r", (-0.072, 0.072), (-0.048, 0.048), None, 0.000),
-    (PASS,    "l", (-0.018, 0.014), (-0.020, 0.026), "l",  0.010),
+    # phase,  lead, (ankle_r, ankle_l), (knee_r, knee_l), lift, rise,  sway,   arm,  twist
+    (CONTACT, "l", (-0.072, 0.072), (-0.048, 0.048), None, 0.000, 0.000, +0.042, +0.012),
+    (PASS,    "r", (-0.014, 0.018), (-0.026, 0.020), "r",  0.014, +0.018, 0.000, 0.000),
+    (CONTACT, "r", (-0.072, 0.072), (-0.048, 0.048), None, 0.000, 0.000, -0.042, -0.012),
+    (PASS,    "l", (-0.018, 0.014), (-0.020, 0.026), "l",  0.014, -0.018, 0.000, 0.000),
 ]
 
-STILL = (None, None, (-0.030, 0.030), (-0.036, 0.036), None, 0.000)
+STILL = (None, None, (-0.030, 0.030), (-0.036, 0.036), None, 0.000, 0.0, 0.0, 0.0)
 
 
 def proportions(build):
@@ -208,55 +254,72 @@ def skeleton(build, frame):
     Returns a list of 18 (x, y) pairs, none of them None - an authored skeleton has no
     missing joints, which is itself part of the point. Every dropped joint in the measured
     version was a place the model was left to invent a limb."""
-    phase, lead, (an_r, an_l), (kn_r, kn_l), lift, bob = frame
+    phase, lead, (an_r, an_l), (kn_r, kn_l), lift, rise, sway, arm, twist = frame
     Y = proportions(build)
     sh = build["sh"]
     hip = build["hip"]
     eye_dx = EYE_DX * (7.7 / build["heads"])
     ear_dx = EAR_DX * (7.7 / build["heads"])
 
-    # The pelvis rises at the pass and the shoulders ride with it. The crown does NOT: the
-    # head stays put so the figure's total span is the same in all four cels, which is what
-    # keeps one scale and one offset valid for the whole loop (see fit_walkers.refit_for).
-    # The neck simply compresses by a centimetre, which is what it does.
-    y_hip = Y["hip"] - bob
-    y_sh = Y["shoulder"] - bob * 0.45
+    # THE WHOLE BODY RISES AT THE PASS, CROWN INCLUDED. The previous version pinned the crown
+    # so every cel had an identical span, and that is what made the figure wriggle its legs
+    # under a motionless head. The ankles stay on the ground line - the planted foot cannot
+    # move - so the rise lifts the pelvis, the shoulders and the head together, which is what
+    # a stride does and what the 1990 art measures at 1-2% of height.
+    y_hip = Y["hip"] - rise
+    y_sh = Y["shoulder"] - rise
+    y_head = -rise
 
     # The swinging leg's foot leaves the ground and its knee comes up with it.
-    lift_r = 0.048 if lift == "r" else 0.0
-    lift_k_r = 0.034 if lift == "r" else 0.0
-    lift_l = 0.048 if lift == "l" else 0.0
-    lift_k_l = 0.034 if lift == "l" else 0.0
+    # FOOT LIFT, REDUCED FOR THE WARP. 0.048 of figure height is the right lift for a real
+    # stride and is what a generated frame would draw. A warp has to DEFORM a photographed
+    # shoe that far, and at 49 canvas pixels the shoe stretched into a dark spike rather
+    # than rising as a shoe. 0.030 still reads as a foot leaving the ground - it is more
+    # lift than the 1-5 pixels the first warp managed - and the shoe survives it.
+    lift_r = 0.030 if lift == "r" else 0.0
+    lift_k_r = 0.022 if lift == "r" else 0.0
+    lift_l = 0.030 if lift == "l" else 0.0
+    lift_k_l = 0.022 if lift == "l" else 0.0
 
     # ARMS OPPOSE THE LEGS. Front-on, a forward-swung arm reads as the hand drifting in
     # towards the hip and rising slightly; the trailing one drifts out and drops. The
     # amplitude is deliberately small - every one of these figures is walking, not marching,
     # and half of them are carrying something.
-    swing = 0.0 if phase == CONTACT else 0.0
-    if phase == CONTACT:
-        swing = 0.016 if lead == "l" else -0.016
-    arm_r = +swing          # right arm forward when the left leg leads
-    arm_l = -swing
+    # `arm` is the measured swing amplitude for this cel, signed so the RIGHT arm goes with
+    # it. Front-on, a forward-swung arm reads as the hand drifting in towards the hip and
+    # rising; the trailing one drifts out and drops. Measured at 3.2-8.6% of figure height at
+    # the wrist line, against the 1.6% the first version used.
+    arm_r = +arm
+    arm_l = -arm
+
+    # SWAY moves the whole body over the supporting foot; the ANKLES DO NOT GO WITH IT,
+    # because a planted foot stays planted. So the sway is added to everything from the knees
+    # up, tapering to zero at the ground, which is also what puts the lean into the legs.
+    def s(frac):
+        return sway * frac
 
     k = [None] * 18
-    k[0] = (0.0, Y["nose"])
-    k[1] = (0.0, y_sh)
-    k[2] = (-sh, y_sh)
-    k[5] = (+sh, y_sh)
-    k[3] = (-(sh * 0.90 + arm_r * 0.5), Y["elbow"] - abs(arm_r) * 0.25)
-    k[6] = (+(sh * 0.90 + arm_l * 0.5), Y["elbow"] - abs(arm_l) * 0.25)
-    k[4] = (-(sh * 0.97 + arm_r), Y["wrist"] - arm_r * 0.55)
-    k[7] = (+(sh * 0.97 + arm_l), Y["wrist"] + arm_l * 0.55)
-    k[8] = (-hip, y_hip)
-    k[11] = (+hip, y_hip)
-    k[9] = (kn_r, Y["knee"] - lift_k_r)
-    k[12] = (kn_l, Y["knee"] - lift_k_l)
+    k[0] = (s(1.00), Y["nose"] + y_head)
+    k[1] = (s(1.00), y_sh)
+    k[2] = (-sh + s(1.00) + twist, y_sh)
+    k[5] = (+sh + s(1.00) + twist, y_sh)
+    k[3] = (-(sh * 0.90 + arm_r * 0.5) + s(0.95), Y["elbow"] + y_head - abs(arm_r) * 0.25)
+    k[6] = (+(sh * 0.90 + arm_l * 0.5) + s(0.95), Y["elbow"] + y_head - abs(arm_l) * 0.25)
+    k[4] = (-(sh * 0.97 + arm_r) + s(0.90), Y["wrist"] + y_head - arm_r * 0.55)
+    k[7] = (+(sh * 0.97 + arm_l) + s(0.90), Y["wrist"] + y_head + arm_l * 0.55)
+    # The hips take the OPPOSITE twist to the shoulders - that counter-rotation is the
+    # measured shoulder-to-hip offset of +-1.5% of height, and it is the same rotation the
+    # arms are expressing, so it shares their phase.
+    k[8] = (-hip + s(0.85) - twist, y_hip)
+    k[11] = (+hip + s(0.85) - twist, y_hip)
+    k[9] = (kn_r + s(0.45), Y["knee"] - lift_k_r)
+    k[12] = (kn_l + s(0.45), Y["knee"] - lift_k_l)
     k[10] = (an_r, Y["ankle"] - lift_r)
     k[13] = (an_l, Y["ankle"] - lift_l)
-    k[14] = (-eye_dx, Y["eye"])
-    k[15] = (+eye_dx, Y["eye"])
-    k[16] = (-ear_dx, Y["ear"])
-    k[17] = (+ear_dx, Y["ear"])
+    k[14] = (-eye_dx + s(1.00), Y["eye"] + y_head)
+    k[15] = (+eye_dx + s(1.00), Y["eye"] + y_head)
+    k[16] = (-ear_dx + s(1.00), Y["ear"] + y_head)
+    k[17] = (+ear_dx + s(1.00), Y["ear"] + y_head)
     return k
 
 
@@ -389,6 +452,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 

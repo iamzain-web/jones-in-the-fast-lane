@@ -1,11 +1,11 @@
-namespace Jones.Audio.Original;
+﻿namespace Jones.Audio.Original;
 
 /// <summary>
 /// Plays the original cues live, with the same three slots and the same vocabulary as
 /// <see cref="SciSoundEngine"/> — a music bed, an effect, and a second effect that has to
 /// sound over the first.
 ///
-/// It is deliberately a MIRROR of that class rather than a redesign. The three Sound
+/// The shape came from the AdLib engine this replaced, deliberately. The three Sound
 /// objects, the fade that is not a cut, the pause that ducks a bed under a sting and the
 /// cue that brings it back are all behaviour the scripts ask for by name, and they are the
 /// same behaviour whichever synthesiser is making the noise. Anything that diverged here
@@ -44,6 +44,19 @@ public sealed class OriginalMusicEngine
         _effect = new SampleSlot();
         _effect2 = new SampleSlot();
     }
+
+    /// <summary>
+    /// Master output scale, 0..1. `sndMASTER_VOLUME` is a 0-15 control in the scripts and
+    /// the AdLib driver folded it into note velocity; with that driver gone this is where it
+    /// lands instead, as a plain gain on the mixed output.
+    /// </summary>
+    public double Gain
+    {
+        get { lock (_gate) return _gain; }
+        set { lock (_gate) _gain = Math.Clamp(value, 0, 1); }
+    }
+
+    private double _gain = 1.0;
 
     public bool MusicPlaying { get { lock (_gate) return _music.Active; } }
     public bool MusicPaused { get { lock (_gate) return _music.Paused; } }
@@ -92,6 +105,10 @@ public sealed class OriginalMusicEngine
             var any = _music.Render(destination, _scratch, _rate);
             any |= _effect.Render(destination);
             any |= _effect2.Render(destination);
+
+            if (any && _gain != 1.0)
+                for (var i = 0; i < destination.Length; i++) destination[i] *= (float)_gain;
+
             return any;
         }
     }
@@ -417,3 +434,5 @@ public sealed class OriginalMusicEngine
         }
     }
 }
+
+

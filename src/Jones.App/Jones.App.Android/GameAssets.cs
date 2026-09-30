@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.IO;
 using System.IO.Compression;
 using AContent = global::Android.Content;
@@ -12,7 +12,7 @@ namespace Jones.App.Android;
 /// no such tree inside an APK, so this head carries the assets with it and hands the
 /// shared loaders a directory they can read with <see cref="File"/> - which is what they
 /// all do: <c>SciText.Load</c>, <c>LipSync.SetDirectory</c>, <c>Subtitles.Load</c> and
-/// <c>SciSoundLibrary.FromAssetRoot</c> take a path and call <c>File.ReadAllBytes</c>.
+/// and <c>Subtitles.Load</c> take a path and call <c>File.ReadAllBytes</c>.
 ///
 /// Only the small resources are unpacked (see the csproj for the split and why). The
 /// 21.5MB of speech stays in the APK and is read through the AssetManager by
@@ -136,3 +136,4 @@ internal static class GameAssets
         }
     }
 }
+

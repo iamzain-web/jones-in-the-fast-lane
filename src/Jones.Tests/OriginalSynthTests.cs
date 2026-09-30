@@ -11,7 +11,7 @@ namespace Jones.Tests;
 /// The from-scratch synthesiser and the original cues written for it.
 ///
 /// This path is ADDITIVE. The AdLib path is untouched, still the default and still tested
-/// by <see cref="SciAudioTests"/>; nothing here replaces anything. What these tests pin
+/// path; nothing here replaces anything. What these tests pin
 /// down is that the new path produces real audio from arithmetic alone, that the score
 /// format a person is expected to edit actually parses, and that it is fast enough to run
 /// on a phone.
@@ -393,7 +393,7 @@ public class OriginalSynthTests
     [InlineData("res06-title-theme", 7506)]
     public void EachCueIsTheLengthOfTheResourceItStandsInFor(string name, int originalTicks)
     {
-        var want = originalTicks / (double)SciSoundResource.TicksPerSecond;
+        var want = originalTicks / 60.0;   // SCI runs its sound clock at 60 ticks a second
         var got = ScoreLibrary.Load(name).LengthSeconds;
 
         Assert.True(Math.Abs(got - want) / want < 0.05,
@@ -411,7 +411,7 @@ public class OriginalSynthTests
         foreach (var (resource, name) in ScoreLibrary.ForResource)
         {
             Assert.Contains(name, ScoreLibrary.Names);
-            Assert.Contains(resource, SciAudioTests.AllResources);
+            Assert.Contains(resource, OriginalAudioTests.AllResources);
             Assert.NotNull(ScoreLibrary.ForSound(resource));
         }
 
@@ -618,6 +618,7 @@ public class OriginalSynthTests
         return null;
     }
 }
+
 
 
 

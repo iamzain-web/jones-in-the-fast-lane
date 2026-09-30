@@ -63,25 +63,6 @@ public sealed class InterfaceSettings
     /// </summary>
     public bool QuicksandInterfaceFont { get; set; }
 
-    /// <summary>
-    /// `IAudioPlayer.UseOriginalAudio` â€” false for Sierra's arrangements on the emulated AdLib
-    /// card, true for the music and effects written for this port.
-    ///
-    /// <para>
-    /// FALSE IS THE DEFAULT AND FALSE IS THE ORIGINAL, exactly as with the font above. A
-    /// settings file that predates this property, or none at all, leaves the game playing the
-    /// sound it shipped with; the original set is only ever on because someone turned it on.
-    /// </para>
-    ///
-    /// <para>
-    /// IT LIVES HERE RATHER THAN IN <see cref="SoundSettings"/> and the distinction is the one
-    /// that class already draws: those four flags are the port's nearest thing to `global520`
-    /// and the floppy's F2/F3, which are the original's own controls. This is not the
-    /// original's at all â€” the 1990 game has no second soundtrack to choose â€” so it belongs
-    /// with the things the port offers and Sierra did not.
-    /// </para>
-    /// </summary>
-    public bool UseOriginalAudio { get; set; } = true;
 }
 
 /// <summary>Version and magic for the settings file. Deliberately not the save game's.</summary>

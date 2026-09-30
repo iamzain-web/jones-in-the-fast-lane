@@ -81,23 +81,6 @@ public interface IAudioPlayer
 
     bool Enabled { get; set; }
 
-    /// <summary>
-    /// Switches between the music and effects written for this port and Sierra's arrangements on
-    /// the emulated AdLib card. **TRUE IS NOW THE DEFAULT**: every resource the scripts can
-    ///
-    /// It exists so the two can be heard back to back on the same cue, in the room the cue
-    /// belongs to, which is the only way to judge whether the replacement is actually
-    /// better. Flipping it restarts the bed that is playing on the other synthesiser; it
-    /// does not need a restart and does not reopen the audio device.
-    ///
-    /// A cue with no original version written yet still comes from the AdLib path even
-    /// with this on, per cue, so the set can be filled in a batch at a time without any
-    /// point at which half the game is silent.
-    ///
-    /// Defaulted here rather than required, so the network and silent players â€” which have
-    /// no synthesiser of their own â€” do not have to care.
-    /// </summary>
-    bool UseOriginalAudio { get => true; set { } }
 }
 
 /// <summary>Does nothing. Used until a head supplies a real player, and in tests.</summary>

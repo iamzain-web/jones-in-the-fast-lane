@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <TargetFramework>net10.0-android</TargetFramework>
@@ -72,12 +72,12 @@
           open instantly. Extracting them instead would cost a 21MB first-run copy and
           43MB of the phone's storage for no gain.
 
-       2. EVERYTHING ELSE (raw/text, raw/patch, raw/sound, audio/sync, subtitles.json -
+       2. EVERYTHING ELSE (raw/text, audio/sync, subtitles.json -
           about 300KB across ~620 files) is zipped at build time and unpacked into the
           app's private files directory on first run. This set has to become real FILES
           because the code that reads it is shared and takes a filesystem path:
-          SciText.Load, LipSync.SetDirectory, Subtitles.Load and
-          SciSoundLibrary.FromAssetRoot all call System.IO.File. Rewriting those to take
+          SciText.Load, LipSync.SetDirectory and Subtitles.Load
+          all call System.IO.File. Rewriting those to take
           streams would mean changing Jones.App and Jones.Audio; unpacking 300KB does not.
 
        NOT SHIPPED: assets/png4x, the 24MB upscaled art. RenderScale falls back to Factor
@@ -109,14 +109,26 @@
          must have under the asset root once unpacked - the shared loaders build
          `<root>/raw/text/<n>.text` and friends. -->
     <JonesDataFile Include="$(JonesAssetRoot)raw\text\*.text"      StagePath="raw\text\" />
-    <JonesDataFile Include="$(JonesAssetRoot)raw\patch\*.patch"    StagePath="raw\patch\" />
-    <JonesDataFile Include="$(JonesAssetRoot)raw\sound\*.sound"    StagePath="raw\sound\" />
     <JonesDataFile Include="$(JonesAssetRoot)audio\sync\*.sync"    StagePath="audio\sync\" />
     <JonesDataFile Include="$(JonesAssetRoot)audio\subtitles.json" StagePath="audio\" />
   </ItemGroup>
 
+  <!--
+    THIS PROJECT FILE IS AN INPUT, and leaving it out was a real bug that shipped.
+
+    The Inputs used to be `@(JonesDataFile)` alone. That is fine while files are ADDED or
+    edited, and silently wrong when a line is REMOVED: deleting the `raw\patch` and
+    `raw\sound` entries left every remaining input older than the existing zip, so MSBuild
+    judged the target up to date, skipped it, and packaged the PREVIOUS zip - still
+    carrying all 34 of Sierra's arrangements and her instrument bank - into an APK built
+    from a project that no longer mentions them. The build reported success and every
+    other signal said the music was gone.
+
+    Listing the project file itself means any change to the item list invalidates the
+    output, which is what makes the note below true rather than aspirational.
+  -->
   <Target Name="PackJonesData" BeforeTargets="BeforeBuild"
-          Inputs="@(JonesDataFile)" Outputs="$(JonesDataZip)">
+          Inputs="@(JonesDataFile);$(MSBuildProjectFullPath)" Outputs="$(JonesDataZip)">
     <!-- Cleared rather than merged, so a file deleted from assets/ leaves the zip too. -->
     <RemoveDir Directories="$(JonesDataStage)" />
     <Copy SourceFiles="@(JonesDataFile)"

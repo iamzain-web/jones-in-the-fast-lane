@@ -2,143 +2,66 @@
 
 namespace Jones.Audio;
 
-/// <summary>Which set of sounds the game is playing.</summary>
-public enum AudioSource
-{
-    /// <summary>
-    /// Sierra's arrangements on an emulated AdLib card â€” the port's original behaviour and
-    /// the default. Nothing about this path changed when the second one arrived.
-    /// </summary>
-    AdLib,
-
-    /// <summary>Music and effects written for this project, on this project's synthesiser.</summary>
-    Original,
-}
-
 /// <summary>
-/// Routes the game's sounds to one of the two audio paths, and mixes the result.
+/// The game's sound, addressed the way the scripts address it: by resource number.
 ///
-/// It exists so the two can be compared BACK TO BACK on the same cue, at the moment the cue
-/// is playing. That is the only way anyone can decide whether the original music is better
-/// than the arrangement it would replace â€” a decision that is the user's to make, and one
-/// this class deliberately does not pre-empt: <see cref="Source"/> starts at
-/// <see cref="AudioSource.AdLib"/> and stays there until something asks otherwise.
+/// <para>
+/// THIS USED TO BE A MIXER between two audio paths â€” Sierra's arrangements on an emulated
+/// AdLib card, and the music written for this project â€” with a runtime switch so the two
+/// could be compared. The comparison is over. The original set covers every resource the
+/// scripts can reach, the AdLib path has been removed along with the emulator it needed and
+/// the instrument bank it read, and what is left is one engine behind the same call surface
+/// the heads already used.
+/// </para>
 ///
-/// TWO THINGS MAKE THIS SAFE TO ADD:
-///
-/// 1. <see cref="SciSoundEngine"/>, <see cref="SciAdLibDriver"/> and <see cref="AdLibBank"/>
-///    are untouched. This class calls the engine exactly as the heads used to, and if the
-///    original path were deleted tomorrow the AdLib one would carry on unchanged.
-///
-/// 2. A resource with no original cue written yet FALLS BACK to the AdLib arrangement, per
-///    cue, while still in <see cref="AudioSource.Original"/>. The original set is being
-///    written a batch at a time and there is no moment where half of it means silence.
+/// <para>
+/// The name is kept because both heads and their tests refer to it and renaming buys
+/// nothing; what it mixes now is the three Sound objects the game itself has â€” a bed, an
+/// effect, and a second effect that has to sound over the first â€” which is what
+/// <see cref="OriginalMusicEngine"/> provides.
+/// </para>
 /// </summary>
 public sealed class JonesAudioMixer
 {
-    public const int SampleRate = SciSoundEngine.SampleRate;
+    public const int SampleRate = OriginalMusicEngine.SampleRate;
 
-    private readonly SciSoundLibrary? _sci;
-    private readonly SciSoundEngine? _adlib;
     private readonly OriginalSoundBank? _bank;
-    private readonly OriginalMusicEngine? _original;
-
+    private readonly OriginalMusicEngine? _engine;
     private readonly object _gate = new();
-    private short[] _monoScratch = [];
 
-    /// <summary>
-    /// ORIGINAL IS NOW THE DEFAULT, and this line is the whole of that change.
-    ///
-    /// It was <see cref="AudioSource.AdLib"/> for as long as the original set was
-    /// incomplete, because a default that played half a soundtrack would have been worse
-    /// than one that played all of somebody else's. Every resource the scripts can reach
-    /// now has an original cue â€” asserted by
-    /// <c>AudioSwitchTests.EveryResourceTheGameCanReachHasAnOriginalCue</c> â€” so the
-    /// player no longer has to turn their own music on.
-    ///
-    /// NOTHING WAS REMOVED TO DO THIS. The AdLib path, its driver, its bank and the switch
-    /// are all exactly where they were; setting <see cref="Source"/> back to
-    /// <see cref="AudioSource.AdLib"/> plays Sierra's arrangements as it always did, and
-    /// the settings file still records whichever the player chose.
-    /// </summary>
-    private AudioSource _source = AudioSource.Original;
-
-    // What the game last asked for, so a switch can restart it on the other engine rather
-    // than leaving the room silent until the player walks out and back in.
     private int _musicResource;
-    private bool _musicLoop;
 
-    public JonesAudioMixer(SciSoundLibrary? sci, OriginalSoundBank? original)
+    public JonesAudioMixer(OriginalSoundBank? bank)
     {
-        _sci = sci;
-        if (sci is not null) _adlib = new SciSoundEngine(sci.Bank);
-
-        _bank = original;
-        if (original is not null) _original = new OriginalMusicEngine(SampleRate);
-
-        // A head with no original set - missing assets, or a build without the scores -
-        // stays on the AdLib path rather than claiming a soundtrack it does not have.
-        if (original is null) _source = AudioSource.AdLib;
+        _bank = bank;
+        if (bank is not null) _engine = new OriginalMusicEngine(SampleRate);
     }
 
-    /// <summary>True when there is an original set to switch to at all.</summary>
-    public bool OriginalAvailable => _bank is not null;
+    /// <summary>True when there is a soundtrack to play at all.</summary>
+    public bool Available => _bank is not null;
+
+    public bool MusicPlaying { get { lock (_gate) return _engine?.MusicPlaying ?? false; } }
+    public bool MusicPaused { get { lock (_gate) return _engine?.MusicPaused ?? false; } }
 
     /// <summary>
-    /// Which set is playing. Changing it while a bed is up restarts that bed on the other
-    /// engine from the top â€” which is what makes an A/B an A/B rather than a reload.
+    /// Kept so the heads' volume plumbing still compiles and still means something. The
+    /// original engine has no 0-15 master of its own; this scales its output the way
+    /// `sndMASTER_VOLUME` scaled the chip's.
     /// </summary>
-    public AudioSource Source
+    public int MasterVolume
     {
-        get { lock (_gate) return _source; }
+        get { lock (_gate) return _masterVolume; }
         set
         {
             lock (_gate)
             {
-                if (_source == value) return;
-                if (value == AudioSource.Original && _bank is null) return;
-
-                _source = value;
-
-                // Effects are one-shots and not worth moving; the bed is the thing being
-                // judged, so it moves.
-                _adlib?.StopEffects();
-                _original?.StopEffects();
-
-                var resource = _musicResource;
-                var loop = _musicLoop;
-                _adlib?.CutMusic();
-                _original?.CutMusic();
-                if (resource > 0) StartMusic(resource, loop);
+                _masterVolume = Math.Clamp(value, 0, 15);
+                if (_engine is not null) _engine.Gain = _masterVolume / 15.0;
             }
         }
     }
 
-    /// <summary>0..15, the scale `sndMASTER_VOLUME` uses. Applies to both paths.</summary>
-    public int MasterVolume
-    {
-        get { lock (_gate) return _adlib?.MasterVolume ?? 15; }
-        set { lock (_gate) if (_adlib is not null) _adlib.MasterVolume = value; }
-    }
-
-    public bool MusicPaused
-    {
-        get { lock (_gate) return (_adlib?.MusicPaused ?? false) || (_original?.MusicPaused ?? false); }
-    }
-
-    public bool MusicPlaying
-    {
-        get { lock (_gate) return (_adlib?.MusicPlaying ?? false) || (_original?.MusicPlaying ?? false); }
-    }
-
-    /// <summary>Whether this resource would come from the original set right now.</summary>
-    public bool UsesOriginal(int resource)
-    {
-        lock (_gate) return UsesOriginalLocked(resource);
-    }
-
-    private bool UsesOriginalLocked(int resource) =>
-        _source == AudioSource.Original && _bank is not null && _bank.Has(resource);
+    private int _masterVolume = 15;
 
     // ------------------------------------------------------------------ music
 
@@ -147,63 +70,26 @@ public sealed class JonesAudioMixer
     {
         lock (_gate)
         {
-            if (resource <= 0)
-            {
-                _musicResource = 0;
-                _adlib?.StopMusic();
-                _original?.StopMusic();
-                return;
-            }
+            if (_engine is null) return;
 
-            StartMusic(resource, loop);
-        }
-    }
+            if (resource <= 0) { _musicResource = 0; _engine.StopMusic(); return; }
 
-    private void StartMusic(int resource, bool loop)
-    {
-        _musicResource = resource;
-        _musicLoop = loop;
-
-        if (UsesOriginalLocked(resource))
-        {
             var score = _bank!.Music(resource);
-            if (score is not null)
-            {
-                _adlib?.CutMusic();
-                _original!.PlayMusic(score, loop);
-                return;
-            }
-            // The resource is in the bank as an EFFECT, not a bed. Fall through.
+            if (score is null) return;
+
+            _musicResource = resource;
+            _engine.PlayMusic(score, loop);
         }
-
-        var res = _sci?.Get(resource);
-        if (res is null) return;
-
-        _original?.CutMusic();
-        _adlib?.PlayMusic(res, loop);
     }
 
-    /// <summary>`gASong fade:` â€” the five-and-a-half-second fade, on whichever is playing.</summary>
-    public void StopMusic()
-    {
-        lock (_gate) { _adlib?.StopMusic(); _original?.StopMusic(); }
-    }
+    /// <summary>`gASong fade:` â€” the five-and-a-half-second fade, not a cut.</summary>
+    public void StopMusic() { lock (_gate) _engine?.StopMusic(); }
 
     /// <summary>`gASong stop:` â€” the cut.</summary>
-    public void CutMusic()
-    {
-        lock (_gate) { _musicResource = 0; _adlib?.CutMusic(); _original?.CutMusic(); }
-    }
+    public void CutMusic() { lock (_gate) { _musicResource = 0; _engine?.CutMusic(); } }
 
-    public void PauseMusic()
-    {
-        lock (_gate) { _adlib?.PauseMusic(); _original?.PauseMusic(); }
-    }
-
-    public void ResumeMusic()
-    {
-        lock (_gate) { _adlib?.ResumeMusic(); _original?.ResumeMusic(); }
-    }
+    public void PauseMusic() { lock (_gate) _engine?.PauseMusic(); }
+    public void ResumeMusic() { lock (_gate) _engine?.ResumeMusic(); }
 
     // ------------------------------------------------------------------ effects
 
@@ -212,113 +98,49 @@ public sealed class JonesAudioMixer
     {
         lock (_gate)
         {
-            if (UsesOriginalLocked(resource))
-            {
-                var pcm = _bank!.Effect(resource);
-                if (pcm is not null)
-                {
-                    _original!.PlayEffect(pcm, loop, resumeMusicWhenDone);
-                    if (resumeMusicWhenDone) { /* the original engine cues its own bed */ }
+            if (_engine is null) return;
 
-                    // The ducked bed may be on the OTHER engine, so release it here too â€”
-                    // the original engine can only cue the one it owns.
-                    if (resumeMusicWhenDone && (_adlib?.MusicPaused ?? false)) _adlib.ResumeMusic();
-                    return;
-                }
-            }
+            // `Effect` covers both the six synthesised effects and the stings, which are
+            // scores rendered and cached on first use.
+            var pcm = _bank!.Effect(resource);
+            if (pcm is not null) { _engine.PlayEffect(pcm, loop, resumeMusicWhenDone); return; }
 
-            var res = _sci?.Get(resource);
-            if (res is null)
-            {
-                if (resumeMusicWhenDone) { _adlib?.ResumeMusic(); _original?.ResumeMusic(); }
-                return;
-            }
-
-            _adlib?.PlayEffect(res, loop, resumeMusicWhenDone);
-            if (resumeMusicWhenDone && (_original?.MusicPaused ?? false)) _original.ResumeMusic();
+            // Nothing to play still has to release a bed that was ducked for it, or the bed
+            // stays down forever.
+            if (resumeMusicWhenDone) _engine.ResumeMusic();
         }
     }
 
-    public void EndEffectLoop()
-    {
-        lock (_gate) { _adlib?.EndEffectLoop(); _original?.EndEffectLoop(); }
-    }
+    public void EndEffectLoop() { lock (_gate) _engine?.EndEffectLoop(); }
 
     /// <summary>`gASoundEffect2 play: n` â€” `room1.sc:1500`.</summary>
     public void PlayEffect2(int resource)
     {
         lock (_gate)
         {
-            if (UsesOriginalLocked(resource))
-            {
-                var pcm = _bank!.Effect(resource);
-                if (pcm is not null) { _original!.PlayEffect2(pcm); return; }
-            }
-
-            var res = _sci?.Get(resource);
-            if (res is not null) _adlib?.PlayEffect2(res);
+            if (_engine is null) return;
+            var pcm = _bank!.Effect(resource);
+            if (pcm is not null) _engine.PlayEffect2(pcm);
         }
     }
 
-    public void StopEffects()
-    {
-        lock (_gate) { _adlib?.StopEffects(); _original?.StopEffects(); }
-    }
+    public void StopEffects() { lock (_gate) _engine?.StopEffects(); }
 
-    public void StopAll()
-    {
-        lock (_gate) { _musicResource = 0; _adlib?.StopAll(); _original?.StopAll(); }
-    }
+    public void StopAll() { lock (_gate) { _musicResource = 0; _engine?.StopAll(); } }
 
     // ------------------------------------------------------------------ rendering
 
-    /// <summary>
-    /// Fills interleaved stereo. Both paths are mixed, because one cue can be coming from
-    /// the original set while another still comes from the chip.
-    ///
-    /// The AdLib path is MONO â€” a real card was one chip â€” so it is placed up the middle.
-    /// Nothing about it is widened or reprocessed: in <see cref="AudioSource.AdLib"/> the
-    /// two channels are identical and the output is exactly what the mono path produced
-    /// before this class existed.
-    /// </summary>
+    /// <summary>Fills interleaved stereo floats. Returns false when nothing is sounding.</summary>
     public bool RenderStereo(Span<float> destination)
     {
         if (destination.Length % 2 != 0)
             throw new ArgumentException("interleaved stereo needs an even length", nameof(destination));
 
         destination.Clear();
-
-        lock (_gate)
-        {
-            var frames = destination.Length / 2;
-            var any = false;
-
-            if (_adlib is not null)
-            {
-                if (_monoScratch.Length < frames) _monoScratch = new short[frames];
-                var mono = _monoScratch.AsSpan(0, frames);
-
-                if (_adlib.Render(mono))
-                {
-                    any = true;
-                    for (var i = 0; i < frames; i++)
-                    {
-                        var s = mono[i] / 32768f;
-                        destination[i * 2] = s;
-                        destination[i * 2 + 1] = s;
-                    }
-                }
-            }
-
-            if (_original is not null) any |= _original.RenderStereo(destination);
-
-            return any;
-        }
+        lock (_gate) return _engine?.RenderStereo(destination) ?? false;
     }
 
-    /// <summary>
-    /// Interleaved stereo as 16-bit PCM â€” what both heads' output devices take.
-    /// </summary>
+    /// <summary>Interleaved stereo as 16-bit PCM â€” what both heads' output devices take.</summary>
     public bool RenderStereo(Span<short> destination)
     {
         var frames = destination.Length / 2;
@@ -333,20 +155,11 @@ public sealed class JonesAudioMixer
     }
 
     /// <summary>
-    /// The mono fold-down, kept so a head that has not been widened to stereo still works
-    /// and still sounds exactly as it did.
+    /// The mono fold-down, kept so a head that has not been widened to stereo still works.
+    /// Neither head uses it today; both open two channels.
     /// </summary>
     public bool Render(Span<short> mono)
     {
-        // With nothing but the AdLib path active this is the old call and nothing else:
-        // no float round-trip, no summing, no change to the samples the device receives.
-        lock (_gate)
-        {
-            if (_original is null || !(_original.MusicPlaying || _original.EffectPlaying
-                                       || _original.Effect2Playing))
-                return _adlib?.Render(mono) ?? Clear(mono);
-        }
-
         var stereo = new float[mono.Length * 2];
         var any = RenderStereo(stereo);
         for (var i = 0; i < mono.Length; i++)
@@ -355,12 +168,6 @@ public sealed class JonesAudioMixer
             mono[i] = (short)Math.Clamp(Math.Round(m * 32767.0), short.MinValue, short.MaxValue);
         }
         return any;
-    }
-
-    private static bool Clear(Span<short> mono)
-    {
-        mono.Clear();
-        return false;
     }
 }
 

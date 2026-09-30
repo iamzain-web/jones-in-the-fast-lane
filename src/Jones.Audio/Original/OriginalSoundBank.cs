@@ -1,10 +1,10 @@
-namespace Jones.Audio.Original;
+﻿namespace Jones.Audio.Original;
 
 /// <summary>
 /// The original audio, indexed by the game's own sound resource number.
 ///
-/// The scripts ask for sounds by number — `(gASong playBed: 43)`, `(gASoundEffect play: 23)`
-/// — so that number is the only key anything needs. A resource this bank does not know
+/// The scripts ask for sounds by number â€” `(gASong playBed: 43)`, `(gASoundEffect play: 23)`
+/// â€” so that number is the only key anything needs. A resource this bank does not know
 /// about returns null, and the caller falls back to the AdLib arrangement for that one cue.
 /// That fallback is not a safety net, it is the plan: the original set is being written a
 /// batch at a time, and the two paths have to interleave cleanly while it fills in.
@@ -61,9 +61,38 @@ public sealed class OriginalSoundBank
     /// about 1.5 MB as 16-bit stereo; the whole set is under four, and only what the player
     /// actually triggers is ever built.
     /// </summary>
+    /// <summary>
+    /// The longest cue that will be rendered to PCM for an effect slot. The stings are all
+    /// under eleven seconds; the beds loop and the title is two minutes, and neither has any
+    /// business being pre-rendered into memory.
+    /// </summary>
+    private const double LongestEffectSeconds = 15.0;
+
     public short[]? Effect(int resource)
     {
-        if (!EffectRenderers.TryGetValue(resource, out var render)) return null;
+        Func<int, float[]>? render = null;
+
+        if (EffectRenderers.TryGetValue(resource, out var foley))
+        {
+            render = foley;
+        }
+        else
+        {
+            // A STING IS A SCORE, NOT A FOLEY EFFECT, and the scripts still play it through
+            // an effect slot: `muggedByMarket.sc:31` is `(gASoundEffect play: 20)` and the
+            // rentOffice sites play 44 the same way.
+            //
+            // This branch is here because its absence was a real bug. While the AdLib path
+            // still existed, a sting reached `Effect()`, got null because it is not one of
+            // the six synthesised effects, and fell through to the chip - so Bad News was
+            // still Sierra's long after the original one had been written, and the coverage
+            // test did not catch it because the bank DOES know resource 44, as a score.
+            var score = ScoreLibrary.ForSound(resource);
+            if (score is null || score.Loop || score.LengthSeconds > LongestEffectSeconds)
+                return null;
+
+            render = rate => score.Render(new OriginalSynth(rate), rate, tailSeconds: 1.5);
+        }
 
         lock (_gate)
         {
@@ -87,5 +116,11 @@ public sealed class OriginalSoundBank
     public void PreRenderEffects()
     {
         foreach (var resource in EffectRenderers.Keys) Effect(resource);
+
+        // ...and the stings, which are scores rather than Foley but still land in an effect
+        // slot. `Effect` renders and caches them; doing it here means the first mugging of a
+        // session is not also the first time that cue has been synthesised.
+        foreach (var resource in ScoreLibrary.ForResource.Keys) Effect(resource);
     }
 }
+

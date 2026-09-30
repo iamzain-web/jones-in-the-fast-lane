@@ -31,7 +31,7 @@ namespace Jones.App.Desktop;
 /// wrong instruments. The way out was not to invent a patch map: every one of those
 /// resources ALSO holds an AdLib arrangement, and the game ships the matching AdLib
 /// instrument definitions in <c>patch.003</c>. So the sound is synthesised here the way an
-/// AdLib card did it â€” see <see cref="Jones.Audio.SciSoundEngine"/> â€” and pushed at the
+/// AdLib card did it â€” see <see cref="Jones.Audio.JonesAudioMixer"/> â€” and pushed at the
 /// device as PCM through <see cref="WaveOutStream"/>. Nothing about the timbres is a
 /// guess; they are read out of the game's own bank.
 ///
@@ -49,7 +49,6 @@ public sealed class WindowsAudioPlayer : IAudioPlayer, IDisposable
     private readonly string _speechDir;
     private bool _open;
 
-    private readonly Jones.Audio.SciSoundLibrary? _sounds;
 
     // Built on a background thread, then read from the UI thread. A reference assignment
     // is atomic, and a caller that gets here a moment early simply finds null and does
@@ -57,26 +56,6 @@ public sealed class WindowsAudioPlayer : IAudioPlayer, IDisposable
     private volatile Jones.Audio.JonesAudioMixer? _engine;
     private volatile WaveOutStream? _stream;
 
-    // Set before the mixer exists, so the switch can be restored from settings during
-    // start-up without having to wait for the audio device.
-    private bool _useOriginal = true;
-
-    /// <summary>
-    /// The A/B switch. TRUE - the original set - is now the default; false is the AdLib path,
-    /// See <see cref="IAudioPlayer.UseOriginalAudio"/>.
-    /// </summary>
-    public bool UseOriginalAudio
-    {
-        get => _useOriginal;
-        set
-        {
-            _useOriginal = value;
-            var engine = _engine;
-            if (engine is not null)
-                engine.Source = value ? Jones.Audio.AudioSource.Original
-                                      : Jones.Audio.AudioSource.AdLib;
-        }
-    }
     private readonly Thread? _startingAudio;
 
     private bool _enabled = true;
@@ -109,16 +88,16 @@ public sealed class WindowsAudioPlayer : IAudioPlayer, IDisposable
     {
         _speechDir = Path.Combine(assetRoot, "audio", "speech");
 
-        // No bank or no resources means no synthesised sound, but speech and the rest of
-        // the game carry on.
-        _sounds = Jones.Audio.SciSoundLibrary.FromAssetRoot(assetRoot);
-        if (_sounds is null) return;
+        // NOTHING IS LOADED FROM DISK HERE ANY MORE, and removing it fixed a real bug.
+        // This used to read Sierra's AdLib instrument bank and `return` if it was missing,
+        // which meant a build without those assets got NO AUDIO AT ALL — including the
+        // original soundtrack, which never needed them. The music is compiled into the
+        // assembly, so there is nothing left on disk to check for.
 
         // BOTH the synthesiser and the output device are built off the startup path,
         // because this constructor runs before Avalonia does and neither is quick:
-        // measured cold on this machine, standing up the two OPL emulators costs about
-        // 1.3 seconds of one-time JIT and opening the waveOut device about five seconds.
-        // Done here, that is six seconds of title screen nobody asked for.
+        // rendering the stings once and opening the waveOut device both cost real time,
+        // and done here that is seconds of title screen nobody asked for.
         //
         // Nothing is lost by deferring. The device cannot make a sound until it is open,
         // so a bed or a click asked for before then had nowhere to go anyway; the game is
@@ -139,17 +118,14 @@ public sealed class WindowsAudioPlayer : IAudioPlayer, IDisposable
     {
         try
         {
-            // The original set is built here too, on the same off-startup thread: its six
-            // synthesised effects are rendered once so that the first button click of a
-            // session is not also the first time anything has been synthesised.
+            // The soundtrack is built here, on the same off-startup thread: the six
+            // synthesised effects and the short stings are rendered once so that the first
+            // button click of a session is not also the first time anything has been
+            // synthesised.
             var bank = new Jones.Audio.Original.OriginalSoundBank(Jones.Audio.JonesAudioMixer.SampleRate);
             bank.PreRenderEffects();
 
-            var engine = new Jones.Audio.JonesAudioMixer(_sounds, bank)
-            {
-                Source = _useOriginal ? Jones.Audio.AudioSource.Original
-                                      : Jones.Audio.AudioSource.AdLib,
-            };
+            var engine = new Jones.Audio.JonesAudioMixer(bank);
 
             // STEREO, where this used to be mono. The AdLib path is still a single mono
             // chip placed up the middle and sounds exactly as it did; the width is there
@@ -297,5 +273,7 @@ public sealed class WindowsAudioPlayer : IAudioPlayer, IDisposable
         _stream?.Dispose();
     }
 }
+
+
 
 

@@ -59,6 +59,7 @@ import argparse
 import ctypes
 import json
 import os
+import subprocess
 import sys
 import time
 
@@ -143,7 +144,7 @@ CARTOON = ("full body flat cel shaded cartoon, bold clean outlines, flat colour,
 NEGATIVE = ("illustration, painting, cartoon, 3d render, deformed hands, extra fingers, "
             "extra limbs, seated, crouching, cropped legs, missing feet, out of frame, "
             "two people, text, watermark, furniture, light stand, floor length skirt, "
-            "gown, watch, jewellery")
+            "gown, watch, jewellery, shadow, mutated")
 
 CARTOON_NEG = ("photograph, deformed hands, extra fingers, extra limbs, mutated, seated, "
                "sitting, crouching, cropped, out of frame, two people, text, watermark, "
@@ -163,10 +164,10 @@ CAST = {
         "glasses": True,
         # View 280 carries a briefcase; the other three outfits do not.
         "prop": {"best": (24, 26, 38)},
-        "neg_extra": "sweater, cardigan, rolled sleeves, pocket square, trainers, slim",
+        "neg_extra": "sweater, cardigan, rolled sleeves, trainers, slim",
         "wear": [
             # 280: torso and legs both (41,45,71) dark navy, feet dark.
-            "wearing a dark navy two piece suit, white shirt, dark tie, black shoes",
+            "wearing a mid grey blue two piece suit, pale blue shirt, dark tie, black shoes",
             # 281: torso (41,40,46) near black, legs (241,236,234) white, feet (73,42,41).
             "wearing a black blazer over cream trousers, brown loafers",
             # 282: torso (239,239,240) white 57%, legs (67,106,139) blue, feet (77,45,45).
@@ -180,15 +181,17 @@ CAST = {
         "seed": 118097, "style": STYLE, "neg": NEGATIVE,
         "who": "a woman in her late twenties, pale fair skin, dark auburn bob, "
                "sturdy build",
-        "neg_extra": "leotard, swimsuit, bodysuit, one piece, athletic, muscular, slim",
+        "neg_extra": "leotard, swimsuit, athletic, muscular, slim",
+        "prop": {"best": (38, 30, 32)},
+        "bag": {"mid": (198, 168, 142)},
         "wear": [
             # 284: torso (192,170,176) grey-mauve, legs (13,16,33) navy.
             "wearing a pale mauve blouse and a navy skirt suit, dark shoes",
             # 285: torso AND legs (2,175,227) - one bright teal garment full length.
-            "wearing a bright teal full length dress, white shoes",
+            "wearing a bright teal full length dress, pale shoes",
             # 286: torso (240,80,160) hot pink, legs (240,167,170) bare skin.
             "wearing a plain hot pink t-shirt and separate pale pink shorts, bare legs, "
-            "white trainers",
+            "pale trainers",
             # 287: torso (241,234,233) white, legs skin.
             "wrapped in only a white bath towel, bare shoulders and legs, embarrassed",
         ],
@@ -198,10 +201,11 @@ CAST = {
         "seed": 926455, "style": STYLE, "neg": NEGATIVE,
         "who": "a thickset barrel chested man in his late fifties, olive skin, "
                "thinning grey hair, grey moustache",
-        "neg_extra": "slim, slender, athletic, muscular, toned, young man, fashion model",
+        "neg_extra": "sunglasses, slim fit suit, tailored, fashion model",
+        "prop": {"best": (30, 32, 45)},
         "wear": [
             # 290: torso (41,45,71)/(45,64,67) dark, legs dark.
-            "wearing a charcoal grey suit, pale shirt, dark tie, black shoes",
+            "wearing a very dark charcoal navy suit, pale shirt, dark tie, black shoes",
             # 291: torso (136,108,108) dusty rose, legs (172,132,109) tan, feet dark brown.
             "wearing a dusty pink shirt, tan trousers, brown shoes",
             # 292: torso (239,231,240) white, legs (8,16,34) dark navy.
@@ -217,7 +221,7 @@ CAST = {
         # "plain yellow shorts" was not enough - the print still bled across the conjunction.
         # This is a CATEGORY failure, not an adjective one: the model is choosing a matching
         # co-ord set instead of separates, and only the prompt can settle a category.
-        "neg_extra": "matching set, co-ord set, printed shorts, patterned shorts",
+        "neg_extra": "matching set, printed shorts",
         "wear": [
             # 294: torso and legs (98,99,113) slate blue-grey.
             "wearing a slate blue grey skirt suit, dark low heeled shoes",
@@ -270,6 +274,87 @@ def prompt_for(who, cel, bands):
             and not any(w in wear for w in PATTERN_WORDS):
         wear += ", patterned"
     return f"{who['who']}, {wear}, {who['style']}"
+
+
+# Colour words that appear in the wardrobe lines, and what they actually are. Only words
+# that name a colour; "floral", "plain" and "denim" are garment or pattern words and are
+# deliberately absent.
+COLOUR_WORDS = {
+    "white": (242, 242, 242), "cream": (238, 232, 210), "black": (26, 26, 28),
+    "navy": (32, 38, 72), "charcoal": (54, 56, 60), "grey": (128, 128, 130),
+    "slate": (102, 110, 124), "brown": (92, 58, 44), "tan": (198, 164, 118),
+    "yellow": (232, 200, 110), "pink": (236, 150, 170), "hot pink": (240, 80, 160),
+    "teal": (10, 168, 200), "blue": (70, 105, 150), "mauve": (188, 168, 178),
+    "auburn": (140, 70, 48), "copper": (150, 72, 44), "olive": (120, 118, 72),
+    "red": (190, 50, 45), "green": (70, 120, 70), "purple": (110, 60, 150),
+    "beige": (214, 196, 168), "khaki": (188, 172, 120), "silver": (196, 198, 200),
+}
+
+
+def check_wardrobe(a):
+    """Does each hand-written wardrobe line agree with the cel it describes?
+
+    THIS EXISTS BECAUSE THE WARDROBE LINE IS THE MOST COMMON SOURCE OF WHOLESALE WRONGNESS
+    IN THIS PIPELINE, and the reason is structural: every other channel is DERIVED from the
+    1990 cel - the bands, the collar, the shoe, the pose box, the build - and this one is
+    TYPED. Nobody measures it, so nothing catches it.
+
+    Three separate frames were lost to it before the pattern was seen:
+
+        view 286  "denim shorts"                     slot measures (240,167,171) - pink
+        view 296  "a cream blouse and a tan skirt"    slot is a floral top over yellow shorts
+        view 280  "a dark navy two piece suit"        jacket measures (78,77,100) - mid grey-blue
+
+    All three would have been caught here before a single frame was generated.
+
+    The output is a TABLE rather than a verdict, deliberately. A colour word is a fuzzy
+    thing, the 1990 art is digitised and dithered, and a garment legitimately spans a range -
+    so this reports each colour word against the nearest band it could plausibly be
+    describing and lets a person judge the outliers. Anything past `--wardrobe-tol` is
+    marked, but the mark is an invitation to look, not a failure."""
+    print(f"{'slot':>6} {'word':<10} {'word is':>16} {'nearest band':>22} {'dist':>5}")
+    flagged = 0
+    for name, who in sorted(CAST.items()):
+        for oi in range(4):
+            view = pose_author.BODIES[name]["base"] + oi
+            bands = measure_bands(view)
+            if not bands:
+                continue
+            wear = who["wear"][oi].lower()
+            words = [w for w in COLOUR_WORDS if w in wear]
+            # "hot pink" subsumes "pink"; keep the longer match only.
+            words = [w for w in words
+                     if not any(w != o and w in o and o in wear for o in words)]
+            for w in words:
+                want = COLOUR_WORDS[w]
+                # The bands, plus the two channels that carry colour the bands cannot:
+                # the collar's own shirt colour (a shirt under a jacket is inside the torso
+                # band, not a band of its own) and the torso palette (a small logo is a
+                # palette swatch and never a dominant band).
+                cand = {b: bands[b] for b in ("torso", "thigh", "shin", "feet", "hair")
+                        if b in bands}
+                col = collar_for(view)
+                if col and col.get("shirt"):
+                    cand["collar-shirt"] = col["shirt"]
+                # The torso PALETTE is deliberately not a candidate. It masked two real
+                # findings - "white shoes" on view 285 matched a torso swatch and stopped
+                # flagging - because a word is not attached to a garment here, so any
+                # channel can answer for any word. The cost is that a logo colour, which
+                # lives only in the palette, always flags: view 282's "red" is expected.
+                best, bd = None, 1e9
+                for b, cv in cand.items():
+                    d = max(abs(int(x) - int(y)) for x, y in zip(want, cv))
+                    if d < bd:
+                        best, bd = b, d
+                bands_show = cand
+                mark = "  <-- look" if bd > a.wardrobe_tol else ""
+                if bd > a.wardrobe_tol:
+                    flagged += 1
+                print(f"{view:>6} {w:<10} {str(want):>16} "
+                      f"{best + ' ' + str(bands_show[best]):>22} {bd:>5.0f}{mark}")
+    print(f"\n{flagged} colour word(s) more than {a.wardrobe_tol:.0f} levels from any band "
+          f"they could be describing. Look at each; a fuzzy word over dithered 1990 art is "
+          f"not automatically wrong.")
 
 
 def wear_of(who, cel):
@@ -348,8 +433,22 @@ def measure_bands(view, loop=0, cel=0):
         # The band's top colours, for painting a PATTERNED band as a mottle rather than a
         # flat mean. A floral print has no single colour and averaging one out is how view
         # 296's floral top became plain cream.
-        out[name + "_palette"] = [tuple(int(v) for v in px[keyq == q].mean(axis=0).round())
-                                  for q in order[:4]]
+        # THE PALETTE CARRIES THE MOST SATURATED BUCKET AS WELL AS THE MOST COMMON ONES.
+        # Taken by count alone, view 282's white t-shirt returned white, pale blue, pale pink
+        # and pale salmon - the anti-aliased EDGES of its red logo, and no red at all - so
+        # the mottle painted pale-on-pale, blurred to white, and the logo vanished. A small
+        # graphic is never in the top four by count. Adding the most saturated bucket puts
+        # the actual colour of the feature into the palette regardless of how few pixels
+        # carry it, which is the same extreme-not-centre rule the collar and the band chroma
+        # recovery use.
+        pal = [tuple(int(v) for v in px[keyq == q].mean(axis=0).round()) for q in order[:4]]
+        means = np.array([px[keyq == q].mean(axis=0) for q in order[:12]])
+        if len(means):
+            sat = means.max(axis=1) - means.min(axis=1)
+            hot = tuple(int(v) for v in means[int(np.argmax(sat))].round())
+            if hot not in pal and float(sat.max()) >= 25.0:
+                pal.append(hot)
+        out[name + "_palette"] = pal
 
         # THE DOMINANT BUCKET LOSES THE HUE OF A PALE GARMENT, and that is why view 292's
         # pink shirt came back pale blue-grey. Digitised in 1990 at 39x95, a pale pink shirt
@@ -491,10 +590,21 @@ def _measure_collar_cel(view, loop=0, cel=0):
     ys = np.nonzero(shirt)[0]
     widths = [int(np.nonzero(shirt[r])[0].max() - np.nonzero(shirt[r])[0].min() + 1)
               for r in range(shirt.shape[0]) if shirt[r].any()]
+    # THE SHIRT COLOUR IS THE BRIGHTEST DECILE, NOT THE MEAN. Averaging gave (128,154,181)
+    # for view 280 - a mid blue-grey where the garment is a white shirt - because at 39
+    # pixels wide the shirt is two or three pixels between a navy jacket and a dark tie, so
+    # most of what "brighter than the torso" collects is BLEND. Painting a mid blue-grey
+    # column is an instruction to draw a dark open-necked shirt, and that is exactly what
+    # cel 0 drew. The top decile is the part of the distribution that is actually shirt.
+    # Same rule as the band chroma recovery in measure_bands: at this source width, take the
+    # extreme of the distribution rather than its centre.
+    lum_px = px.astype(float).mean(axis=1)
+    bright = px[lum_px >= np.percentile(lum_px, 90)]
     out = {"top": (y0 + int(ys.min()) - top) / (span - 1.0),
            "bottom": (y0 + int(ys.max()) - top) / (span - 1.0),
            "halfw": float(np.percentile(widths, 80)) / 2.0 / (span - 1.0),
-           "shirt": tuple(int(v) for v in px.mean(axis=0).round()),
+           "shirt": tuple(int(v) for v in
+                          (bright if len(bright) else px).mean(axis=0).round()),
            "tie_halfw": 0.0, "tie": None}
     dark = (lum < torso - 25) & m
     if dark.sum() > 6:
@@ -941,6 +1051,11 @@ def init_field(cel, size, bg, blur=62, grain=8, bands=None, soft=18, glasses=Fal
         # backdrop. `shoe` is None where there is nothing to measure, and the flat feet band
         # is used instead.
         sole_y = top_y + fig
+        # A measured half-width below 0.025 of figure height is the method finding a sliver
+        # rather than a shoe - view 283, the undressed tier, returns 0.011 - and painting a
+        # blob that thin says nothing. Fall back to the flat feet band there.
+        if shoe and shoe.get("halfw", 0) < 0.025:
+            shoe = None
         for an in (k[10], k[13]):
             if shoe:
                 # Capped against the ankle separation so the two shoes cannot merge into one
@@ -1168,8 +1283,15 @@ def screen(alpha, cel, size, one_frac):
     rows = np.nonzero(m.any(axis=1))[0]
     top, bot = int(rows[0]), int(rows[-1])
 
-    want_top = k[0][1] - fig * pose_author.Y["nose"]
-    want_bot = k[0][1] + fig * (1.0 - pose_author.Y["nose"])
+    # BOTH REFERENCES COME FROM THE ANKLES, NOT FROM THE NOSE. The nose moves: once the
+    # authored cycle gained its vertical bob the head rises by 1.4% of figure height on the
+    # pass frames, so a sole line derived from it rose too and the check failed cels 1 and 3
+    # of a loop whose feet were exactly where they should be. The ankles are the one landmark
+    # that does not move - a planted foot is planted - so the ground line is measured from
+    # them, and the crown is measured back up from them by the figure's own height.
+    sole = max(k[10][1], k[13][1]) + fig * (1.0 - pose_author.Y["ankle"])
+    want_bot = sole
+    want_top = sole - fig
     add("crown", abs(top - want_top) <= fig * 0.055,
         f"at {top}, authored {want_top:.0f}")
     # THE SEATED TEST. A figure that sat down, crouched or was drawn short ends well above
@@ -1327,6 +1449,37 @@ def refine(img_pipe, torch, base, cel, who, device, args):
     return out
 
 
+LOCK = os.path.join(os.environ.get("LOCALAPPDATA", os.path.expanduser("~")),
+                    "jones-upscale-models", "gpu.pid")
+
+
+def gpu_busy():
+    """Any OTHER python process currently holding a CUDA context, per nvidia-smi.
+
+    The pid-file lock alone cannot see another TOOL - see claim_gpu - so this asks the
+    driver instead, which is the only authority that knows what is actually on the card."""
+    try:
+        out = subprocess.run(
+            ["nvidia-smi", "--query-compute-apps=pid", "--format=csv,noheader"],
+            capture_output=True, text=True, timeout=30).stdout
+    except (OSError, subprocess.SubprocessError):
+        return None
+    mine = os.getpid()
+    for line in out.splitlines():
+        line = line.strip()
+        if not line.isdigit() or int(line) == mine:
+            continue
+        try:
+            name = subprocess.run(
+                ["tasklist", "/FI", f"PID eq {line}", "/NH", "/FO", "CSV"],
+                capture_output=True, text=True, timeout=30).stdout
+        except (OSError, subprocess.SubprocessError):
+            continue
+        if "python" in name.lower():
+            return int(line)
+    return None
+
+
 def claim_gpu(out):
     """Refuse to start while another run of this tool is alive, and leave a note behind
     saying which process holds it.
@@ -1340,8 +1493,25 @@ def claim_gpu(out):
     normal exit and on SIGTERM; a stale one whose process is gone is ignored."""
     import atexit
     import signal
+
+    # THE LOCK IS GLOBAL, AND IT USED NOT TO BE. It wrote its pid file into the RUN'S OWN
+    # output directory, so two runs with different --out never saw each other, and two
+    # different TOOLS never could. It protected gen_cast from a second gen_cast and nothing
+    # else - while being cited, by me, as the reason the card could not be double-booked.
+    # It was: a walker run and a building run sat on the same 4GB card at 3814MiB with both
+    # crawling, and neither was refused.
+    #
+    # Same shape as the CLIP guard that checked the positive prompt and not the negative: a
+    # guard that does not guard is worse than none, because it is why everybody stopped
+    # watching. So the file is now at one fixed path shared by every tool, AND the driver is
+    # asked directly, since nvidia-smi is the only authority on what is actually on the card.
+    other = gpu_busy()
+    if other:
+        raise SystemExit(f"another python process (pid {other}) is holding the GPU; "
+                         f"wait for it rather than crawling beside it")
+    os.makedirs(os.path.dirname(LOCK), exist_ok=True)
     os.makedirs(out, exist_ok=True)
-    p = os.path.join(out, "gen_cast.pid")
+    p = LOCK
     if os.path.exists(p):
         try:
             with open(p) as f:
@@ -1564,6 +1734,11 @@ def main():
     ap.add_argument("--views")
     ap.add_argument("--drift", help="report garment-colour drift across each loop in this "
                                     "generated directory and exit")
+    ap.add_argument("--check-wardrobe", action="store_true",
+                    help="check every hand-written wardrobe line against the bands measured "
+                         "off its own cel, and exit. Costs no GPU and catches the class of "
+                         "error that has cost the most frames")
+    ap.add_argument("--wardrobe-tol", type=float, default=60.0)
     ap.add_argument("--drift-tol", type=float, default=40.0)
     ap.add_argument("--only-cel", type=int,
                     help="generate just this cel index - a single-frame turnaround while "
@@ -1599,6 +1774,8 @@ def main():
     ap.add_argument("--slicing", action="store_true")
     a = ap.parse_args()
 
+    if a.check_wardrobe:
+        return check_wardrobe(a)
     if a.drift:
         return drift(a)
     if a.cels:
@@ -1612,6 +1789,16 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+
+
+
+
+
+
+
+
+
 
 
 

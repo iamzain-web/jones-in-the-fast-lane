@@ -29,7 +29,7 @@ namespace Jones.App.Android;
 /// The clips are read straight out of the APK through the AssetManager and never unpacked
 /// - see <see cref="GameAssets"/> for why.
 ///
-/// MUSIC AND EFFECTS are synthesised by <see cref="Jones.Audio.SciSoundEngine"/>, which is
+/// MUSIC AND EFFECTS are synthesised by <see cref="Jones.Audio.JonesAudioMixer"/>, which is
 /// portable and shared with the Windows head, and pushed at the device through
 /// <see cref="AudioTrackStream"/> - this head's equivalent of WaveOutStream. Nothing about
 /// the timbres differs from Windows: both read the game's own AdLib bank out of
@@ -39,7 +39,6 @@ public sealed class AndroidAudioPlayer : IAudioPlayer, IDisposable
 {
     private readonly AContent.Res.AssetManager _assets;
 
-    private readonly Jones.Audio.SciSoundLibrary? _sounds;
 
     // Built on a background thread, then read from the UI thread. A reference assignment
     // is atomic, and a caller that gets here a moment early simply finds null and does
@@ -47,26 +46,6 @@ public sealed class AndroidAudioPlayer : IAudioPlayer, IDisposable
     private volatile Jones.Audio.JonesAudioMixer? _engine;
     private volatile AudioTrackStream? _stream;
 
-    // Set before the mixer exists, so the switch can be restored from settings during
-    // start-up without having to wait for the audio device.
-    private bool _useOriginal = true;
-
-    /// <summary>
-    /// The A/B switch. TRUE - the original set - is now the default; false is the AdLib path,
-    /// See <see cref="IAudioPlayer.UseOriginalAudio"/>.
-    /// </summary>
-    public bool UseOriginalAudio
-    {
-        get => _useOriginal;
-        set
-        {
-            _useOriginal = value;
-            var engine = _engine;
-            if (engine is not null)
-                engine.Source = value ? Jones.Audio.AudioSource.Original
-                                      : Jones.Audio.AudioSource.AdLib;
-        }
-    }
     private readonly Thread? _startingAudio;
 
     // Speech is created and torn down per line from the UI thread, and its position is
@@ -103,22 +82,11 @@ public sealed class AndroidAudioPlayer : IAudioPlayer, IDisposable
     {
         _assets = assets;
 
-        // No bank or no resources means no synthesised sound, but speech and the rest of
-        // the game carry on. FromAssetRoot returns null when it finds nothing; the catch is
-        // for the case it does NOT cover - a patch.003 that is present but malformed, which
-        // on this head means an unpack that half-succeeded. Throwing out of here would take
-        // the whole app down during CustomizeAppBuilder, for a sound bank.
-        try
-        {
-            _sounds = Jones.Audio.SciSoundLibrary.FromAssetRoot(assetRoot);
-        }
-        catch (Exception e)
-        {
-            AndroidLog.Error("SciSoundLibrary.FromAssetRoot (music and effects disabled)", e);
-            _sounds = null;
-        }
-
-        if (_sounds is null) return;
+        // NOTHING IS LOADED FROM DISK HERE ANY MORE, and that fixed a real bug. This used
+        // to read Sierra's AdLib bank and `return` if it was missing or malformed - which
+        // meant an unpack that half-succeeded left the phone with NO AUDIO AT ALL,
+        // including the original soundtrack, which never needed those files. The music is
+        // compiled into the assembly, so there is nothing here that can fail.
 
         // Off the startup path for the same reason as on Windows: standing up the two OPL
         // emulators is one-time JIT, and opening an output device is not instant on a
@@ -136,17 +104,13 @@ public sealed class AndroidAudioPlayer : IAudioPlayer, IDisposable
     {
         try
         {
-            // The six synthesised effects are rendered here, on this same off-startup
-            // thread, so the first button click of a session does not pay for them. About
-            // four megabytes at worst, and only what the player triggers is kept.
+            // The six synthesised effects and the short stings are rendered here, on this
+            // same off-startup thread, so the first button click of a session does not pay
+            // for them. A few megabytes at worst, and only what the player triggers is kept.
             var bank = new Jones.Audio.Original.OriginalSoundBank(Jones.Audio.JonesAudioMixer.SampleRate);
             bank.PreRenderEffects();
 
-            var engine = new Jones.Audio.JonesAudioMixer(_sounds, bank)
-            {
-                Source = _useOriginal ? Jones.Audio.AudioSource.Original
-                                      : Jones.Audio.AudioSource.AdLib,
-            };
+            var engine = new Jones.Audio.JonesAudioMixer(bank);
 
             // STEREO, where this used to be mono. The AdLib path is still one mono chip up
             // the middle and sounds exactly as it did; the width is for the original
@@ -433,5 +397,7 @@ public sealed class AndroidAudioPlayer : IAudioPlayer, IDisposable
         _stream?.Dispose();
     }
 }
+
+
 
 

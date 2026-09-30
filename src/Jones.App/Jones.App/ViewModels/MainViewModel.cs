@@ -3190,10 +3190,6 @@ public sealed partial class MainViewModel : ViewModelBase
         // `JONES_UI_FONT` if that is set, and to the bitmap face if Quicksand will not parse.
         UiFont.LoadSetting(file.Interface.QuicksandInterfaceFont);
 
-        // Straight onto the player rather than through the property, which would write the
-        // file straight back. The head sets this before its audio device is open and the
-        // player holds it until the mixer exists, so there is no race with start-up.
-        Sound.UseOriginalAudio = file.Interface.UseOriginalAudio;
     }
 
     /// <summary>
@@ -3215,7 +3211,6 @@ public sealed partial class MainViewModel : ViewModelBase
         new InterfaceSettings
         {
             QuicksandInterfaceFont = UiFont.Enabled,
-            UseOriginalAudio = Sound.UseOriginalAudio,
         });
     }
 
@@ -3267,44 +3262,6 @@ public sealed partial class MainViewModel : ViewModelBase
     /// <summary>False where the font could not be loaded, which hides the switch.</summary>
     public static bool QuicksandFontAvailable => UiFont.Available;
 
-    // ------------------------------------------------------------------
-    // The soundtrack switch
-    // ------------------------------------------------------------------
-
-    /// <summary>
-    /// ORIGINAL SOUNDTRACK, as the player sees it â€” off is the game's own AdLib music, which
-    /// is the default and the shipped behaviour.
-    ///
-    /// <para>
-    /// LIVE, for the same reason the interface face is: the bed restarts on the other
-    /// synthesiser the moment this is set, in the room the player is standing in, so the two
-    /// can be heard against each other on one cue. A switch that took effect on the next
-    /// location would be no use for deciding which is better, and deciding that is the whole
-    /// reason it exists.
-    /// </para>
-    ///
-    /// <para>
-    /// A cue with no original version written yet still comes from the AdLib path even with
-    /// this on, per cue â€” so the original set can be filled in a batch at a time and there is
-    /// no point at which half the game is silent.
-    /// </para>
-    /// </summary>
-    public bool OriginalAudio
-    {
-        get => Sound.UseOriginalAudio;
-        set
-        {
-            if (Sound.UseOriginalAudio == value) return;
-
-            Sound.UseOriginalAudio = value;
-            SaveSoundSettings();
-
-            // Read back rather than assumed. A player with no synthesiser behind the switch —
-            // the silent player, or a head whose audio device never opened — leaves it where
-            // it was, and the toggle must show that rather than lie.
-            OnPropertyChanged();
-        }
-    }
 
     // ------------------------------------------------------------------
     // The on-screen sound switches
@@ -5951,5 +5908,6 @@ public sealed class ActionVm(string label, Action run, bool enabled = true, stri
         () => { MainViewModel.Effect(Audio.LocationMusic.ButtonClick); run(); },
         () => enabled);
 }
+
 
 

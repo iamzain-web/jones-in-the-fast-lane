@@ -3,30 +3,26 @@
   <PropertyGroup>
     <!--
       net8.0 so BOTH Jones.App (net10.0) and Jones.Tests (net8.0) can reference it.
-      Nothing here touches a platform API: it is arithmetic over the game's own bytes,
-      so the planned Android head gets the same sound the Windows head does.
+      Nothing here touches a platform API, and since the AdLib path was removed nothing
+      here has ANY dependency at all: it is arithmetic, so both heads get the same sound.
     -->
     <TargetFramework>net8.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
-  <ItemGroup>
-    <!--
-      A C# port of nukeykt's Nuked-OPL3, the die-accurate YMF262 emulator. Its own test
-      suite asserts bit-for-bit parity with the reference C implementation, which is why
-      it is worth a dependency rather than a hand-rolled FM core: the whole point of this
-      file set is that the notes come out with the instruments the game shipped, and an
-      approximate chip would undo that at the last step.
+  <!--
+    NO PACKAGE REFERENCES, AND THAT IS THE POINT.
 
-      Zero transitive dependencies, pure managed, netstandard2.1/net8.0/net10.0.
-      LGPL-2.1-only, consumed unmodified as a NuGet package.
+    This project used to reference NukedOPL3Sharp, a C# port of nukeykt's Nuked-OPL3, to
+    emulate the AdLib card Sierra's arrangements were written for. That whole path is gone:
+    the game plays music written for this project on a synthesiser written for this project,
+    so there is no chip to emulate and no instrument bank to read.
 
-      This project sits outside src/Jones.App/Directory.Packages.props, so the version is
-      pinned here the same way Jones.Tests pins xunit.
-    -->
-    <PackageReference Include="NukedOPL3Sharp" Version="1.3.1" />
-  </ItemGroup>
+    Removing it also removed the only two licence questions the audio layer had - the
+    LGPL-2.1 on that package, and the GPL on ScummVM, whose SCI AdLib driver the deleted
+    SciAdLibDriver.cs was a port of. Neither applies to code that no longer exists.
+  -->
 
   <ItemGroup>
     <!--
