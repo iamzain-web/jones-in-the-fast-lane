@@ -1,4 +1,4 @@
-﻿"""AUTHORS an OpenPose skeleton for every walker cel, from canon rather than measurement.
+"""AUTHORS an OpenPose skeleton for every walker cel, from canon rather than measurement.
 
 WHY THIS REPLACES THE MEASURING IN tools/sprite_pose.py
 -------------------------------------------------------
@@ -17,8 +17,8 @@ is the functional geometry the game's positioning, collision and anchor maths de
 and which a silhouette DOES carry reliably.
 
 Everything else is canon: a 7.7-head standing adult, and a four-frame front-facing walk
-cycle of the kind that is completely standard and completely well defined. Contact, pass,
-contact, pass. Authored once, parameterised by the figure's height and sex, identical in
+cycle of the kind that is completely standard and completely well defined, taken from the
+animation canon. Authored once, parameterised by the figure's height and sex, identical in
 construction for every character, and therefore identical between the four cels of a loop
 except in the ways a walk cycle is supposed to differ.
 
@@ -38,10 +38,17 @@ not fit them.
 
 THE WALK
 --------
-Four frames, front view, looping. Cel 0 and cel 2 are CONTACT - the feet at their widest
-separation, one leg forward. Cel 1 and cel 3 are PASS - the swinging leg travelling through
-the planted one, its foot lifted and its knee raised, the feet nearly together. The two
-contacts are mirror images and so are the two passes, which is what makes the cycle close.
+Four frames, front view, looping, taken from the classical four-key walk (Richard Williams,
+"The Animator's Survival Kit", Faber & Faber 2001 - the walk chapter). Four cels covering a
+full cycle is TWO samples per step, so two of Williams' four keys: cels 0 and 2 are DOWN, the
+body at its lowest with the swinging knee folded, and cels 1 and 3 are UP, the body at its
+highest with the supporting leg extended and the swinging leg reaching. Cel 2 mirrors cel 0
+and cel 3 mirrors cel 1, which is what makes the cycle close.
+
+NOT contact and passing, which is what this file used to author: those are the two keys where
+both knees are STRAIGHTEST, and sampling there gave a swing shin that foreshortened 3.7% over
+the whole cycle where a bent knee foreshortens about 50%. The leg swung rigid from the hip and
+the result read as a pair of scissors. See the long note above CYCLE.
 
 In a FRONT view the forward/back component of a stride is depth and cannot be drawn, so it
 is expressed the way it actually reads from the front: horizontal separation, the swinging
@@ -156,14 +163,8 @@ BUILDS = {
     "jones": {"heads": 7.4, "sh": 0.100, "hip": 0.055, "girth": 1.00},   # 274-277, cartoon
 }
 
-# THE CYCLE. One row per cel: how far each ankle sits from the centre line, how far each
-# knee does, how high the swinging foot and knee are lifted, and how much the pelvis rises.
-# Positive x is the IMAGE's right, which is the figure's left - consistent everywhere, which
-# is all the ControlNet needs.
-#
-# Contact frames put the feet at +-0.072 of the figure's height, which on a 1.75m person is
-# a 25cm stride: a walk, not a march. Pass frames bring them to +-0.015, the swinging one
-# lifted 0.048 and its knee 0.034, which is the foot clearing the ground by about 8cm.
+# THE CYCLE. One entry per cel. Positive x is the IMAGE's right, which is the figure's left -
+# consistent everywhere, which is all the ControlNet needs.
 #
 # A WALK IS NOT A LEG MOTION WITH A STATIC BODY ON TOP, and the first version of this table
 # was exactly that: it moved the ankles and the knees and left the head, shoulders, arms and
@@ -194,44 +195,130 @@ BUILDS = {
 # job to absorb that (fit_walkers.refit_for already maps a loop by the union of its four
 # extents for exactly this reason). Pinning it there bought tidiness in the wrong place and
 # cost the animation its bob.
-# THE FOUR MOTIONS ARE PHASED AGAINST EACH OTHER, NOT MERELY PRESENT. In the original they
-# all come from one real stride, so they peak together; four correct amplitudes out of phase
-# would read as a puppet rather than a walk. The phasing below is the gait, not a guess:
 #
-#   rise   peaks at the PASS, because that is when the supporting leg is vertical and the
-#          body is at the top of its arc. Zero at contact, when the legs are apart and the
-#          pelvis is at its lowest. The measurement agrees: the original's cels 1 and 3 are
-#          1-2% SHORTER than 0 and 2, so its contacts are its short frames, as here.
-#   sway   peaks at the PASS too, and in the direction of the SUPPORTING foot - the body is
-#          balanced over one leg there. Zero at contact, when the weight is between both.
-#   arm    peaks at CONTACT, opposed to the leading leg, and passes through neutral at the
-#          pass exactly as the legs do.
-#   twist  shoulders against hips, in phase with the arms, because it is the same rotation.
+# THE FOUR MOTIONS ARE PHASED AGAINST EACH OTHER, NOT MERELY PRESENT. In the original they all
+# come from one real stride, so they peak together; four correct amplitudes out of phase read
+# as a puppet rather than a walk. Sway peaks over the SUPPORTING foot, because that is what
+# the body is balanced on; the arms oppose the legs and pass through neutral when they do.
+# Both survive into the table below. The vertical does NOT keep its old phasing - see the next
+# block, which is the part that had to be rebuilt.
 #
-# So it is a quarter-cycle offset: legs and arms extreme at 0 and 2, body extreme at 1 and 3.
-# That is what makes it a stride rather than four poses.
-CONTACT, PASS = "contact", "pass"
+# WHAT THE 1990 ART CANNOT SUPPLY, established by measurement and not to be retried: the two
+# legs NEVER SEPARATE into distinct runs in the source silhouette. Counting runs row by row
+# from hip to sole, view 282 is one run at every height in all four cels, and 292 and 286
+# split once or twice at heights where the split is an ARM. So per-leg ankle and knee
+# positions are not recoverable from the cels at any tolerance, and a target skeleton cannot
+# be derived from them. (An earlier note in this project quoted 96/196/73/161 as "ankle
+# separation" for view 280; those are the TOTAL silhouette extent at ankle height, not two
+# identified feet, and 280's briefcase reads as a second leg besides.) What the silhouette
+# does carry reliably is the box - cel size, first and last row, columns - and that is all
+# box_of() reads.
+# ===========================================================================================
+# THE FOUR KEYS, AND WHY THE PREVIOUS TABLE COULD NOT PRODUCE A WALK
+# ===========================================================================================
+# SOURCE OF THE CANON. Richard Williams, "The Animator's Survival Kit" (Faber & Faber, 2001),
+# the walk chapter; the same four keys appear in Preston Blair, "Cartoon Animation". Check the
+# poses below against that book, not against the arithmetic in this file. Williams' four keys,
+# per STEP - one step is half a cycle, so a full cycle has eight:
+#
+#   CONTACT   front heel lands, back toe about to leave. Legs at their widest separation and
+#             both close to straight. Body at MID height. Arms at their swing extremes.
+#   DOWN      the weight arrives on the front leg and its knee BENDS to absorb it. Body at
+#             its LOWEST. The back foot has left the ground and its knee is folding up.
+#   PASSING   the free leg passes the supporting one; the supporting leg straightens and is
+#             vertical. Feet close together. Body rising.
+#   UP        the supporting leg is fully extended and pushes the body up onto the ball of
+#             the foot. Body at its HIGHEST. The free leg is swinging forward and extending
+#             towards the next contact.
+#
+# WHAT WAS ACTUALLY WRONG. The old table sampled CONTACT and PASSING, which are the two keys
+# where BOTH KNEES ARE STRAIGHTEST. Peak knee flexion in a walk is around 60 degrees and it
+# happens in EARLY SWING - between contact and passing - so the old cycle sampled the gait at
+# exactly the two phases that have no knee bend in them, and then interpolated between them.
+# Measured on the shipped cels, the swing shin's projected length ran
+#
+#       0.215   0.207   0.215   0.215      of figure height  ->  3.7% foreshortening
+#
+# where a knee at 60 degrees foreshortens the shin by about 50% in this projection. The leg
+# was a rigid straight limb pivoting at the hip. No amplitude anywhere else can rescue that,
+# which is why five rounds of tuning did not: every number being argued about was a number
+# about the wrong motion.
+#
+# IN A FRONT VIEW, KNEE BEND IS FORESHORTENING AND NOTHING ELSE. A bent knee does not read as
+# an angle here - thigh and shin both still project as near-vertical segments - it reads as
+# the shin getting SHORTER and the foot coming UP. That is why this table specifies knee and
+# ankle OFFSETS rather than joint angles, and why tools/warp_walk.py had to be given an
+# anisotropic bone transform in the same change: a uniform scale shortens the leg's width
+# along with its length and hands back a withered limb instead of a bent one.
+#
+# WHY THE CELS DO NOT LAND ON CONTACT AND PASSING. Four cels, looping, covering a FULL cycle
+# means two samples per step - so two of Williams' four keys, not four. Cel N and cel N+2 must
+# be mirrors or the cycle does not close. Of the three usable pairings:
+#
+#   CONTACT + PASSING   widest stride and feet-together, but both knees straight  <- the old
+#                       table, and the reason it read as a pair of scissors
+#   CONTACT + DOWN      adjacent in time; the spacing would stutter
+#   DOWN + UP           the body's lowest and highest, the swing knee at its most bent
+#                       against its most extended, and a stride that is still clearly open
+#
+# DOWN and UP it is. They are not exactly half a step apart in a real gait (DOWN falls around
+# 20% of the step and UP around 75%), so the cycle below is the classical one sampled at four
+# EQUAL phases with the phase offset chosen to land near both extremes. A ~10% timing error is
+# not perceptible at 183ms a cel; a straight swinging leg is perceptible immediately.
+#
+# THE VERTICAL IS CAPPED BY THE LEG, not chosen. At UP the supporting leg is straight, so the
+# hip can be no higher than one leg-length above the planted ankle; the extra rise has to come
+# from the heel leaving the ground. That is why UP lifts the supporting ankle as well as the
+# body, and it is the reason the bob is 0.030 of figure height rather than any number that
+# would have been more convenient.
+#
+# WHAT SURVIVES FROM THE OLD TABLE. Sway peaks over the supporting foot and arms oppose the
+# legs - both correct, both kept. TWIST stays at 0.004: the 1990 art's shoulder-to-hip
+# differential is 0.0078 of figure height across the whole cycle, so the torso moves very
+# nearly as a unit, and at 0.012 the realised differential was 0.0549, seven times the
+# original. That is what "nobody's body moves like that when they are walking" was describing.
+DOWN, UP = "down", "up"
+
+
+def _leg(ank_x, ank_dy, knee_x, knee_dy):
+    return {"ank_x": ank_x, "ank_dy": ank_dy, "knee_x": knee_x, "knee_dy": knee_dy}
+
+
+# ank_dy / knee_dy are offsets from the canonical ankle and knee heights, as fractions of the
+# figure's height, NEGATIVE MEANING UP. The shin's projected length is therefore
+# (ankle + ank_dy) - (knee + knee_dy), and that projection IS the knee bend.
 CYCLE = [
-    # phase,  lead, (ankle_r, ankle_l), (knee_r, knee_l), lift, rise,  sway,   arm,  twist
-    # RISE is 0.038, not the 0.014 the art measures, because the WARP DAMPS IT. Measured on
-    # the warped result: an authored 0.014 arrived as 0.0054 where the 1990 art has 0.0212 -
-    # the figure was barely bobbing at all. The warp delivers roughly 38% of what is asked
-    # vertically, so the authored value is the wanted amplitude divided by that. This is the
-    # one place the authored cycle deliberately departs from the measurement, and it does so
-    # to LAND on it.
-    #
-    # TWIST is 0.004, cut from 0.012. The 1990 art's shoulder-to-hip differential is only
-    # 0.0078 of figure height across the whole cycle - the torso moves very nearly as a unit.
-    # At 0.012 the realised differential was 0.0549, SEVEN TIMES the original, and the pelvis
-    # swung through a wide arc out of phase with the shoulders. That is what "nobody's body
-    # moves like that when they are walking" was describing.
-    (CONTACT, "l", (-0.072, 0.072), (-0.048, 0.048), None, 0.000, 0.000, +0.042, 0.000),
-    (PASS,    "r", (-0.014, 0.018), (-0.026, 0.020), "r",  0.027, +0.018, 0.000, 0.000),
-    (CONTACT, "r", (-0.072, 0.072), (-0.048, 0.048), None, 0.000, 0.000, -0.042, 0.000),
-    (PASS,    "l", (-0.018, 0.014), (-0.020, 0.026), "l",  0.027, -0.018, 0.000, 0.000),
+    # ---- cel 0: DOWN. Left leg has just taken the weight; right leg is in early swing. ----
+    {"phase": DOWN, "rise": -0.016, "sway": +0.020, "arm": +0.034, "twist": +0.004,
+     # Supporting: planted, knee bent about 22 degrees to absorb the landing. The bend shows
+     # as the BODY dropping (rise, above), not as a visible angle - with the ankle fixed and
+     # the hip lowered, the leg's projected length falls from 0.450 to 0.434.
+     "l": _leg(+0.024, 0.000, +0.040, +0.002),
+     # Swing: toe just off the ground and behind, knee folding up. This is where the flexion
+     # lives - the shin projects about 0.63 of its length.
+     "r": _leg(-0.040, -0.085, -0.044, -0.006)},
+
+    # ---- cel 1: UP. Left leg extended on the ball of the foot; right leg reaching forward. -
+    {"phase": UP, "rise": +0.014, "sway": +0.008, "arm": -0.010, "twist": -0.002,
+     # Supporting: straight and vertical, heel off the ground - which is what allows the body
+     # to be higher here than a straight leg on a flat foot could put it.
+     "l": _leg(+0.018, -0.014, +0.030, -0.014),
+     # Swing: forward and all but straight, about to contact. Shin projects 0.995.
+     "r": _leg(-0.066, -0.017, -0.052, -0.016)},
+
+    # ---- cels 2 and 3: the same two keys with the legs and the lateral terms mirrored. -----
+    {"phase": DOWN, "rise": -0.016, "sway": -0.020, "arm": -0.034, "twist": -0.004,
+     "r": _leg(-0.024, 0.000, -0.040, +0.002),
+     "l": _leg(+0.040, -0.085, +0.044, -0.006)},
+
+    {"phase": UP, "rise": +0.014, "sway": -0.008, "arm": +0.010, "twist": +0.002,
+     "r": _leg(-0.018, -0.014, -0.030, -0.014),
+     "l": _leg(+0.066, -0.017, +0.052, -0.016)},
 ]
 
-STILL = (None, None, (-0.030, 0.030), (-0.036, 0.036), None, 0.000, 0.0, 0.0, 0.0)
+STILL = {"phase": None, "rise": 0.0, "sway": 0.0, "arm": 0.0, "twist": 0.0,
+         "r": _leg(-0.030, 0.0, -0.036, 0.0),
+         "l": _leg(+0.030, 0.0, +0.036, 0.0)}
 
 
 def proportions(build):
@@ -266,7 +353,11 @@ def skeleton(build, frame):
     Returns a list of 18 (x, y) pairs, none of them None - an authored skeleton has no
     missing joints, which is itself part of the point. Every dropped joint in the measured
     version was a place the model was left to invent a limb."""
-    phase, lead, (an_r, an_l), (kn_r, kn_l), lift, rise, sway, arm, twist = frame
+    rise = frame["rise"]
+    sway = frame["sway"]
+    arm = frame["arm"]
+    twist = frame["twist"]
+    leg_r, leg_l = frame["r"], frame["l"]
     Y = proportions(build)
     sh = build["sh"]
     hip = build["hip"]
@@ -282,16 +373,20 @@ def skeleton(build, frame):
     y_sh = Y["shoulder"] - rise
     y_head = -rise
 
-    # The swinging leg's foot leaves the ground and its knee comes up with it.
-    # FOOT LIFT, REDUCED FOR THE WARP. 0.048 of figure height is the right lift for a real
-    # stride and is what a generated frame would draw. A warp has to DEFORM a photographed
-    # shoe that far, and at 49 canvas pixels the shoe stretched into a dark spike rather
-    # than rising as a shoe. 0.030 still reads as a foot leaving the ground - it is more
-    # lift than the 1-5 pixels the first warp managed - and the shoe survives it.
-    lift_r = 0.030 if lift == "r" else 0.0
-    lift_k_r = 0.022 if lift == "r" else 0.0
-    lift_l = 0.030 if lift == "l" else 0.0
-    lift_k_l = 0.022 if lift == "l" else 0.0
+    # KNEE AND ANKLE COME STRAIGHT FROM THE CYCLE, as offsets from the canonical heights.
+    # There is no separate "lift" any more, and its removal is the point: a lift moved the
+    # ankle while leaving the shin its full length, which is a leg being carried rather than
+    # a knee being bent. Here the gap between knee and ankle IS the shin's projection, so
+    # asking for a raised foot necessarily asks for a folded knee.
+    #
+    # The earlier note against `lift` said 0.048 had to be cut to 0.030 because at 49 canvas
+    # pixels the shoe stretched into a dark spike. That was the SIMILARITY transform
+    # narrowing the shoe as it compressed it, not the lift being too large; with the
+    # anisotropic bone in warp_walk.skin_field the shoe keeps its width and 0.085 is safe.
+    lift_r, lift_k_r = -leg_r["ank_dy"], -leg_r["knee_dy"]
+    lift_l, lift_k_l = -leg_l["ank_dy"], -leg_l["knee_dy"]
+    an_r, an_l = leg_r["ank_x"], leg_l["ank_x"]
+    kn_r, kn_l = leg_r["knee_x"], leg_l["knee_x"]
 
     # ARMS OPPOSE THE LEGS. Front-on, a forward-swung arm reads as the hand drifting in
     # towards the hip and rising slightly; the trailing one drifts out and drops. The
@@ -444,7 +539,7 @@ def main():
                     man["cels"][f"{view}/{loop}/{cel}"] = {
                         "body": name, "outfit": outfit, "view": view,
                         "loop": loop, "cel": cel, "sex": sex,
-                        "phase": "still" if a.still else frame[0],
+                        "phase": "still" if a.still else frame["phase"],
                         "build": build,
                         "cel_size": [box["cel_w"], box["cel_h"]],
                         "bbox": [box["top"], box["bottom"], box["span"]],

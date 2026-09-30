@@ -64,16 +64,16 @@ function Click([int]$gx, [int]$gy) {
     Start-Sleep -Milliseconds 700
 }
 
+# The capture goes through the shared guard, which verifies the window is OWNED by this
+# process and is genuinely in front, before and after the pixel copy. This function used to
+# copy the screen rectangle unconditionally; a capture written that way once saved the
+# user's WhatsApp window instead of the game. See tools/SafeCapture.ps1.
+. "$PSScriptRoot\SafeCapture.ps1"
+
 function Shot([string]$name) {
-    $wr = New-Object JonesDrive+RECT
-    [void][JonesDrive]::GetWindowRect($h, [ref]$wr)
-    $bmp = New-Object System.Drawing.Bitmap ($wr.Right - $wr.Left), ($wr.Bottom - $wr.Top)
-    $g = [System.Drawing.Graphics]::FromImage($bmp)
-    $g.CopyFromScreen($wr.Left, $wr.Top, 0, 0, $bmp.Size)
     $path = Join-Path $OutDir "flow_$name.png"
-    $bmp.Save($path, [System.Drawing.Imaging.ImageFormat]::Png)
-    $g.Dispose(); $bmp.Dispose()
-    "  shot -> $path"
+    if (Save-SafeWindowCapture -Process $p -Out $path -SettleMs 300) { "  shot -> $path" }
+    else { "  shot REFUSED for $name - the game was not the window on screen" }
 }
 
 Shot '1_menu'

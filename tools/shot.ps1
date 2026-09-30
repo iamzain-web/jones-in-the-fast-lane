@@ -31,24 +31,11 @@ while ((Get-Date) -lt $deadline) {
 }
 if (-not $p) { 'no window appeared'; exit 1 }
 
-Add-Type -AssemblyName System.Drawing
-Add-Type -TypeDefinition @"
-using System; using System.Runtime.InteropServices;
-public class JonesShot {
-  [DllImport("user32.dll")] public static extern bool GetWindowRect(IntPtr h, out RECT r);
-  [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr h);
-  [StructLayout(LayoutKind.Sequential)] public struct RECT { public int Left, Top, Right, Bottom; }
-}
-"@
+# The capture goes through the shared guard. This script used to call
+# `SetForegroundWindow`, sleep four seconds and copy the screen rectangle on the ASSUMPTION
+# that the game was underneath it. On one run it was not, and a capture written that way
+# saved the user's WhatsApp window instead. `SafeCapture.ps1` verifies that the window is
+# owned by this process AND is genuinely in front, before and after the copy.
+. "$PSScriptRoot\SafeCapture.ps1"
 
-[void][JonesShot]::SetForegroundWindow($p.MainWindowHandle)
-Start-Sleep -Seconds 4
-
-$r = New-Object JonesShot+RECT
-[void][JonesShot]::GetWindowRect($p.MainWindowHandle, [ref]$r)
-$bmp = New-Object System.Drawing.Bitmap ($r.Right - $r.Left), ($r.Bottom - $r.Top)
-$g = [System.Drawing.Graphics]::FromImage($bmp)
-$g.CopyFromScreen($r.Left, $r.Top, 0, 0, $bmp.Size)
-$bmp.Save($Out, [System.Drawing.Imaging.ImageFormat]::Png)
-$g.Dispose(); $bmp.Dispose()
-"captured -> $Out"
+if (-not (Save-SafeWindowCapture -Process $p -Out $Out -SettleMs 4000)) { exit 1 }
