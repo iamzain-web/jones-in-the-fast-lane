@@ -213,10 +213,22 @@ BUILDS = {
 CONTACT, PASS = "contact", "pass"
 CYCLE = [
     # phase,  lead, (ankle_r, ankle_l), (knee_r, knee_l), lift, rise,  sway,   arm,  twist
-    (CONTACT, "l", (-0.072, 0.072), (-0.048, 0.048), None, 0.000, 0.000, +0.042, +0.012),
-    (PASS,    "r", (-0.014, 0.018), (-0.026, 0.020), "r",  0.014, +0.018, 0.000, 0.000),
-    (CONTACT, "r", (-0.072, 0.072), (-0.048, 0.048), None, 0.000, 0.000, -0.042, -0.012),
-    (PASS,    "l", (-0.018, 0.014), (-0.020, 0.026), "l",  0.014, -0.018, 0.000, 0.000),
+    # RISE is 0.038, not the 0.014 the art measures, because the WARP DAMPS IT. Measured on
+    # the warped result: an authored 0.014 arrived as 0.0054 where the 1990 art has 0.0212 -
+    # the figure was barely bobbing at all. The warp delivers roughly 38% of what is asked
+    # vertically, so the authored value is the wanted amplitude divided by that. This is the
+    # one place the authored cycle deliberately departs from the measurement, and it does so
+    # to LAND on it.
+    #
+    # TWIST is 0.004, cut from 0.012. The 1990 art's shoulder-to-hip differential is only
+    # 0.0078 of figure height across the whole cycle - the torso moves very nearly as a unit.
+    # At 0.012 the realised differential was 0.0549, SEVEN TIMES the original, and the pelvis
+    # swung through a wide arc out of phase with the shoulders. That is what "nobody's body
+    # moves like that when they are walking" was describing.
+    (CONTACT, "l", (-0.072, 0.072), (-0.048, 0.048), None, 0.000, 0.000, +0.042, 0.000),
+    (PASS,    "r", (-0.014, 0.018), (-0.026, 0.020), "r",  0.027, +0.018, 0.000, 0.000),
+    (CONTACT, "r", (-0.072, 0.072), (-0.048, 0.048), None, 0.000, 0.000, -0.042, 0.000),
+    (PASS,    "l", (-0.018, 0.014), (-0.020, 0.026), "l",  0.027, -0.018, 0.000, 0.000),
 ]
 
 STILL = (None, None, (-0.030, 0.030), (-0.036, 0.036), None, 0.000, 0.0, 0.0, 0.0)
@@ -452,6 +464,8 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+
 
 
 

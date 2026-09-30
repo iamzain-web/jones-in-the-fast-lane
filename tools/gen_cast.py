@@ -72,6 +72,7 @@ import pose_author
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PNG1X = os.path.join(ROOT, "assets", "png")
+MODELS_DIR = os.path.join(os.environ.get("LOCALAPPDATA", ""), "jones-upscale-models", "gen")
 
 # WINDOWS ERROR REPORTING MUST NOT OPEN A DIALOG. The resolution probe that established the
 # 640x1280 ceiling crashed the CUDA driver twice, by design, and each crash raised a modal
@@ -144,7 +145,7 @@ CARTOON = ("full body flat cel shaded cartoon, bold clean outlines, flat colour,
 NEGATIVE = ("illustration, painting, cartoon, 3d render, deformed hands, extra fingers, "
             "extra limbs, seated, crouching, cropped legs, missing feet, out of frame, "
             "two people, text, watermark, furniture, light stand, floor length skirt, "
-            "gown, watch, jewellery, shadow, mutated")
+            "jewellery, shadow, mutated, missing fingers, fused fingers")
 
 CARTOON_NEG = ("photograph, deformed hands, extra fingers, extra limbs, mutated, seated, "
                "sitting, crouching, cropped, out of frame, two people, text, watermark, "
@@ -181,7 +182,7 @@ CAST = {
         "seed": 118097, "style": STYLE, "neg": NEGATIVE,
         "who": "a woman in her late twenties, pale fair skin, dark auburn bob, "
                "sturdy build",
-        "neg_extra": "leotard, swimsuit, athletic, muscular, slim",
+        "neg_extra": "leotard, swimsuit, athletic, slim",
         "prop": {"best": (38, 30, 32)},
         "bag": {"mid": (198, 168, 142)},
         "wear": [
@@ -289,6 +290,47 @@ COLOUR_WORDS = {
     "red": (190, 50, 45), "green": (70, 120, 70), "purple": (110, 60, 150),
     "beige": (214, 196, 168), "khaki": (188, 172, 120), "silver": (196, 198, 200),
 }
+
+
+GUARDS = ("deformed hands", "extra fingers", "missing fingers", "fused fingers",
+          "extra limbs", "mutated", "seated", "cropped legs", "missing feet", "shadow")
+
+
+def check_guards(a):
+    """Are the anatomy guards actually reaching the model, and is the refinement on?
+
+    THIS EXISTS BECAUSE TWO OF THEM WENT MISSING WITHOUT A SOUND. Trimming the negative from
+    142 tokens to 59 silently dropped twelve terms that had been reaching the model, and the
+    twelve included `missing fingers` and `fused fingers`. Every count-based check read green
+    throughout, and the first sign was a player asking what was going on with the character's
+    hands. `shadow` went the same way and cost a blemish on the figure's hip.
+
+    Mangled hands are the single most predictable failure of this model family without a
+    finger guard, and once the walk cycle is built by WARPING one photograph, a bad hand is
+    no longer one frame in four - it is identically wrong in every frame of the cycle. So the
+    source frame's quality bar is higher than it was, not lower, and this has to be provable
+    at a glance rather than remembered.
+
+    It decodes what the tokeniser actually produced, not what the source file says."""
+    from transformers import CLIPTokenizer
+    sd = os.path.join(MODELS_DIR, "sd15")
+    tok = CLIPTokenizer.from_pretrained(sd, subfolder="tokenizer", local_files_only=True)
+    lim = tok.model_max_length
+    bad = 0
+    for name, who in sorted(CAST.items()):
+        ng = negative_for(who)
+        ids = tok(ng).input_ids
+        reached = tok.decode(ids[1:min(len(ids) - 1, lim - 1)])
+        over = len(ids) > lim
+        miss = [g for g in GUARDS if g not in reached]
+        bad += len(miss) + (1 if over else 0)
+        print(f"  {name:<7} negative {len(ids):>3}/{lim} tokens"
+              f"{'  TRUNCATED' if over else ''}")
+        if miss:
+            print(f"          MISSING FROM THE MODEL: {', '.join(miss)}")
+    print(f"\n  extremity refinement: head={a.refine_head} hands={a.refine_hands} "
+          f"feet={a.refine_feet}   (the hand crops are where hand quality comes from)")
+    print(f"  {bad} problem(s). A guard absent here is a guard that does not exist.")
 
 
 def check_wardrobe(a):
@@ -1350,6 +1392,26 @@ def _runs(row):
 # Generation
 # ---------------------------------------------------------------------------
 
+def skin_fraction(img, cx, cy, half):
+    """How much of a square crop is skin-toned. The gate on the hand refinement.
+
+    The rule is the usual RGB skin test - red dominant, and clearly separated from the
+    smaller of green and blue - which is crude but entirely sufficient here: the question is
+    not "is this a good hand" but "is there any flesh in this crop at all", and a patch of
+    navy suit answers it unambiguously."""
+    a = np.asarray(img.convert("RGB")).astype(float)
+    H, W = a.shape[:2]
+    x0, x1 = max(0, int(cx - half)), min(W, int(cx + half))
+    y0, y1 = max(0, int(cy - half)), min(H, int(cy + half))
+    reg = a[y0:y1, x0:x1]
+    if reg.size == 0:
+        return 0.0
+    r, g, b = reg[:, :, 0], reg[:, :, 1], reg[:, :, 2]
+    skin = (r > 95) & (g > 40) & (b > 20) & (r > g) & (r > b) & \
+           ((r - np.minimum(g, b)) > 15)
+    return float(skin.mean())
+
+
 def crop_box(cx, cy, half, size):
     W, H = size
     x0 = int(round(min(max(0, cx - half), W - 2 * half)))
@@ -1399,6 +1461,21 @@ def refine(img_pipe, torch, base, cel, who, device, args):
                      args.head_strength))
     if args.refine_hands:
         for nm, kp in (("hand_r", k[4]), ("hand_l", k[7])):
+            # ONLY REFINE A HAND WHERE THERE IS ONE. The crop is taken at the AUTHORED
+            # wrist, but the model puts the hands where it likes - in a pocket, behind the
+            # back, tucked into a jacket - so the crop frequently lands on plain cloth.
+            # Measured over three source frames, four of six hand crops contained under 8%
+            # skin: the refiner was being handed a patch of suit and the instruction "close
+            # up photograph of one relaxed human hand, five fingers".
+            #
+            # It does what it is told. That is almost certainly the mangled hand-shaped
+            # blob on the hip that a player asked about - not a badly drawn hand, but a hand
+            # HALLUCINATED ONTO A JACKET by the pass meant to improve it. Refining nothing
+            # is strictly better than inventing something.
+            if skin_fraction(base, kp[0], kp[1] + fig * 0.012, fig * 0.085) < 0.08:
+                print(f"      skipped {nm}: no hand at the authored wrist "
+                      f"(the model put it elsewhere)", flush=True)
+                continue
             jobs.append((nm, kp[0], kp[1] + fig * 0.012, fig * 0.085,
                          "close up photograph of one relaxed human hand hanging at the "
                          "side, five fingers, natural anatomy, sharp focus",
@@ -1734,6 +1811,10 @@ def main():
     ap.add_argument("--views")
     ap.add_argument("--drift", help="report garment-colour drift across each loop in this "
                                     "generated directory and exit")
+    ap.add_argument("--check-guards", action="store_true",
+                    help="decode every negative prompt and report whether the anatomy "
+                         "guards actually reach the model, plus whether the extremity "
+                         "refinement is enabled. Costs no GPU")
     ap.add_argument("--check-wardrobe", action="store_true",
                     help="check every hand-written wardrobe line against the bands measured "
                          "off its own cel, and exit. Costs no GPU and catches the class of "
@@ -1774,6 +1855,8 @@ def main():
     ap.add_argument("--slicing", action="store_true")
     a = ap.parse_args()
 
+    if a.check_guards:
+        return check_guards(a)
     if a.check_wardrobe:
         return check_wardrobe(a)
     if a.drift:
@@ -1789,6 +1872,9 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+
+
 
 
 

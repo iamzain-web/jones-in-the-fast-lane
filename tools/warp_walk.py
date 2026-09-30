@@ -107,6 +107,106 @@ def handles(kps, size, anchors=5, margin=0.0):
     return np.asarray(pts, np.float64)
 
 
+def skin_field(src_kps, dst_kps, size, alpha=2.0, step=2, reach=0.26, fig=None):
+    """A backward displacement field by LINEAR BLEND SKINNING - one rigid transform per BONE.
+
+    WHY THIS REPLACED MOVING LEAST SQUARES. MLS drives the image from scattered point
+    handles, and that has two failure modes at opposite ends of one dial:
+
+        too few handles  a thigh has nothing holding its middle and bends like a hose
+        too many         the surface RIPPLES between them, with a period equal to the
+                         handle spacing - 40 to 60 pixels along the leg, which is exactly
+                         the "squiggly" trouser seams a player saw in the game
+
+    Tuning moves between them; it does not escape them. Skinning has no point handles at
+    all. Each BONE gets one similarity transform derived from its own two endpoints, every
+    pixel is weighted by its distance to the bone SEGMENT, and the transforms are blended.
+    A straight trouser seam then stays straight by construction, because every pixel along
+    it is driven by the same transform rather than by five competing handles.
+
+    THE IDENTITY TERM IS WHAT HOLDS THE BACKGROUND STILL, and it replaces the ring of frame
+    anchors MLS needed. It is a virtual bone whose transform is "stay where you are", with a
+    fixed weight set by `reach`: within a quarter of the figure's height the real bones
+    dominate, and far outside it the identity does, so distant pixels map to themselves and
+    nothing is dragged. No anchors, so nothing pins a foot that is trying to lift.
+
+    JOINT BLENDING is deliberate rather than incidental. Near a knee, two segments are both
+    close and their transforms blend - which is where skinning has its own classic artifact,
+    a collapse of volume. `alpha` sets how sharply influence falls off and therefore how wide
+    that blend zone is: higher is more rigid with a harder seam at the joint, lower is
+    smoother with more collapse. 2.0 keeps the blend to roughly a knee's width on a
+    front-facing walk with modest bend, which is the friendly case.
+    """
+    W, H = size
+    gx = np.arange(0, W + step, step, dtype=np.float64)
+    gy = np.arange(0, H + step, step, dtype=np.float64)
+    VX, VY = np.meshgrid(gx, gy)
+
+    acc_x = np.zeros_like(VX)
+    acc_y = np.zeros_like(VY)
+    acc_w = np.zeros_like(VX)
+
+    for a, b in BONES:
+        t0 = np.asarray(dst_kps[a], np.float64)
+        t1 = np.asarray(dst_kps[b], np.float64)
+        s0 = np.asarray(src_kps[a], np.float64)
+        s1 = np.asarray(src_kps[b], np.float64)
+        vt = t1 - t0
+        vs = s1 - s0
+        lt = float(np.hypot(*vt))
+        ls = float(np.hypot(*vs))
+        if lt < 1e-6 or ls < 1e-6:
+            continue
+
+        # The similarity taking the TARGET bone onto the SOURCE bone: rotate by the angle
+        # between them, scale by their length ratio, about the bone's own origin.
+        ang = np.arctan2(vs[1], vs[0]) - np.arctan2(vt[1], vt[0])
+        sc = ls / lt
+        ca, sa = np.cos(ang) * sc, np.sin(ang) * sc
+
+        dx = VX - t0[0]
+        dy = VY - t0[1]
+        mx = s0[0] + ca * dx - sa * dy
+        my = s0[1] + sa * dx + ca * dy
+
+        # Distance to the target SEGMENT, not to its endpoints - that is what makes a limb
+        # a limb rather than two points with a gap between them.
+        tproj = np.clip((dx * vt[0] + dy * vt[1]) / (lt * lt), 0.0, 1.0)
+        cx = t0[0] + tproj * vt[0]
+        cy = t0[1] + tproj * vt[1]
+        d2 = (VX - cx) ** 2 + (VY - cy) ** 2
+
+        w = 1.0 / (d2 + 1.0) ** alpha
+        acc_x += w * mx
+        acc_y += w * my
+        acc_w += w
+
+    r = (reach * (fig if fig else H)) ** 2
+    w_id = 1.0 / (r + 1.0) ** alpha
+    acc_x += w_id * VX
+    acc_y += w_id * VY
+    acc_w += w_id
+
+    fx = acc_x / acc_w
+    fy = acc_y / acc_w
+
+    yy = np.arange(H, dtype=np.float64) / step
+    xx = np.arange(W, dtype=np.float64) / step
+    y0 = np.clip(yy.astype(int), 0, fx.shape[0] - 2)
+    x0 = np.clip(xx.astype(int), 0, fx.shape[1] - 2)
+    ty = (yy - y0)[:, None]
+    tx = (xx - x0)[None, :]
+
+    def up(F):
+        p = F[y0][:, x0]
+        q = F[y0][:, x0 + 1]
+        r2 = F[y0 + 1][:, x0]
+        s2 = F[y0 + 1][:, x0 + 1]
+        return (p * (1 - tx) + q * tx) * (1 - ty) + (r2 * (1 - tx) + s2 * tx) * ty
+
+    return up(fx), up(fy)
+
+
 def mls_similarity(dst_pts, src_pts, size, alpha=1.6, step=4):
     """A backward displacement field: for each pixel of the OUTPUT, where it comes from in
     the source image.
@@ -237,11 +337,15 @@ def exaggerate(src_kps, dst_kps, k, joints=LEGS):
     return out
 
 
-def warp(src_rgba, src_kps, dst_kps, size, alpha=1.6, step=4, anchors=5, margin=0.0):
+def warp(src_rgba, src_kps, dst_kps, size, alpha=1.6, step=4, anchors=5, margin=0.0,
+         method="skin", fig=None):
     """One deformed frame. Alpha is warped with the colour, so the silhouette moves too."""
-    P = handles(dst_kps, size, anchors, margin)
-    Q = handles(src_kps, size, anchors, margin)
-    mx, my = mls_similarity(P, Q, size, alpha=alpha, step=step)
+    if method == "skin":
+        mx, my = skin_field(src_kps, dst_kps, size, alpha=alpha, step=step, fig=fig)
+    else:
+        P = handles(dst_kps, size, anchors, margin)
+        Q = handles(src_kps, size, anchors, margin)
+        mx, my = mls_similarity(P, Q, size, alpha=alpha, step=step)
     # Premultiply before resampling, for the reason fit_walkers documents at length: straight
     # alpha averages the background into every edge pixel and hands back a halo.
     a = src_rgba[:, :, 3:4] / 255.0
@@ -252,18 +356,94 @@ def warp(src_rgba, src_kps, dst_kps, size, alpha=1.6, step=4, anchors=5, margin=
     return np.clip(np.dstack([rgb, al]), 0, 255).astype(np.uint8)
 
 
+def seam_deviation(path, f0=0.62, f1=0.93):
+    """How far the trouser seams bend away from straight, in pixels. The squiggle, as a
+    number.
+
+    A player found the rippled trouser seams by playing the game; nobody found them in four
+    rounds of review because the comparison sheets were rendered at 26-30% scale, where a
+    three-pixel wave is invisible. This turns "does it ripple" into something that does not
+    need eyes at all, in the same spirit as the drift checker and the wardrobe check.
+
+    The outer edge of each leg over the shin band is very nearly a straight line on a real
+    photograph and on the 1990 art. Fit one, and report the RMS departure from it. A clean
+    warp scores a pixel or two; a rippled one scores several times that."""
+    a = np.asarray(Image.open(path).convert("RGBA"))[:, :, 3] > 128
+    rows = np.nonzero(a.any(axis=1))[0]
+    if len(rows) < 40:
+        return None
+    top, bot = int(rows[0]), int(rows[-1])
+    span = bot - top + 1
+    y0 = int(round(top + f0 * (span - 1)))
+    y1 = int(round(top + f1 * (span - 1)))
+
+    ys, left, right = [], [], []
+    for y in range(y0, y1 + 1):
+        xs = np.nonzero(a[y])[0]
+        if not len(xs):
+            continue
+        ys.append(y)
+        left.append(float(xs.min()))
+        right.append(float(xs.max()))
+    if len(ys) < 20:
+        return None
+    ys = np.asarray(ys, np.float64)
+
+    # AGAINST A SMOOTHED EDGE, NOT AGAINST A STRAIGHT LINE. The first version fitted a line
+    # and reported the residual, which measures LEG GEOMETRY rather than ripple: the 1990
+    # art scored 27-45 px - far "worse" than any warp - simply because its legs are splayed
+    # and its two-leg silhouette is not a straight vertical. The metric has to separate the
+    # thing being looked for from the thing that is supposed to be there.
+    #
+    # A ripple is HIGH frequency and leg geometry is LOW frequency, so the reference is the
+    # edge's own moving average over roughly a limb's width. What is left is the wiggle.
+    win = max(5, int(round(len(ys) * 0.12)) | 1)
+    k = np.ones(win) / win
+    out = []
+    for edge in (np.asarray(left), np.asarray(right)):
+        pad = np.pad(edge, win // 2, mode="edge")
+        smooth = np.convolve(pad, k, mode="valid")[:len(edge)]
+        out.append(float(np.sqrt(np.mean((edge - smooth) ** 2))))
+    return max(out)
+
+
+def report_seams(a):
+    import glob
+    print(f"{'frame':<26} {'seam RMS (px)':>14}")
+    worst = 0.0
+    for p in sorted(glob.glob(os.path.join(a.seams, "*.png"))):
+        d = seam_deviation(p)
+        if d is None:
+            continue
+        worst = max(worst, d)
+        flag = "   <-- ripples" if d > a.seam_tol else ""
+        print(f"{os.path.basename(p):<26} {d:>14.2f}{flag}")
+    print(f"\nworst {worst:.2f} px against a tolerance of {a.seam_tol:.1f}. "
+          f"Judge character art at 100% or magnified, never scaled to fit a sheet.")
+
+
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--poses", required=True)
-    ap.add_argument("--src", required=True, help="the one generated cel, RGBA and cut out")
-    ap.add_argument("--view", type=int, required=True)
+    ap.add_argument("--seams", help="report trouser-seam straightness for every png in "
+                                    "this directory and exit")
+    ap.add_argument("--seam-tol", type=float, default=3.0)
+    ap.add_argument("--poses", help="pose set the TARGET cels come from")
+    ap.add_argument("--src-poses",
+                    help="pose set the SOURCE frame was generated against, when it differs "
+                         "from --poses. The source skeleton must match the photograph or "
+                         "every warp inherits a constant offset")
+    ap.add_argument("--src", help="the one generated cel, RGBA and cut out")
+    ap.add_argument("--view", type=int)
     ap.add_argument("--loop", type=int, default=0)
     ap.add_argument("--src-cel", type=int, default=0,
                     help="which cel of the cycle the source frame was generated against")
-    ap.add_argument("--out", required=True)
-    ap.add_argument("--alpha", type=float, default=1.6,
+    ap.add_argument("--out")
+    ap.add_argument("--method", choices=("skin", "mls"), default="skin",
+                    help="skin = one rigid transform per bone (no point handles, so it "
+                         "cannot ripple between them); mls = the old point-handle warp")
+    ap.add_argument("--alpha", type=float, default=2.0,
                     help="MLS falloff; higher makes each handle's influence more local")
-    ap.add_argument("--step", type=int, default=4)
+    ap.add_argument("--step", type=int, default=2)
     ap.add_argument("--exaggerate", type=float, default=1.0,
                     help="overshoot the target LEG joints by this factor, to land on the "
                          "wanted amplitude after MLS damps it. 1.0 is off")
@@ -276,6 +456,8 @@ def main():
                          "close, and the legs move a fraction of what the skeleton asks")
     a = ap.parse_args()
 
+    if a.seams:
+        return report_seams(a)
     with open(os.path.join(a.poses, "poses.json")) as f:
         poses = json.load(f)
     W, H = poses["size"]
@@ -284,7 +466,12 @@ def main():
         raise SystemExit(f"{a.src} is {src.shape[1]}x{src.shape[0]}, expected {W}x{H}")
 
     key = f"{a.view}/{a.loop}/%d"
-    src_k = np.asarray(poses["cels"][key % a.src_cel]["keypoints"], np.float64)
+    if a.src_poses:
+        with open(os.path.join(a.src_poses, "poses.json")) as f:
+            spos = json.load(f)
+    else:
+        spos = poses
+    src_k = np.asarray(spos["cels"][key % a.src_cel]["keypoints"], np.float64)
     os.makedirs(a.out, exist_ok=True)
 
     for c in range(4):
@@ -298,7 +485,8 @@ def main():
         else:
             tgt = (exaggerate(src_k, dst_k, a.exaggerate)
                    if a.exaggerate != 1.0 else dst_k)
-            out = warp(src, src_k, tgt, (W, H), a.alpha, a.step, a.anchors, a.margin)
+            out = warp(src, src_k, tgt, (W, H), a.alpha, a.step, a.anchors, a.margin,
+                       a.method, cel.get("fig_h"))
             note = "warped"
         p = os.path.join(a.out, f"cut_{a.view}_l{a.loop}_c{c}.png")
         Image.fromarray(out, "RGBA").save(p)
@@ -308,6 +496,10 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+
+
+
 
 
 
