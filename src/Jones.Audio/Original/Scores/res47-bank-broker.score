@@ -1,0 +1,70 @@
+﻿# ---------------------------------------------------------------------------
+# RESOURCE 47 - THE BANK, AND THE BROKER
+#
+# `bank.sc:103` and `broker.sc:178`, both `playBed:`. ONE cue, TWO rooms -
+# the only bed in the game that is shared, so it has to suit a teller window
+# and a trading floor at the same time.
+#
+# Original: 495 ticks = 8.25 s, loop point at tick 15.
+# Here:     4 bars at 116 bpm = 8.28 s, loop at the top (tick 15 of 495 is
+#           3% in - setup, not a section).
+#
+# ORIGINAL MUSIC. Written to the ROLE the cue plays, never to its notes.
+#
+# ---------------------------------------------------------------------------
+# VERSION 2. v1 measured 4.4 dB under the demo in the low mid and 11.4 dB
+# under it in the 2-6 kHz band - the same fault as the other four: a bass
+# almost entirely below 200 Hz, chords that rang off half way through the bar,
+# and a hole where the middle of the music should be.
+#
+# What changed: the bass holds and walks rather than punching the beat, the
+# pad is voiced with the 7th and 9th, and the keys sustain across the bar.
+#
+# WHAT DID NOT CHANGE: no lead. Four bars is too short a loop to put a tune
+# over, and the bell walking down the top is this cue's whole character. It is
+# still poised rather than warm and poised rather than tense, which is what
+# lets one piece of music serve both rooms.
+# ---------------------------------------------------------------------------
+
+tempo 116
+steps 16
+swing 0.12
+loop 1
+loop-from 0
+space room
+
+part pad    patch=pad   gain=0.76  pan=-0.22
+part keys   patch=keys  gain=0.84  pan=0.18
+part bell   patch=bell  gain=1.00  pan=0.38
+part bass   patch=bass  gain=0.80  pan=0.00
+part drums  kit         gain=0.78  pan=0.00
+
+#          1    2    3    4    5    6    7    8    9   10   11   12   13   14   15   16
+
+pad:    Bb2+D3+F3+A3    -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+pad:    G2+Bb2+D3+F3    -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+pad:    Eb3+G3+Bb3+D4   -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+pad:    F3+A3+C4+Eb4    -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+
+keys:   .    .    D4+F4+A4+C5   -    -    -    -    -    -    -    D4+F4+A4+C5   -    -    -    -    -
+keys:   .    .    D4+F4+Bb4     -    -    -    -    -    -    -    D4+F4+Bb4     -    -    -    -    -
+keys:   .    .    Eb4+G4+Bb4+D5 -    -    -    -    -    -    -    Eb4+G4+Bb4+D5 -    -    -    -    -
+keys:   .    .    F4+A4+C5+Eb5  -    -    -    -    -    -    -    Eb4+A4+C5     -    -    -    -    -
+
+bell:   .    .    Bb4  .    .    .    F5   .    .    .    .    .    D5   .    .    .
+bell:   .    .    G4   .    .    .    D5   .    .    .    .    .    Bb4  .    .    .
+bell:   .    .    D5   .    .    .    G5   .    .    .    .    .    D5   .    .    .
+bell:   .    .    F5   .    .    .    A5   .    .    .    .    .    C5   .    Bb4  .
+
+bass:   Bb1  -    -    -    .    F2   -    -    -    .    D2   -    -    -    F2   -
+bass:   G1   -    -    -    .    D2   -    -    -    .    Bb1  -    -    -    D2   -
+bass:   Eb2  -    -    -    .    Bb2  -    -    -    .    G2   -    -    -    Bb1  -
+bass:   F2   -    -    -    .    C3   -    -    -    .    A2   -    -    -    Eb2  -
+
+drums:  bd   .    hh   .    hh   .    hh   .    bd   .    hh   .    hh   .    hh   .
+drums:  bd   .    hh   .    hh   .    hh   .    bd   .    hh   .    hh   .    hh   .
+drums:  bd   .    hh   .    hh   .    hh   .    bd   .    hh   .    hh   .    hh   .
+drums:  bd   .    hh   .    hh   .    hh   .    bd   .    hh   .    hh   .    hh   oh
+
+
+

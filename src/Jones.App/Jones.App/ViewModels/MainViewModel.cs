@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
@@ -76,7 +76,7 @@ public sealed partial class MainViewModel : ViewModelBase
 
     /// <summary>
     /// `theWalker`'s cycler. The walker's frame is DERIVED from the wall clock rather than
-    /// stepped by the walk timer — see <see cref="WalkerFrame"/> for why that is what the
+    /// stepped by the walk timer â€” see <see cref="WalkerFrame"/> for why that is what the
     /// original does, and <see cref="CelCycler"/> for the rule it shares with Willy.
     /// </summary>
     private readonly CelCycler _walkerCycler = new(WalkerTicksToDo);
@@ -142,12 +142,12 @@ public sealed partial class MainViewModel : ViewModelBase
                 _goals[p, g] = 50; // the class default in room1.sc
 
         // `Main::play` opens on room 2, `introRoom`, which runs its credits and then
-        // `(gCurRoom newRoom: 1)` — the main menu (`introRoom.sc:256-258`).
+        // `(gCurRoom newRoom: 1)` â€” the main menu (`introRoom.sc:256-258`).
         //
         // DELIBERATE DEVIATION, off by default: the intro runs about 50 seconds on every
         // launch. Faithful, and unbearable when you are starting the game repeatedly to
         // test it. Skippable with any click or key, which is what `introRoom::handleEvent`
-        // does — but that still means a keypress every single launch.
+        // does â€” but that still means a keypress every single launch.
         //
         // Set PlayIntro back to true for Sierra's opening. The sequence itself is fully
         // ported and unchanged; this only decides whether it runs on startup.
@@ -164,14 +164,14 @@ public sealed partial class MainViewModel : ViewModelBase
     public ObservableCollection<ActionVm> Actions { get; } = [];
 
     // THERE IS NO NOTICE LIST. The `Notices` collection that used to live here carried a
-    // running commentary â€” "Wild Willy took 2 item(s)", "Rent paid.", "Hired as Clerk!" â€”
+    // running commentary Ã¢â‚¬â€ "Wild Willy took 2 item(s)", "Rent paid.", "Hired as Clerk!" Ã¢â‚¬â€
     // none of which exists anywhere in the game. `startTrn.sc` has exactly one `Print` in
     // the whole turn-start chain (text 111[0], the multi-player hand-over prompt); the
     // robbery, the crash and the boom are announced by the NEWSPAPER, and everything else
     // is spoken. See `Speak`.
 
     /// <summary>
-    /// The speech balloon, in painter's order â€” see <see cref="BubbleWindow"/>. Empty
+    /// The speech balloon, in painter's order Ã¢â‚¬â€ see <see cref="BubbleWindow"/>. Empty
     /// whenever nobody is talking.
     /// </summary>
     public ObservableCollection<BalloonPartVm> Balloon { get; } = [];
@@ -185,7 +185,7 @@ public sealed partial class MainViewModel : ViewModelBase
     /// <summary>
     /// The town board stays on screen behind the between-turn dialogs.
     ///
-    /// Both of them open on `global38`, the INVISIBLE window â€” `weekend.sc:205` and
+    /// Both of them open on `global38`, the INVISIBLE window Ã¢â‚¬â€ `weekend.sc:205` and
     /// `newspaper.sc:118`, each `moveTo: 69 44` then `open: 0 -1`. An invisible window
     /// paints no backdrop of its own, so the dialog is drawn straight over whatever room
     /// is showing, which between turns is room1: the board. Hiding the board on these
@@ -243,7 +243,7 @@ public sealed partial class MainViewModel : ViewModelBase
         }
 
         // Every clickable line that declares a `key` becomes a binding, so the accelerators
-        // follow the controls that are actually on screen — which is what the original does
+        // follow the controls that are actually on screen â€” which is what the original does
         // too, since `Item::handleEvent` is only reached for controls in the open dialog's
         // own list. Disabled lines are skipped: bit 0 of `state` gates the KEY as much as
         // the mouse (`Interface.sc:410-416`).
@@ -270,8 +270,8 @@ public sealed partial class MainViewModel : ViewModelBase
     {
         // FIRST one wins, not last: `Dialog` is a `List` and `List::handleEvent` walks its
         // elements in `add:` order, stopping at the first that claims the event. Two
-        // controls on one screen can share a number — the icon buttons are registered
-        // before the text lines are swept up — and the original would fire the earlier.
+        // controls on one screen can share a number â€” the icon buttons are registered
+        // before the text lines are swept up â€” and the original would fire the earlier.
         if (key != 0) _keyBindings.TryAdd(key, press);
     }
 
@@ -294,7 +294,7 @@ public sealed partial class MainViewModel : ViewModelBase
         Sprites.Add(Icon(10, 1, 0, 27, 17, () => { _screen = Screen.PlayerCount; BuildScreen(); }));
 
         // `restoreGame` (`select1.sc:96-110`). Its `doit` sets `global529`, which
-        // `Main::doit` (`Main.sc:1235-1238`) turns into `(gGame restore:)` — and it asks
+        // `Main::doit` (`Main.sc:1235-1238`) turns into `(gGame restore:)` â€” and it asks
         // nothing first, unlike the Game menu's own Restore item. See
         // MainViewModel.SaveRestore.cs.
         Sprites.Add(Icon(10, 1, 2, 27, 47, RestoreGameFromTitle));
@@ -347,7 +347,7 @@ public sealed partial class MainViewModel : ViewModelBase
     private void BuildCharacterSelect()
     {
         // `select2.sc:38` opens on `global38`, the INVISIBLE window, exactly as the main
-        // menu and player-count screens do â€” so the title screen stays behind it rather
+        // menu and player-count screens do Ã¢â‚¬â€ so the title screen stays behind it rather
         // than the dialog sitting on black.
         TitleBackdrop();
 
@@ -388,7 +388,7 @@ public sealed partial class MainViewModel : ViewModelBase
     }
 
     /// <summary>
-    /// Which player's goals are being LOOKED at rather than set — `select3`'s `param2 == 2`,
+    /// Which player's goals are being LOOKED at rather than set â€” `select3`'s `param2 == 2`,
     /// reached from a player token on the Who's Winning screen (`viewGoals.sc:226-235`).
     /// Null during setup.
     /// </summary>
@@ -399,10 +399,10 @@ public sealed partial class MainViewModel : ViewModelBase
     /// be dragged. Its three values each have exactly one call site:
     ///
     /// <list type="bullet">
-    /// <item><c>0</c> — setup, from `select2.sc:127` and its three siblings.</item>
-    /// <item><c>1</c> — the computer's own goals, from `room1.sc:1255`, and only when
+    /// <item><c>0</c> â€” setup, from `select2.sc:127` and its three siblings.</item>
+    /// <item><c>1</c> â€” the computer's own goals, from `room1.sc:1255`, and only when
     ///   `(players at: 1) playing:` is 29 in a one-human game.</item>
-    /// <item><c>2</c> — read-only, from `viewGoals.sc:231/254/277/300`.</item>
+    /// <item><c>2</c> â€” read-only, from `viewGoals.sc:231/254/277/300`.</item>
     /// </list>
     ///
     /// Mode 1 is not reachable in this port: there is no step between character select and
@@ -414,7 +414,7 @@ public sealed partial class MainViewModel : ViewModelBase
     /// <summary>select3 (script 236): four star sliders, 10..100 each.</summary>
     private void BuildGoalSetting()
     {
-        // `select3.sc:104` â€” same invisible window, same title screen behind it.
+        // `select3.sc:104` Ã¢â‚¬â€ same invisible window, same title screen behind it.
         // In mode 2 the screen it opens over is the Who's Winning dialog, which is itself
         // over the board; both are `global38`, so the board is the backdrop either way.
         TitleBackdrop();
@@ -429,9 +429,9 @@ public sealed partial class MainViewModel : ViewModelBase
         //      else             (windowTitle cel: param2 view: 506))
         //
         // Taking the declared view as the truth put "GOALS" on the setup screen, where the
-        // original reads "SET YOUR GOALS" — the exact trap CLAUDE.md §3 warns about.
+        // original reads "SET YOUR GOALS" â€” the exact trap CLAUDE.md Â§3 warns about.
         // Decoding the two cels of view 506 settles which mode is which without guessing:
-        // cel 0 is "SET YOUR GOALS" and cel 1 is "JONES GOALS", matching the call sites —
+        // cel 0 is "SET YOUR GOALS" and cel 1 is "JONES GOALS", matching the call sites â€”
         // `select2.sc:127/159/191/224` pass 0 for a human player and `room1.sc:1255` passes
         // 1 for the computer's own goals. 501 loop 0 cel 0 is the short "GOALS" plate.
         var mode = GoalScreenMode;
@@ -452,7 +452,7 @@ public sealed partial class MainViewModel : ViewModelBase
         // The four sliders are NOT labelled. They are art (view 501 loop 2), and the words
         // "Wealth" / "Happiness" / "Education" / "Career" appear in this game only as the
         // opening of the four help paragraphs in script 229 (`goalsDefine`, @0x05AA,
-        // @0x0660, @0x071C, @0x07C6) â€” never as captions on the sliders. The tooltip that
+        // @0x0660, @0x071C, @0x07C6) Ã¢â‚¬â€ never as captions on the sliders. The tooltip that
         // used to name and read out each one was mine.
         var xs = new[] { 32, 68, 104, 139 };
 
@@ -497,7 +497,7 @@ public sealed partial class MainViewModel : ViewModelBase
         }
 
         // `goalPoints` is a WButton whose text is `Goal Points = ` (raw script 236 @0x0E66)
-        // run through text 236[0] `"%s%3d "` â€” which has a TRAILING SPACE after the number.
+        // run through text 236[0] `"%s%3d "` Ã¢â‚¬â€ which has a TRAILING SPACE after the number.
         // It is there to blank the third digit's column when the total drops from 100+ back
         // to two digits, so it is not decoration and is not droppable.
         var total = viewing is null
@@ -505,14 +505,14 @@ public sealed partial class MainViewModel : ViewModelBase
             : viewing.MonGoal + viewing.HapGoal + viewing.EduGoal + viewing.CarGoal;
         Texts.Add(new TextVm($"Goal Points = {total,3} ", DialogX + 31, DialogY + 29, 8));
 
-        // Mode 2 adds the four CURRENT-VALUE markers over the sliders — `select3.sc:118-122`
+        // Mode 2 adds the four CURRENT-VALUE markers over the sliders â€” `select3.sc:118-122`
         // adds `currentWealth currentHappy currentEducation currentCareer` only when
         // `param2 == 2`. They are NOT on the setup screen, which is why they could not be
         // drawn there: during setup the players do not exist yet AND the game does not ask
         // for them.
         if (viewing is not null)
         {
-            // view 501 loop 3, `priority 15`, nsLeft 30 / 66 / 102 / 137 — two pixels left of
+            // view 501 loop 3, `priority 15`, nsLeft 30 / 66 / 102 / 137 â€” two pixels left of
             // each star slider (`select3.sc:371-501`). `nsTop` is recomputed by `draw` on
             // every one of them, so the declared 43 / 43 / 80 / 43 never survives.
             var lefts = new[] { 30, 66, 102, 137 };
@@ -525,11 +525,11 @@ public sealed partial class MainViewModel : ViewModelBase
                 Sprites.Add(Icon(501, 3, cel, lefts[g], top));
             }
 
-            // DELIBERATE ADDITION, switchable — `Player.ShowPerGoalProgress`. The original
+            // DELIBERATE ADDITION, switchable â€” `Player.ShowPerGoalProgress`. The original
             // prints NO per-goal figure anywhere: `select3` shows progress as the position of
             // the marker above, and `viewGoals` prints one percentage per PLAYER covering all
             // four goals at once (`viewGoals.sc:393-408`). This is a house extra, asked for by
-            // the player, and it is drawn only on the read-only screen — on the SETUP screen
+            // the player, and it is drawn only on the read-only screen â€” on the SETUP screen
             // there are no Players yet and every figure would read 0, which is noise.
             //
             // WHERE IT GOES, measured off view 501 loop 1 rather than eyeballed. In the band
@@ -538,15 +538,15 @@ public sealed partial class MainViewModel : ViewModelBase
             // 144..147; the star cels are 14 wide at nsLeft 32 / 68 / 104 / 139 and opaque
             // edge to edge. That leaves clear gutters at x 19..31, 46..67, 82..103 and
             // 118..138. Each figure is therefore RIGHT-ALIGNED to end two pixels before its
-            // own star, at a fixed y 45 — clear of the star whatever value it shows, of the
+            // own star, at a fixed y 45 â€” clear of the star whatever value it shows, of the
             // "Goal Points" line above (which ends at y 40), of the bars, and of the four
             // icons along the bottom, whose tops are at y 92-95 with at most six clear rows
-            // above them — too few for font 4's seven-row digits, which is why this row is up
+            // above them â€” too few for font 4's seven-row digits, which is why this row is up
             // here and not under the sliders.
             //
             // The one tight case, stated rather than hidden: the WEALTH figure sits in the
             // leftmost gutter, which is only 13 pixels wide, and "100" is 15. It is clamped
-            // to x 19 — one pixel clear of the tick scale, which ends at 18 — so at 100% its
+            // to x 19 â€” one pixel clear of the tick scale, which ends at 18 â€” so at 100% its
             // last two columns fall inside the star cel's bounding box instead. The star is
             // a star: those corner columns are transparent at most rows, and losing two
             // columns of art beats painting over the scale. Every other figure, and every
@@ -572,12 +572,12 @@ public sealed partial class MainViewModel : ViewModelBase
         // takes DIcon's default view 0 at the dialog origin; `playerNumber2` is the same
         // with `nsLeft 158`. The cel is the player index.
         //
-        // The "Player N" line that used to sit here was mine — the game never writes those
+        // The "Player N" line that used to sit here was mine â€” the game never writes those
         // words on this screen.
         Sprites.Add(Icon(0, 3, p, 0, 0));
         Sprites.Add(Icon(0, 3, p, 158, 0));
 
-        // `questionButton`, view 250 loop 9 at nsLeft 124 / nsTop 108 — the `?` that opens
+        // `questionButton`, view 250 loop 9 at nsLeft 124 / nsTop 108 â€” the `?` that opens
         // goalsDefine (script 229) and explains what the four goals mean.
         Sprites.Add(Icon(250, 9, 0, 124, 108, ShowGoalsHelp));
 
@@ -632,7 +632,7 @@ public sealed partial class MainViewModel : ViewModelBase
     }
 
     // ------------------------------------------------------------------
-    // The intro — `introRoom`, script 2
+    // The intro â€” `introRoom`, script 2
     // ------------------------------------------------------------------
 
     /// <summary>One overlay `View` in a state of `introDuction`: view, loop, cel and posn.</summary>
@@ -642,15 +642,15 @@ public sealed partial class MainViewModel : ViewModelBase
     /// One state of `introDuction` (`introRoom.sc:56-260`): the pic it draws, how long it
     /// holds, and every overlay that is on screen while it does.
     ///
-    /// The script expresses these as changes — `(littlepic3 setLoop: 1)` with the name plate
-    /// left alone at state 9, then only the name changing at state 10 — so each state here
+    /// The script expresses these as changes â€” `(littlepic3 setLoop: 1)` with the name plate
+    /// left alone at state 9, then only the name changing at state 10 â€” so each state here
     /// lists the full set rather than the delta, which is what is actually on screen.
     /// </summary>
     private sealed record IntroState(int Pic, int Seconds, params IntroCel[] Cels);
 
     /// <summary>
     /// The 20 states, transcribed one for one. `DrawPic`'s second argument is the transition
-    /// style — 3, 2, 3, 2, 3, 2 across the six pics — which this port has no equivalent for
+    /// style â€” 3, 2, 3, 2, 3, 2 across the six pics â€” which this port has no equivalent for
     /// and does not fake; the pic simply changes.
     ///
     /// The three character pics each carry a photograph (`littlepicN` at (162,160)) and a name
@@ -698,8 +698,8 @@ public sealed partial class MainViewModel : ViewModelBase
     }
 
     /// <summary>
-    /// Whether the intro sequence runs on startup. **The original always does** — `Main::play`
-    /// opens on room 2 — so this is a deliberate deviation, off by default at the user's
+    /// Whether the intro sequence runs on startup. **The original always does** â€” `Main::play`
+    /// opens on room 2 â€” so this is a deliberate deviation, off by default at the user's
     /// request because a 50-second opening is punishing when you relaunch to test.
     ///
     /// Only the AUTOPLAY is switched; `StartIntro`, `BuildIntro` and all 20 states are
@@ -711,7 +711,7 @@ public sealed partial class MainViewModel : ViewModelBase
     private DispatcherTimer? _introTimer;
 
     /// <summary>
-    /// `introRoom::init` — `(self setScript: introDuction)` (`:23-27`). Skipped entirely when
+    /// `introRoom::init` â€” `(self setScript: introDuction)` (`:23-27`). Skipped entirely when
     /// the art is not there, because a black screen for fifty seconds is worse than no intro.
     /// </summary>
     private void StartIntro()
@@ -744,7 +744,7 @@ public sealed partial class MainViewModel : ViewModelBase
 
     /// <summary>
     /// `introRoom::handleEvent` (`:29-50`) claims any mouse or key event below y 10 and jumps
-    /// the script to state 20, which disposes everything and goes to room 1 — the main menu.
+    /// the script to state 20, which disposes everything and goes to room 1 â€” the main menu.
     /// </summary>
     public bool IsIntroShowing => _screen == Screen.Intro;
 
@@ -776,15 +776,15 @@ public sealed partial class MainViewModel : ViewModelBase
     }
 
     // ------------------------------------------------------------------
-    // Goal definitions — `goalsDefine`, script 229
+    // Goal definitions â€” `goalsDefine`, script 229
     // ------------------------------------------------------------------
 
-    /// <summary>`local0` — which of the four goals the page is showing.</summary>
+    /// <summary>`local0` â€” which of the four goals the page is showing.</summary>
     private int _goalsHelpPage;
 
     /// <summary>
     /// The four paragraphs, which are STRING LITERALS IN THE SCRIPT rather than a text
-    /// resource — this build has no text 229 at all. Transcribed from the raw script bytes
+    /// resource â€” this build has no text 229 at all. Transcribed from the raw script bytes
     /// (`assets/raw/script/229.script`) at 0x05AA, 0x0660, 0x071C and 0x07C6, which is the
     /// same route `StoreLayout` takes for the shop labels, and they agree with the decompiled
     /// listing here character for character (no embedded spaces to be mangled into `_`).
@@ -805,7 +805,7 @@ public sealed partial class MainViewModel : ViewModelBase
         _goalsHelpPage = 0;
         _screen = Screen.GoalsHelp;
 
-        // `(DoAudio audPLAY 590)` at `:95`, and `(gASong fade: …)` immediately after, so the
+        // `(DoAudio audPLAY 590)` at `:95`, and `(gASong fade: â€¦)` immediately after, so the
         // title bed drops under the narration rather than being cut.
         Sound.PlaySpeech(590);
         BuildScreen();
@@ -838,7 +838,7 @@ public sealed partial class MainViewModel : ViewModelBase
         Sprites.Add(Icon(501, 6, _goalsHelpPage, 0, 88));
         Sprites.Add(Icon(501, 6, _goalsHelpPage, 147, 88));
 
-        // `Display … dsFONT 4 dsCOORD 6 30 dsCOLOR 0 dsWIDTH 171 dsALIGN alCENTER` — the
+        // `Display â€¦ dsFONT 4 dsCOORD 6 30 dsCOLOR 0 dsWIDTH 171 dsALIGN alCENTER` â€” the
         // paragraph is wrapped to a 171-wide column and each line centred inside it, which
         // is the same shape as the newspaper headline's own Display.
         var font = SciFont.Load(4);
@@ -868,7 +868,7 @@ public sealed partial class MainViewModel : ViewModelBase
 
         Sprites.Add(Icon(250, 8, 0, 47, 108, () =>
         {
-            // `(if (> (++ local0) 3) (= local0 0))` — it wraps rather than stopping.
+            // `(if (> (++ local0) 3) (= local0 0))` â€” it wraps rather than stopping.
             _goalsHelpPage = _goalsHelpPage + 1 > 3 ? 0 : _goalsHelpPage + 1;
             Sound.PlaySpeech(590 + _goalsHelpPage);
             BuildScreen();
@@ -888,7 +888,7 @@ public sealed partial class MainViewModel : ViewModelBase
     /// bottom strip is view 603 loop 1 cel 1 at nsTop 108, and Done is view 250 loop 2
     /// at nsLeft 143, nsTop 108.
     ///
-    /// The headline is whatever the economy published this week â€” the same `global415`
+    /// The headline is whatever the economy published this week Ã¢â‚¬â€ the same `global415`
     /// the indices set, which is why crashes and commodity swings read as news.
     /// </summary>
     private void BuildNewspaper()
@@ -915,7 +915,7 @@ public sealed partial class MainViewModel : ViewModelBase
         //                  dsFONT 3 dsALIGN alCENTER)
         //
         // So: font 3, a 155-wide column at x=11, centred, and vertically CENTRED about
-        // y=43 rather than started there â€” the block is measured first and half its
+        // y=43 rather than started there Ã¢â‚¬â€ the block is measured first and half its
         // height subtracted. Every value here was wrong before: font 8, x=14, a fixed
         // y=40 stepping 10, and a wrap at 20 CHARACTERS.
         //
@@ -1043,7 +1043,7 @@ public sealed partial class MainViewModel : ViewModelBase
 
             Texts.Add(new TextVm($"${price}", DialogX + 109, DialogY + tops[i] + 4, 7,
                                  _brokerSelected == inst ? "#0000C0" : "#000000"));
-            // The holdings figure is a WButton — `tBillsHoldings` and its five siblings,
+            // The holdings figure is a WButton â€” `tBillsHoldings` and its five siblings,
             // nsLeft 142, nsTop = the icon's + 4, `state 288` (bit 0 clear: a caption) and
             // `shadowColor 93` with the class's textColor 0 (`broker.sc:339-343` and
             // `:367-371`, `:395-399`, `:423-427`, `:451-455`, `:479-483`). So it carries the
@@ -1052,7 +1052,7 @@ public sealed partial class MainViewModel : ViewModelBase
                                  shadow: StoreLayout.BrokerColours.Shadow));
         }
 
-        // One share per click, no commission â€” except a flat $3 when selling a T-bill.
+        // One share per click, no commission Ã¢â‚¬â€ except a flat $3 when selling a T-bill.
         // `buyButton key 98` = `b`, `sellButton key 106` = `j` (`broker.sc:504-508`,
         // `:547-551`). `j` is what the instance declares; see SciKey for why it is ported
         // as declared rather than "corrected" to `s`.
@@ -1083,7 +1083,7 @@ public sealed partial class MainViewModel : ViewModelBase
     }
 
     /// <summary>
-    /// "Who's Winning" — `viewGoals` (script 238). One column per player: a coarse
+    /// "Who's Winning" â€” `viewGoals` (script 238). One column per player: a coarse
     /// thermometer, a fine marker riding on top of it, the player's number token and a
     /// percentage caption. Reached by F6, the middle mouse button or Ctrl-left
     /// (`Menu.sc:145-157` and `:390-395`, and the game's own help text 997[7]).
@@ -1095,7 +1095,7 @@ public sealed partial class MainViewModel : ViewModelBase
     {
         if (_game is null) return;
 
-        // `background`, view 505 with no loop or cel — DIcon's defaults, at the dialog
+        // `background`, view 505 with no loop or cel â€” DIcon's defaults, at the dialog
         // origin (`viewGoals.sc:199-203`). It is exactly dialog-sized, 183x112.
         Sprites.Add(Icon(505, 0, 0, 0, 0));
 
@@ -1117,7 +1117,7 @@ public sealed partial class MainViewModel : ViewModelBase
             // (`viewGoals.sc:307-385`, `:216-305`, `:387-481`).
             var col = 44 * i + shift;
 
-            // `therm.cel: (/ pct 10)` — loop 1 holds eleven cels, empty through full.
+            // `therm.cel: (/ pct 10)` â€” loop 1 holds eleven cels, empty through full.
             var thermCel = SciMath.Div(pct, 10);
             Sprites.Add(Icon(505, 1, thermCel, 21 + col, 35));
 
@@ -1128,7 +1128,7 @@ public sealed partial class MainViewModel : ViewModelBase
                              22 + col, 83 - thermCel * 5));
 
             // `playerNumber.cel: (player whatNum:)`. `whatNum` is the player's INDEX in the
-            // players list, not the body they chose — `players::init` (`room1.sc:960-965`)
+            // players list, not the body they chose â€” `players::init` (`room1.sc:960-965`)
             // assigns it after deleting everyone who is not playing, and substitutes 4 for
             // a Jones-driven player.
             //
@@ -1136,13 +1136,13 @@ public sealed partial class MainViewModel : ViewModelBase
             // `playJones`. It is redundant: `select4.sc:26` sets `playJones` on the same
             // player whose `playing` it has already set to 29 (`select4.sc:268`), so
             // `players::init` has made `whatNum` 4 before this screen ever runs. Ported as
-            // the one thing it can be here — this port has a single Jones flag — and left
+            // the one thing it can be here â€” this port has a single Jones flag â€” and left
             // in place rather than tidied away.
             var whatNum = p.IsJones ? 4 : i;
 
             // Each token is an ErasableDIcon whose `doit` swaps `global302` to that player,
-            // opens select3 in MODE 2 — the same goal screen, read-only, with the current
-            // value markers over the sliders — and swaps it back (`viewGoals.sc:226-235`).
+            // opens select3 in MODE 2 â€” the same goal screen, read-only, with the current
+            // value markers over the sliders â€” and swaps it back (`viewGoals.sc:226-235`).
             var seat = i;
             Sprites.Add(Icon(505, 3, whatNum, 18 + col, 90, () =>
             {
@@ -1151,7 +1151,7 @@ public sealed partial class MainViewModel : ViewModelBase
                 BuildScreen();
             }));
 
-            // `(Format @temp0 238 0 value)` with text 238[0] = "%3d~" — right-aligned in
+            // `(Format @temp0 238 0 value)` with text 238[0] = "%3d~" â€” right-aligned in
             // three columns, and `~` is the percent sign in font 4 (glyph 0x7E). Font 4,
             // colour 0 (`viewGoals.sc:393-408`).
             //
@@ -1162,7 +1162,7 @@ public sealed partial class MainViewModel : ViewModelBase
                                  fontNumber: 4, colour: "#000000"));
         }
 
-        // `exitButton`, view 250 with no loop — loop 0 — at the usual (143,108).
+        // `exitButton`, view 250 with no loop â€” loop 0 â€” at the usual (143,108).
         Sprites.Add(Icon(250, 0, 0, 143, 108, CloseWhosWinning));
     }
 
@@ -1170,7 +1170,7 @@ public sealed partial class MainViewModel : ViewModelBase
     private Screen _screenBehindGoals = Screen.Board;
 
     /// <summary>
-    /// `proc997_2` (`Menu.sc:80-116`). The Goals menu item is `SetMenu 1026 112` — enabled
+    /// `proc997_2` (`Menu.sc:80-116`). The Goals menu item is `SetMenu 1026 112` â€” enabled
     /// on the board (`room1.sc:1300`) and switched OFF for the whole turn-start sequence
     /// (`startTrn.sc:347`, `:641`), the market's buying loop (`market.sc:349`), graduation
     /// (`university.sc:220`) and the winner script (`winnerScript.sc:32`).
@@ -1200,16 +1200,16 @@ public sealed partial class MainViewModel : ViewModelBase
     }
 
     // ------------------------------------------------------------------
-    // Statistics / net worth — `inventories`, script 231
+    // Statistics / net worth â€” `inventories`, script 231
     // ------------------------------------------------------------------
 
-    /// <summary>`invSelector`'s `x` — the record width, in CHARACTERS (`inventories.sc:243`).</summary>
+    /// <summary>`invSelector`'s `x` â€” the record width, in CHARACTERS (`inventories.sc:243`).</summary>
     private const int StatsColumns = 25;
 
-    /// <summary>`invSelector`'s `y` — how many records are on screen at once (`:244`).</summary>
+    /// <summary>`invSelector`'s `y` â€” how many records are on screen at once (`:244`).</summary>
     private const int StatsRows = 7;
 
-    /// <summary>The first visible record — the selector's `topString` (`Interface.sc:630`).</summary>
+    /// <summary>The first visible record â€” the selector's `topString` (`Interface.sc:630`).</summary>
     private int _statsTop;
 
     private Screen _screenBehindStats = Screen.Board;
@@ -1217,12 +1217,12 @@ public sealed partial class MainViewModel : ViewModelBase
     /// <summary>
     /// `localproc_0` (`inventories.sc:19-149`). THE WHOLE SCREEN IS ONE STRING: every line is
     /// a `Format` appended to `@local0` through `StrEnd`, and the result is handed to a
-    /// `DSelector` whose `x` is 25 — so the buffer is a run of fixed 25-CHARACTER records and
+    /// `DSelector` whose `x` is 25 â€” so the buffer is a run of fixed 25-CHARACTER records and
     /// the widget's only job is to show seven of them at a time.
     ///
     /// Every one of the sixteen format strings in text resource 231 is exactly 25 wide once
     /// filled: `Works at %-16s` is 9 + 16, `Hourly wage: $%-11d` is 14 + 11, `%=25s` is 25 on
-    /// its own. That is the whole layout — the columns line up by PADDING, not by position,
+    /// its own. That is the whole layout â€” the columns line up by PADDING, not by position,
     /// which is why this is built as strings rather than as positioned labels.
     ///
     /// `%=25s` is SCI's centring width, handled by <see cref="Audio.Subtitles.Format"/>
@@ -1233,14 +1233,14 @@ public sealed partial class MainViewModel : ViewModelBase
         var lines = new List<string>();
         void Add(string s) => lines.Add(s);
 
-        // `(global302 calcNetWorth:)` — `:20`, before anything is read.
+        // `(global302 calcNetWorth:)` â€” `:20`, before anything is read.
         var worth = P.CalcNetWorth(_game!.Economy);
 
         Add(SciText.Get(231, 0, P.ActualName));                       // "%=25s"
 
         if (P.WorksAt != 0)
         {
-            // `700 (+ (global302 worksAt:) 71)` — the employer's `placeNum` plus 71 is its
+            // `700 (+ (global302 worksAt:) 71)` â€” the employer's `placeNum` plus 71 is its
             // name in text 700. This port stores `(int)Workplace + 1` instead of `placeNum`,
             // so the place is fetched back through the board.
             var place = Board.ForWorkplace((Workplace)(P.WorksAt - 1));
@@ -1250,7 +1250,7 @@ public sealed partial class MainViewModel : ViewModelBase
         }
         else
         {
-            // `(Format … 231 4 231 5)` — `%-25s` fed text 231[5], `Unemployed`.
+            // `(Format â€¦ 231 4 231 5)` â€” `%-25s` fed text 231[5], `Unemployed`.
             Add(SciText.Get(231, 4, SciText.Get(231, 5)));
         }
 
@@ -1295,7 +1295,7 @@ public sealed partial class MainViewModel : ViewModelBase
 
         Add(SciText.Get(231, 0, SciText.Get(231, 19)));                // "---EDUCATION---"
 
-        // `(if (global302 numDegrees:) …)` then, per education entry, `hasDegree:` —
+        // `(if (global302 numDegrees:) â€¦)` then, per education entry, `hasDegree:` â€”
         // the courses still in progress are not listed.
         if (P.NumDegrees() > 0)
         {
@@ -1325,7 +1325,7 @@ public sealed partial class MainViewModel : ViewModelBase
     /// loop 2 at the usual (143,108) (`:229-237`).
     ///
     /// SIMPLIFIED, stated: `invSelector` is a kernel `DSelector` control, which draws its own
-    /// frame — `setSize` reserves 20 pixels for it on top of `y` rows of the font's height
+    /// frame â€” `setSize` reserves 20 pixels for it on top of `y` rows of the font's height
     /// (`Interface.sc:651-657`). This draws the seven rows at the selector's own
     /// `moveTo: 17 20` at font 4's 9-pixel pitch and no frame, which is exactly what the
     /// Pawn Shoppe's list already does for the same widget.
@@ -1356,14 +1356,14 @@ public sealed partial class MainViewModel : ViewModelBase
                                  fontNumber: 4, colour: "#000000"));
         }
 
-        // `doneButton`: view 250 LOOP 2 — the same Done the newspaper uses, not the plain
+        // `doneButton`: view 250 LOOP 2 â€” the same Done the newspaper uses, not the plain
         // exit arrow (`inventories.sc:229-236`).
         Sprites.Add(Icon(250, 2, 0, 143, 108, CloseStats));
     }
 
     /// <summary>
     /// `proc997_1` (`Menu.sc:42-78`), the F4 / right-mouse / Shift-left entry point. Gated on
-    /// `GetMenu 1025 112` exactly as the goals screen is gated on 1026 — the pair are enabled
+    /// `GetMenu 1025 112` exactly as the goals screen is gated on 1026 â€” the pair are enabled
     /// and disabled together everywhere in the game (`startTrn.sc:347-352`, `:641-642`,
     /// `market.sc:348-349`), so this shares
     /// <see cref="CanShowGoalsScreen"/>'s condition.
@@ -1445,11 +1445,11 @@ public sealed partial class MainViewModel : ViewModelBase
     /// <summary>
     /// Plays a line and moves the shopkeeper's mouth in step with it, using the clip's
     /// own sync resource. The line is also drawn in the game's own speech balloon, so it
-    /// is readable with the sound off or by a deaf player â€” the floppy build printed
+    /// is readable with the sound off or by a deaf player Ã¢â‚¬â€ the floppy build printed
     /// every one of these lines rather than speaking them.
     /// </summary>
     /// <param name="args">
-    /// Values for the line's printf placeholders, where it has any â€” 17 of the subtitles
+    /// Values for the line's printf placeholders, where it has any Ã¢â‚¬â€ 17 of the subtitles
     /// are format strings because the text they came from was built with `Format`. See
     /// <see cref="Audio.Subtitles.For(int, object[])"/>.
     /// </param>
@@ -1462,7 +1462,7 @@ public sealed partial class MainViewModel : ViewModelBase
         SpokenLine = Audio.Subtitles.For(audioId, args);
         OnPropertyChanged(nameof(SpokenLine));
 
-        // Dismissal is a click, or the reading-speed timer â€” but NOT while the clip is
+        // Dismissal is a click, or the reading-speed timer Ã¢â‚¬â€ but NOT while the clip is
         // still playing. The floppy's 5 seconds was tuned to its own printed text; the CD
         // recordings are frequently longer, so obeying the timer literally snatched the
         // subtitle away mid-sentence, which defeats the point of having it for a player
@@ -1482,7 +1482,7 @@ public sealed partial class MainViewModel : ViewModelBase
 
     /// <summary>
     /// The lip-sync half of <see cref="Speak"/>, split out so a question can play its clip
-    /// and move the mouth while its own balloon — the one carrying the buttons — stays up.
+    /// and move the mouth while its own balloon â€” the one carrying the buttons â€” stays up.
     /// </summary>
     private void StartMouth(int audioId)
     {
@@ -1513,15 +1513,15 @@ public sealed partial class MainViewModel : ViewModelBase
     ///        81 {Yes} 1  81 {No} 0)
     /// </code>
     ///
-    /// — the long line, the tail, the width and both buttons in one dialog. The same shape
+    /// â€” the long line, the tail, the width and both buttons in one dialog. The same shape
     /// appears at `bank.sc:474` (width 110), `pawnShop.sc:780` (width 107) and
     /// `rentOffice.sc:524` / `:647` (width 150). The CD build replaced the printed sentence
     /// with a recording and left a SHORT prompt behind in its own text resource (CD 207[1]
     /// `Enroll for $%d?`, CD 201[0] `Rent Low-Cost Apartment?`); reading those as the thing
     /// to print produced two balloons where the game has one.
     ///
-    /// The line here is therefore the clip's own subtitle — which is the floppy string, since
-    /// that is where the subtitles came from — and the buttons sit on it.
+    /// The line here is therefore the clip's own subtitle â€” which is the floppy string, since
+    /// that is where the subtitles came from â€” and the buttons sit on it.
     /// </summary>
     private void SpeakQuestion(int audioId, int width, Action<int> answered,
                                object[] args, params BalloonButton[] buttons)
@@ -1530,7 +1530,7 @@ public sealed partial class MainViewModel : ViewModelBase
 
         // No SpokenLine: the balloon is the QUESTION's, so the reading-speed timer must not
         // take it down while the player is still deciding. `Dialog::handleEvent` does the
-        // same thing — its claim-anything branch is skipped once a selectable button exists
+        // same thing â€” its claim-anything branch is skipped once a selectable button exists
         // (`Interface.sc:1108-1125`), so a question waits however long it waits.
         Ask(Audio.Subtitles.For(audioId, args), width, answered, buttons);
 
@@ -1543,8 +1543,8 @@ public sealed partial class MainViewModel : ViewModelBase
     /// `420 + global433` for anything from 0 up, or `434 + n` for a refusal, where `n` is
     /// the failed requirement drawn in <see cref="Employment.DrawRejectionReason"/>.
     ///
-    /// Nothing is PRINTED. The six sentences that used to appear here â€” "Hired as Clerk!",
-    /// "Not enough education." and the rest â€” were mine; the real lines are recordings
+    /// Nothing is PRINTED. The six sentences that used to appear here Ã¢â‚¬â€ "Hired as Clerk!",
+    /// "Not enough education." and the rest Ã¢â‚¬â€ were mine; the real lines are recordings
     /// 424 and 434-437, whose subtitles the balloon already carries.
     ///
     /// The whole 420..425 range is now reachable, because <see cref="Game.ApplyFor"/> hands
@@ -1558,10 +1558,10 @@ public sealed partial class MainViewModel : ViewModelBase
         {
             if (_game?.LastRejection is not { } reason) return;
 
-            // `(gASong pause: 1)` `(gASoundEffect play: 44 gASong)` â€” employment.sc:35-36.
+            // `(gASong pause: 1)` `(gASoundEffect play: 44 gASong)` Ã¢â‚¬â€ employment.sc:35-36.
             // The Employment Office's bed ducks under the refusal and comes back when it
             // ends. Clicking anything else while the sting plays replaces it on the effect
-            // slot and the cue is lost, so the bed stays down until the next `playBed:` â€”
+            // slot and the cue is lost, so the bed stays down until the next `playBed:` Ã¢â‚¬â€
             // `Sound::play` clears `client` when called with one argument (Sound.sc:49),
             // so that is the original's behaviour too, not something added here.
             DuckedSting(Audio.SoundEffects.BadNews);
@@ -1570,7 +1570,7 @@ public sealed partial class MainViewModel : ViewModelBase
         }
 
         // `(if (or (== global433 2) (== global433 4)) (gASong pause: 1)
-        //     (gASoundEffect play: 45 gASong))` â€” employment.sc:51-53. The sting under the
+        //     (gASoundEffect play: 45 gASong))` Ã¢â‚¬â€ employment.sc:51-53. The sting under the
         // good news, i.e. under a granted raise and under a hire.
         if (code is ApplicationCode.RaiseGranted or ApplicationCode.Hired)
             DuckedSting(Audio.SoundEffects.GoodNews);
@@ -1581,7 +1581,7 @@ public sealed partial class MainViewModel : ViewModelBase
     private void MouthTick(object? sender, EventArgs e)
     {
         // The mouth follows the AUDIO's own clock, not a wall clock started when Play()
-        // returned. Sound can begin well after that call â€” device wake-up plus buffering â€”
+        // returned. Sound can begin well after that call Ã¢â‚¬â€ device wake-up plus buffering Ã¢â‚¬â€
         // and timing the animation from the call ran the whole mouth to a standstill
         // before a word came out. While the clip is still spinning up the position stays
         // at 0 here and the mouth simply waits for it.
@@ -1640,7 +1640,7 @@ public sealed partial class MainViewModel : ViewModelBase
     private void BalloonTick(object? sender, EventArgs e)
     {
         // Hold the balloon until the reading time has elapsed AND the clip has finished
-        // speaking â€” see the note in Speak(). _mouthTimer still running means the sync
+        // speaking Ã¢â‚¬â€ see the note in Speak(). _mouthTimer still running means the sync
         // table has frames left to play, which covers the clips that have no position to
         // report (sound off, or a head with no audio player wired up).
         if (DateTime.UtcNow - _balloonOpenedAt < TimeSpan.FromSeconds(ReadingSpeedSeconds))
@@ -1669,7 +1669,7 @@ public sealed partial class MainViewModel : ViewModelBase
     }
 
     /// <summary>
-    /// Shuts the shopkeeper up completely â€” clip, mouth and balloon together.
+    /// Shuts the shopkeeper up completely Ã¢â‚¬â€ clip, mouth and balloon together.
     ///
     /// Every location script does this as its dialog closes: `(DoAudio audSTOP)` followed
     /// by `(gASong fade:)` appears in all thirteen locations plus room1, weekend and
@@ -1698,7 +1698,7 @@ public sealed partial class MainViewModel : ViewModelBase
     }
 
     /// <summary>
-    /// Any click anywhere dismisses the balloon, as the original's modal `Print` does —
+    /// Any click anywhere dismisses the balloon, as the original's modal `Print` does â€”
     /// but ONLY a text-only one. `Dialog::handleEvent`'s claim-anything branch
     /// (`Interface.sc:1108-1125`) is gated on `(not (self firstTrue: #checkState 1))`, and
     /// a `DButton` has `state 3` (`Interface.sc:584`), so bit 1 is set and a balloon with
@@ -1708,7 +1708,7 @@ public sealed partial class MainViewModel : ViewModelBase
     {
         if (RouteInput(Jones.Net.InputKind.DismissBalloon)) return;
 
-        // A Save/Restore `Print` owns the click while it is up — see
+        // A Save/Restore `Print` owns the click while it is up â€” see
         // MainViewModel.SaveRestore.cs.
         if (DismissSystemPrint()) return;
 
@@ -1722,8 +1722,8 @@ public sealed partial class MainViewModel : ViewModelBase
         // The thirteen shop balloons do not do this in the original: its twenty
         // `(DoAudio audSTOP)` calls are all at dialog EXITS, so a line dismissed early
         // plays on until you leave the building. The end-of-game prompt is the one place
-        // it does do it — `room1.sc:1014-1024` plays clip 600, puts up a modal `Print` and
-        // cuts the audio the moment it returns — so the behaviour is the game's, applied
+        // it does do it â€” `room1.sc:1014-1024` plays clip 600, puts up a modal `Print` and
+        // cuts the audio the moment it returns â€” so the behaviour is the game's, applied
         // more widely than the game applies it. A deliberate departure, asked for: on a
         // touch screen a dismissed line that keeps talking reads as a bug.
         StopTalking();
@@ -1731,7 +1731,7 @@ public sealed partial class MainViewModel : ViewModelBase
     });
 
     /// <summary>
-    /// A `Print` that is waiting for a button — keyword 81, `Interface.sc:113-121`. There
+    /// A `Print` that is waiting for a button â€” keyword 81, `Interface.sc:113-121`. There
     /// are four in the game: the university's enrolment, the bank's loan, the pawn shop's
     /// offer and the rent office's two apartments.
     /// </summary>
@@ -1742,13 +1742,13 @@ public sealed partial class MainViewModel : ViewModelBase
 
     /// <summary>
     /// Puts a question up. In the CD build the shopkeeper's clip plays to completion BEFORE
-    /// the `Print` appears — `university.sc:668` then `:671`, `bank.sc:368` then `:373`,
-    /// `pawnShop.sc:666` then `:671` — so the question queues behind whatever is being
+    /// the `Print` appears â€” `university.sc:668` then `:671`, `bank.sc:368` then `:373`,
+    /// `pawnShop.sc:666` then `:671` â€” so the question queues behind whatever is being
     /// spoken and <see cref="BuildBalloon"/> shows it once the speech balloon has gone.
     ///
     /// The strings come from the game's own text resources via <see cref="SciText"/>; the
     /// button labels are the script's literal `#button` arguments, which are NOT uniformly
-    /// Yes/No — the pawn shop offers `Take It` / `Leave It` and the rent office spells its
+    /// Yes/No â€” the pawn shop offers `Take It` / `Leave It` and the rent office spells its
     /// pair `{ YES }` / `{ NO }`, spaces and capitals included.
     /// </summary>
     private void Ask(string text, int width, Action<int> answered,
@@ -1782,14 +1782,14 @@ public sealed partial class MainViewModel : ViewModelBase
 
     /// <summary>
     /// Builds the current speaker's balloon, using the tail number, tail tip and colour
-    /// scheme that this location's own script installs â€” see
+    /// scheme that this location's own script installs Ã¢â‚¬â€ see
     /// <see cref="BubbleWindow.TalkFor"/>.
     /// </summary>
     private void BuildBalloon()
     {
         // The Game menu's own `Print`s come first and replace everything: they are modal,
         // they are drawn on the same `gBubbleWindow`, and they can be up on screens that
-        // have no shopkeeper at all — including the main menu, before any game exists.
+        // have no shopkeeper at all â€” including the main menu, before any game exists.
         // See MainViewModel.SaveRestore.cs.
         if (BuildSystemBalloon()) return;
 
@@ -1807,8 +1807,8 @@ public sealed partial class MainViewModel : ViewModelBase
 
         if (_question is not { } q) return;
 
-        // The question's own `#width` (keyword 70) — 113 at the university, 110 at the
-        // bank, 107 at the pawn shop, 150 at the rent office — NOT the location's greeting
+        // The question's own `#width` (keyword 70) â€” 113 at the university, 110 at the
+        // bank, 107 at the pawn shop, 150 at the rent office â€” NOT the location's greeting
         // width. Putting the wrong one here is what made the enrolment box oversized.
         var hits = new List<BalloonButtonRect>();
         if (!BubbleWindow.Build(Balloon, q.Text, q.Width, t.TNum, t.X, t.Y, t.Scheme,
@@ -1829,19 +1829,19 @@ public sealed partial class MainViewModel : ViewModelBase
     }
 
     // ------------------------------------------------------------------
-    // The win sequence — `winnerScript`, script 234
+    // The win sequence â€” `winnerScript`, script 234
     // ------------------------------------------------------------------
 
     /// <summary>Cycles since the sequence opened, one per <see cref="CycleMs"/>.</summary>
     private int _winnerCycle;
 
-    /// <summary>`local0` — which end of the panel Jones walks in from on this pass.</summary>
+    /// <summary>`local0` â€” which end of the panel Jones walks in from on this pass.</summary>
     private int _winnerFrom;
 
     /// <summary>`jonesGuy`'s x, stepped 10 a cycle by `setStep: 10 10` (`:76`).</summary>
     private int _winnerGuyX;
 
-    /// <summary>`setPri: (+ 2 (* (Random 0 1) 3))` — 2 or 5, rerolled on every pass (`:77`).</summary>
+    /// <summary>`setPri: (+ 2 (* (Random 0 1) 3))` â€” 2 or 5, rerolled on every pass (`:77`).</summary>
     private bool _winnerGuyInFront;
 
     /// <summary>Confetti bursts alive right now: x, the loop, and the cycle it started on.</summary>
@@ -1857,7 +1857,7 @@ public sealed partial class MainViewModel : ViewModelBase
     /// </code>
     ///
     /// The walker is hidden (`:36`) and the panel is repainted as a podium: view 0 loop 0
-    /// CEL 4 — the 183x112 frame — at (69,44), the player's own colour panel inside it at
+    /// CEL 4 â€” the 183x112 frame â€” at (69,44), the player's own colour panel inside it at
     /// (70,45), a plinth (view 609 loop 0) at (160,154) and the winner standing on it at
     /// (160,149) in the walker's current view.
     /// </summary>
@@ -1901,7 +1901,7 @@ public sealed partial class MainViewModel : ViewModelBase
 
             // `jonesGuy::cue` (`:165-184`) drops a confetti burst whenever the cel cycle
             // finishes inside 70 <= x <= 260, at x + 50 or x - 50, on the loop TWO above
-            // his own — so loop 2 throws loop 4 and loop 3 throws loop 5.
+            // his own â€” so loop 2 throws loop 4 and loop 3 throws loop 5.
             if (_winnerCycle % WinnerGuyCels == 0 && _winnerGuyX is >= 70 and <= 260)
             {
                 _confetti.Add((
@@ -1924,14 +1924,14 @@ public sealed partial class MainViewModel : ViewModelBase
         BuildScreen();
     }
 
-    /// <summary>State 1 / state 2 — a fresh walk across, rerolled each time (`:72-95`).</summary>
+    /// <summary>State 1 / state 2 â€” a fresh walk across, rerolled each time (`:72-95`).</summary>
     private void StartWinnerPass()
     {
         _winnerFrom = _stockRng.Next(0, 1);
         _winnerGuyX = 20 + _winnerFrom * 282;
         _winnerGuyInFront = _stockRng.Next(0, 1) == 1;
 
-        // `(jonesGuy posn: …)` puts him on the far side outright; a teleport, not a step.
+        // `(jonesGuy posn: â€¦)` puts him on the far side outright; a teleport, not a step.
         _winnerGuyTween.Jump(_winnerGuyX, WinnerGuyY);
 
         // He is not on screen for the first ten cycles (`(= cycles 10)` at `:70`), so the
@@ -1942,12 +1942,12 @@ public sealed partial class MainViewModel : ViewModelBase
     /// <summary>`jonesGuy`'s loops 2 and 3 hold six cels each; the confetti loops hold twelve.</summary>
     private const int WinnerGuyCels = 6, WinnerConfettiCels = 12;
 
-    /// <summary>`(jonesGuy posn: … 153)` — `winnerScript.sc:75`.</summary>
+    /// <summary>`(jonesGuy posn: â€¦ 153)` â€” `winnerScript.sc:75`.</summary>
     private const int WinnerGuyY = 153;
 
     /// <summary>
     /// The ten `star` Props (`:197-345`), each a `FwdCount` cycler on view 609 loop 1 with
-    /// its own `cycleSpeed` — 5, 4, 6, 5, 4, 6, 5, 4, 6, 5 down the two columns.
+    /// its own `cycleSpeed` â€” 5, 4, 6, 5, 4, 6, 5, 4, 6, 5 down the two columns.
     /// </summary>
     private static readonly (int X, int Y, int Speed)[] WinnerStars =
     [
@@ -1961,7 +1961,7 @@ public sealed partial class MainViewModel : ViewModelBase
 
         // DRAW ORDER HERE IS `priority`, NOT LIST ORDER, and this is the one screen in the
         // port where the two differ. `winnerScript` states 1 and 2 give Jones
-        // `setPri: (+ 2 (* (Random 0 1) 3))` (`:77`, `:89`) — 2 or 5, rerolled on every pass —
+        // `setPri: (+ 2 (* (Random 0 1) 3))` (`:77`, `:89`) â€” 2 or 5, rerolled on every pass â€”
         // against the pedestal's declared `priority 4`, so he walks BEHIND the plinth on about
         // half his crossings and in front of it on the rest. Each confetti burst takes the
         // priority of the pass that threw it: `jonesGuy::cue` does `setPri: priority`
@@ -1969,11 +1969,11 @@ public sealed partial class MainViewModel : ViewModelBase
         //
         // SCI draws the cast in ascending priority and leaves equal priorities in cast order,
         // which the stable ordering below reproduces. Note what that alone fixes: `pedistal`
-        // is priority 4 and `theWinner` priority 3, so the plinth covers the winner's feet —
+        // is priority 4 and `theWinner` priority 3, so the plinth covers the winner's feet â€”
         // the port drew the plinth first and had the figure standing in front of it.
         _winnerParts.Clear();
 
-        // `background1` and `background2`, both `addToPic:` — baked into the background pic
+        // `background1` and `background2`, both `addToPic:` â€” baked into the background pic
         // (`Actor::addToPic` sets signal $8021, `Actor.sc:167-172`), so they are under
         // everything whatever their declared `priority 1`.
         _winnerParts.Add((0, new SpriteVm(0, 0, 4, 69, 44)));
@@ -1990,7 +1990,7 @@ public sealed partial class MainViewModel : ViewModelBase
         foreach (var (x, y, speed) in WinnerStars)
             AddWinnerPri(3, 609, 1, _winnerCycle / (speed + 1) % 5, x, y);
 
-        // `pedistal` — view 609 loop 0 at `x 160 y 154`, `priority 4`.
+        // `pedistal` â€” view 609 loop 0 at `x 160 y 154`, `priority 4`.
         AddWinnerPri(4, 609, 0, 0, 160, 154);
 
         foreach (var c in _confetti)
@@ -2012,7 +2012,7 @@ public sealed partial class MainViewModel : ViewModelBase
         // `pedistal::init` with a non-zero argument displays the placing instead of drawing
         // the cel: text 234[0..3], `  WINNER` / `2ND PLACE` / `3RD PLACE` / `4TH PLACE`,
         // at (137,148) in FONT 10 (`:355-379`). Which one depends on how many players have
-        // already finished — globals 461-464 are filled in order, which is exactly the order
+        // already finished â€” globals 461-464 are filled in order, which is exactly the order
         // `Game.Winners` records them in.
         var place = Math.Clamp(_game.Winners.IndexOf(P), 0, 3);
         Texts.Add(new TextVm(SciText.Get(234, place), 137, 148,
@@ -2038,7 +2038,7 @@ public sealed partial class MainViewModel : ViewModelBase
 
     /// <summary>
     /// `winnerScript::handleEvent` (`:151-156`): from state 2 on, ANY event is claimed and
-    /// sets `local1`, which makes the next `cue` step past the walking loop to state 5 —
+    /// sets `local1`, which makes the next `cue` step past the walking loop to state 5 â€”
     /// dispose, `global532 = 1`, and the turn chain picks up where it left off.
     /// </summary>
     public bool IsWinnerSequenceShowing => _screen == Screen.Winner;
@@ -2063,7 +2063,7 @@ public sealed partial class MainViewModel : ViewModelBase
         _screen = Screen.Newspaper;
 
         // `newsPaper::init` (newspaper.sc:202-204) silences the song and plays effect 8,
-        // the paper unfolding. `stop: 1` is `(DoSound sndSTOP self)` — a CUT, not the fade
+        // the paper unfolding. `stop: 1` is `(DoSound sndSTOP self)` â€” a CUT, not the fade
         // a location exit performs. This used to fade because the interface offered
         // nothing else; it now offers the cut the script asks for.
         Sound.CutMusic();
@@ -2097,12 +2097,12 @@ public sealed partial class MainViewModel : ViewModelBase
 
         // The board's centre panel is repainted in the CURRENT PLAYER'S colour at the
         // start of every turn and after every building visit. `proc0_16` is literally
-        // `DrawCel 0 0 whichBody 69 45 1` â€” view 0 loop 0, one flat 181x110 cel per
+        // `DrawCel 0 0 whichBody 69 45 1` Ã¢â‚¬â€ view 0 loop 0, one flat 181x110 cel per
         // character body, at an absolute top-left of (69,45).
         Sprites.Add(new SpriteVm(0, 0, body, 69, 45));
 
         // `picPatch` (view 0 loop 1, 183x25 with a +7 displacement) repaints the strip
-        // the panel would otherwise paint over â€” the roofs of the Employment Office and
+        // the panel would otherwise paint over Ã¢â‚¬â€ the roofs of the Employment Office and
         // Hi-Tech U stick up above the panel's bottom edge.
         var patch = SciArt.Cel(0, 1, 0);
         if (patch is not null) Sprites.Add(new SpriteVm(0, 1, 0, 68, 138));
@@ -2119,7 +2119,7 @@ public sealed partial class MainViewModel : ViewModelBase
                 by - cel.PixelSize.Height + 1));
         }
 
-        // `door` â€” one Prop for all thirteen buildings, `(door init: setPri: 6)` at
+        // `door` Ã¢â‚¬â€ one Prop for all thirteen buildings, `(door init: setPri: 6)` at
         // room1.sc:1224, so it is over the board pic and under the walker. See
         // MainViewModel.Animation.cs.
         BuildDoor();
@@ -2199,7 +2199,7 @@ public sealed partial class MainViewModel : ViewModelBase
 
         // "Week #%2d" at 140,184, as the Display call in marble::cue.
         //
-        // `dsBACKGROUND (if global535 86 else 7)` — an OPAQUE band, at all three of the
+        // `dsBACKGROUND (if global535 86 else 7)` â€” an OPAQUE band, at all three of the
         // places the game draws this label (`room1.sc:1161-1171`, `:1320-1330`,
         // `Game.sc:113-123`). It is the one background fill in the game that shows: the
         // board pic under (140,184) is a dithered strip of #8890A0 / #7088A0 / #708090, so
@@ -2213,8 +2213,8 @@ public sealed partial class MainViewModel : ViewModelBase
         // is view 0 loop 4 at absolute (252,160).
         //
         // It belongs to the BUILDING INTERIORS, not to the board. Every location script
-        // draws it on entry â€” `(gCalc setSize: value: (- (global302 cash:) 1) draw:)` in
-        // all thirteen of them â€” and `proc1_8` (`room1.sc:39`), the routine that puts the
+        // draws it on entry Ã¢â‚¬â€ `(gCalc setSize: value: (- (global302 cash:) 1) draw:)` in
+        // all thirteen of them Ã¢â‚¬â€ and `proc1_8` (`room1.sc:39`), the routine that puts the
         // board back, opens with `(gCalc erase:)`. So walking around town you cannot see
         // your money; you check it by going somewhere that sells something. Drawing it on
         // the board was mine, and it gives away information the original withholds.
@@ -2224,14 +2224,14 @@ public sealed partial class MainViewModel : ViewModelBase
                                      StoreLayout.CalcLeft, StoreLayout.CalcTop));
 
             // The readout, exactly as `calc::doit` draws it (`room1.sc:1437-1455`): text
-            // 1[3] `"%6s "` — a six-character RIGHT-ALIGNED FIELD plus a trailing space —
+            // 1[3] `"%6s "` â€” a six-character RIGHT-ALIGNED FIELD plus a trailing space â€”
             // LEFT-aligned from (nsLeft+22, nsTop+6) = (274,166), in FONT 14, colour index
             // 0, on an opaque band of index 101.
             //
             // Every one of those was wrong: the port picked font 10 from `size 7`,
             // right-aligned the string itself to x 308, put it at y 165 and coloured it
             // #203020, which is in no script. Font 14's digits are 5px and its space is
-            // 4px, so padding to six characters does NOT line the right edge up — the
+            // 4px, so padding to six characters does NOT line the right edge up â€” the
             // readout's right edge creeps as the figure gains digits, and true
             // right-alignment hid that.
             Texts.Add(new TextVm($"{P.Cash,6} ",
@@ -2255,7 +2255,7 @@ public sealed partial class MainViewModel : ViewModelBase
         // The podium, drawn over the room the same way `winnerScript` state 0 paints it in.
         else if (_screen == Screen.Winner) BuildWinner();
 
-        // The turn-start notice, last so it is over everything — `notice` is added to the
+        // The turn-start notice, last so it is over everything â€” `notice` is added to the
         // cast after the room is drawn and carries `priority 5` (`startTrn.sc:1055-1058`).
         else
         {
@@ -2265,7 +2265,7 @@ public sealed partial class MainViewModel : ViewModelBase
             // itself and drawn after it (`startTrn.sc:1118-1141`).
             BuildAmbulance();
 
-            // Wild Willy, `priority 8` — over the room, and he has it to himself because
+            // Wild Willy, `priority 8` â€” over the room, and he has it to himself because
             // `Place::cue` runs script 114 before anything else can start (`room1.sc:223`).
             BuildWilly();
 
@@ -2293,11 +2293,11 @@ public sealed partial class MainViewModel : ViewModelBase
     ///
     /// <list type="bullet">
     /// <item>the marble still advances exactly one <see cref="MarblePath"/> index per
-    ///   <see cref="CycleMs"/> tick, so a journey still takes the same number of ticks — and
+    ///   <see cref="CycleMs"/> tick, so a journey still takes the same number of ticks â€” and
     ///   the hours it costs were charged by `Game.TravelTo` before it set off anyway;</item>
     /// <item>the turn-start notice still climbs 16 pixels a tick from y 50 to y 143
     ///   (`setStep: 16 16`, `startTrn.sc:1063-1066`) and still rests there for
-    ///   `(proc0_3 240)` — four seconds;</item>
+    ///   `(proc0_3 240)` â€” four seconds;</item>
     /// <item>Wild Willy still moves 3 pixels every fourth cycle (`setStep: 3 3` with
     ///   `moveSpeed 3`, script 114), the ambulance 10 every cycle (`:1102`), and the winner
     ///   sequence's Jones 10 every cycle (`winnerScript.sc:76`).</item>
@@ -2317,7 +2317,7 @@ public sealed partial class MainViewModel : ViewModelBase
     ///   sync resource (`assets/raw/sync`), which is already frame-accurate. They are
     ///   digitised photographs and the whole head shifts a pixel or two between cels, so
     ///   cross-fading them would wobble the face rather than smooth the lips.</item>
-    /// <item><b>Cel animation generally</b> — the walker's four-frame cycle, Willy's eight,
+    /// <item><b>Cel animation generally</b> â€” the walker's four-frame cycle, Willy's eight,
     ///   the newspaper's six-cel fly-in (which does not move: it plays in place at
     ///   nsLeft 56, nsTop 35), the win sequence's stars and confetti. These are sequences of
     ///   drawn frames, not positions; smoothing them needs NEW ART, which is out of scope for
@@ -2327,7 +2327,7 @@ public sealed partial class MainViewModel : ViewModelBase
     public static bool SmoothMotion { get; set; } = true;
 
     /// <summary>
-    /// The redraw rate while something is being smoothed — about 60Hz, against the original's
+    /// The redraw rate while something is being smoothed â€” about 60Hz, against the original's
     /// <see cref="CycleMs"/> of 25. It drives BuildScreen only; no game state moves on it.
     /// </summary>
     private const int SmoothFrameMs = 16;
@@ -2347,7 +2347,7 @@ public sealed partial class MainViewModel : ViewModelBase
     /// returns the position at any moment in between. With <see cref="SmoothMotion"/> off it
     /// returns the step's endpoint and nothing else, which is the original's behaviour.
     ///
-    /// <see cref="Jump"/> is the teleport — `posn:` in the scripts, which several sequences
+    /// <see cref="Jump"/> is the teleport â€” `posn:` in the scripts, which several sequences
     /// use at corners (the ambulance does it four times). A teleport must not be interpolated
     /// or the vehicle slides backwards across the board.
     /// </summary>
@@ -2428,6 +2428,20 @@ public sealed partial class MainViewModel : ViewModelBase
     // Game flow
     // ------------------------------------------------------------------
 
+    /// <summary>
+    /// TEMPORARY DIAGNOSTIC — remove once the university overlay is settled.
+    /// <c>JONES_DEBUG_BOARD=1</c> starts a one-player game immediately, so the TOWN BOARD
+    /// screen can be captured without driving mouse or keyboard input at a machine the
+    /// user is sitting at. The board is the only screen with no <see cref="TitleBackdrop"/>
+    /// sprite over it, so it is the one that shows <see cref="SciArt.Board"/> alone.
+    /// </summary>
+    internal void DebugJumpToBoard()
+    {
+        _playerCount = 1;
+        StartGame();
+        BuildScreen();
+    }
+
     private void StartGame()
     {
         _game = new Game(new SciRandom(Environment.TickCount), _playerCount);
@@ -2442,7 +2456,7 @@ public sealed partial class MainViewModel : ViewModelBase
             p.RecalculateGoals(_game.Economy);
         }
 
-        // `select1.sc:132` â€” the attract-mode demo is literally Jones playing himself:
+        // `select1.sc:132` Ã¢â‚¬â€ the attract-mode demo is literally Jones playing himself:
         // it sets the FIRST player's `playing` to 29, the flag `DialogScript.sc:57` tests
         // to decide whether to drive the turn from script 300 instead of from the mouse.
         if (_demoMode) _game.Players[0].IsJones = true;
@@ -2489,7 +2503,7 @@ public sealed partial class MainViewModel : ViewModelBase
                           : null;
 
         // `startTrn` state 0: all four goals met and `(self setScript: (ScriptID 234 0))`
-        // `(return)` — the winner sequence runs BEFORE the weekend, and the chain only
+        // `(return)` â€” the winner sequence runs BEFORE the weekend, and the chain only
         // resumes when `winnerScript` sets `global532` on the way out (`:103`, `:112`).
         if (_game.LastTurnEvents.Any(e => e is TurnStartEvent.Won))
         {
@@ -2501,7 +2515,7 @@ public sealed partial class MainViewModel : ViewModelBase
     }
 
     /// <summary>
-    /// `startTrn` states 1 onward — what happens once the winner sequence, if any, is over.
+    /// `startTrn` states 1 onward â€” what happens once the winner sequence, if any, is over.
     /// </summary>
     private void ContinueTurnStart()
     {
@@ -2525,7 +2539,7 @@ public sealed partial class MainViewModel : ViewModelBase
 
     /// <summary>
     /// Prints this turn's paper if one is due, otherwise hands the board back. The paper
-    /// follows the weekend rather than replacing it â€” see <see cref="BeginTurn"/>.
+    /// follows the weekend rather than replacing it Ã¢â‚¬â€ see <see cref="BeginTurn"/>.
     /// </summary>
     private void ShowNewspaperOrBoard()
     {
@@ -2550,7 +2564,7 @@ public sealed partial class MainViewModel : ViewModelBase
         }
 
         _screen = Screen.Board;
-        // `(gASong loop: -1 play: 5)` â€” the board's theme, started wherever the board
+        // `(gASong loop: -1 play: 5)` Ã¢â‚¬â€ the board's theme, started wherever the board
         // comes up: `room1.sc:281`, `startTrn.sc:216` and `Game.sc:189`. The turn-start
         // sounds sit on either side of it: the winner's fanfare replaces it (state 0
         // returns before the theme is ever started) and everything else plays over or
@@ -2570,7 +2584,7 @@ public sealed partial class MainViewModel : ViewModelBase
 
     /// <summary>
     /// `startTrn` state 0: all four goals met, so `(self setScript: (ScriptID 234 0))` and
-    /// `(return)` â€” the rest of the turn-start chain, the board theme at state 216
+    /// `(return)` Ã¢â‚¬â€ the rest of the turn-start chain, the board theme at state 216
     /// included, never runs. `winnerScript.sc:67-69` is the whole of the sound:
     ///
     /// <code>
@@ -2581,10 +2595,10 @@ public sealed partial class MainViewModel : ViewModelBase
     ///
     /// `gASong`'s `loop` is -1 wherever the board theme was last started (`room1.sc:281`,
     /// `startTrn.sc:216`), and `Sound::play` leaves a non-zero `loop` alone (Sound.sc:46),
-    /// so song 7 loops â€” and resource 7 is one of the eleven that marks a loop point.
+    /// so song 7 loops Ã¢â‚¬â€ and resource 7 is one of the eleven that marks a loop point.
     ///
-    /// The fanfare now starts WITH the podium — see <see cref="StartWinnerSequence"/>, which
-    /// is where `startTrn` state 0 actually plays it — and the board theme comes back when
+    /// The fanfare now starts WITH the podium â€” see <see cref="StartWinnerSequence"/>, which
+    /// is where `startTrn` state 0 actually plays it â€” and the board theme comes back when
     /// the podium is dismissed and the chain runs on. This remains as the fallback for a Won
     /// event that somehow reaches the board without the sequence having run.
     ///
@@ -2622,7 +2636,7 @@ public sealed partial class MainViewModel : ViewModelBase
         // its own: it has a whole script (116) instead, and `startTrn.sc:229-238` hands the
         // chain to it and RETURNS. Script 116 gives the chain back at its state 20
         // (`(client script: 0 cue:)`, `:231`), which is when `startTrn` reaches state 3 and
-        // the notices begin â€” so the notices wait for the bills to fall rather than
+        // the notices begin Ã¢â‚¬â€ so the notices wait for the bills to fall rather than
         // arriving over them. See StartLotto in MainViewModel.Animation.cs.
         if (events.FirstOrDefault(e => e is TurnStartEvent.LotteryWin)
             is TurnStartEvent.LotteryWin win)
@@ -2648,10 +2662,10 @@ public sealed partial class MainViewModel : ViewModelBase
     /// </summary>
     /// <param name="Register">The `register` the script passes, i.e. view 310 + this.</param>
     /// <param name="Name">
-    /// The `%s` line — text 111[1] fed either the player's name (registers 7 and 11) or an
+    /// The `%s` line â€” text 111[1] fed either the player's name (registers 7 and 11) or an
     /// item name out of text 700 (register 1).
     /// </param>
-    /// <param name="Amount">The figure — text 111[3] `$%d`, or 111[2] `$%d an hour`.</param>
+    /// <param name="Amount">The figure â€” text 111[3] `$%d`, or 111[2] `$%d an hour`.</param>
     private sealed record Notice(int Register,
                                  string? Name = null, int NameY = 0,
                                  string? Amount = null, int AmountY = 0);
@@ -2662,22 +2676,22 @@ public sealed partial class MainViewModel : ViewModelBase
     private bool _noticeSettled;
     private DispatcherTimer? _noticeTimer;
 
-    /// <summary>`(notice posn: 159 50 … setMotion: MoveTo 159 143)` — `startTrn.sc:1063-1066`.</summary>
+    /// <summary>`(notice posn: 159 50 â€¦ setMotion: MoveTo 159 143)` â€” `startTrn.sc:1063-1066`.</summary>
     private const int NoticeFromY = 50, NoticeToY = 143, NoticeX = 159;
 
-    /// <summary>`(notice setStep: 16 16)` — `startTrn.sc:1065`.</summary>
+    /// <summary>`(notice setStep: 16 16)` â€” `startTrn.sc:1065`.</summary>
     private const int NoticeStep = 16;
 
     /// <summary>
     /// Turns this turn's events into the notices `startTrn` opens for them, in its own state
-    /// order — which is the order the core already reports them in.
+    /// order â€” which is the order the core already reports them in.
     ///
     /// Two of the fifteen `setScript: moveNotice` call sites are still narrower here than in
     /// the original and are listed rather than guessed at: register 11 (the wage cut) and
     /// register 7 (the sacking) are raised for the CURRENT player only, where the original
     /// runs `doScandal` for all four at every turn start (`:694-822`).
     ///
-    /// Register 12, the relative's gift, was the third: it is now reachable — `TurnStart`
+    /// Register 12, the relative's gift, was the third: it is now reachable â€” `TurnStart`
     /// ports state 34 and raises <see cref="TurnStartEvent.RelativeGift"/>.
     /// </summary>
     private void QueueNotices(IReadOnlyList<TurnStartEvent> events)
@@ -2688,13 +2702,13 @@ public sealed partial class MainViewModel : ViewModelBase
         {
             switch (e)
             {
-                // `:261` — register 10, `(Random 20 100)` earned by the computer. The figure
+                // `:261` â€” register 10, `(Random 20 100)` earned by the computer. The figure
                 // goes at y 95 (`:1017`).
                 case TurnStartEvent.ComputerIncome c:
                     _notices.Enqueue(new Notice(10, Amount: Money(c.Amount), AmountY: 95));
                     break;
 
-                // `:395` / `:402` and `:409` — registers 8 and 9, no values on either.
+                // `:395` / `:402` and `:409` â€” registers 8 and 9, no values on either.
                 case TurnStartEvent.AllFoodSpoiled:
                     _notices.Enqueue(new Notice(8));
                     break;
@@ -2702,30 +2716,30 @@ public sealed partial class MainViewModel : ViewModelBase
                     _notices.Enqueue(new Notice(9));
                     break;
 
-                // `:432` — register 0. The 20 hours it charges at `:1041` are already spent
+                // `:432` â€” register 0. The 20 hours it charges at `:1041` are already spent
                 // by `TurnStart`; this is the window only.
                 case TurnStartEvent.Starved:
                     _notices.Enqueue(new Notice(0));
                     break;
 
-                // `:464` — register 3 with the bill, at y 135 (the `else` at `:1021`). The
+                // `:464` â€” register 3 with the bill, at y 135 (the `else` at `:1021`). The
                 // 10 hours at `:1035` are likewise already charged.
                 case TurnStartEvent.DoctorVisit d:
                     _notices.Enqueue(new Notice(3, Amount: Money(d.Cost), AmountY: 135));
                     break;
 
-                // `:483` — register 2 with `curRent`, at y 125 (`:1019`).
+                // `:483` â€” register 2 with `curRent`, at y 125 (`:1019`).
                 case TurnStartEvent.RentDue r:
                     _notices.Enqueue(new Notice(2, Amount: Money(r.Amount), AmountY: 125));
                     break;
 
-                // `:517` — register 6, and ONLY at exactly one week of clothing left
+                // `:517` â€” register 6, and ONLY at exactly one week of clothing left
                 // (`:516`). Running out entirely shows no notice at all.
                 case TurnStartEvent.ClothingLow:
                     _notices.Enqueue(new Notice(6));
                     break;
 
-                // `:529` and `:534` — registers 5 and 4.
+                // `:529` and `:534` â€” registers 5 and 4.
                 case TurnStartEvent.LoanPaymentDemanded:
                     _notices.Enqueue(new Notice(5));
                     break;
@@ -2733,7 +2747,7 @@ public sealed partial class MainViewModel : ViewModelBase
                     _notices.Enqueue(new Notice(4));
                     break;
 
-                // `:625` — register 1. Two lines: the item's name out of text 700 at y 125
+                // `:625` â€” register 1. Two lines: the item's name out of text 700 at y 125
                 // (`:978`) and the repair bill at y 135.
                 case TurnStartEvent.ApplianceBroke a:
                     _notices.Enqueue(new Notice(1,
@@ -2741,7 +2755,7 @@ public sealed partial class MainViewModel : ViewModelBase
                         Amount: Money(a.RepairCost), AmountY: 135));
                     break;
 
-                // `:704` — register 7, the name at y 75 (`:976`). `:714` — register 11, the
+                // `:704` â€” register 7, the name at y 75 (`:976`). `:714` â€” register 11, the
                 // name at y 65 and the new wage through text 111[2] at y 131 (`:1020`).
                 case TurnStartEvent.CrashFallout { Outcome: 1 }:
                     _notices.Enqueue(new Notice(7,
@@ -2753,7 +2767,7 @@ public sealed partial class MainViewModel : ViewModelBase
                         Amount: SciText.Get(111, 2, P.Wage), AmountY: 131));
                     break;
 
-                // `:875` — register 12, the relative's gift. `moveNotice` state 3 formats it
+                // `:875` â€” register 12, the relative's gift. `moveNotice` state 3 formats it
                 // through text 111[3] `"$%d"` like every other money line, and its `cond`
                 // at `:1015-1022` puts register 12's figure at y 95, the same row as the
                 // computer's earnings. View 322 is the card itself (310 + 12).
@@ -2766,7 +2780,7 @@ public sealed partial class MainViewModel : ViewModelBase
         StartNextNotice();
     }
 
-    /// <summary>Text 111[3], `$%d` — the only money format `moveNotice` uses.</summary>
+    /// <summary>Text 111[3], `$%d` â€” the only money format `moveNotice` uses.</summary>
     private static string Money(int amount) => SciText.Get(111, 3, amount);
 
     /// <summary>
@@ -2787,7 +2801,7 @@ public sealed partial class MainViewModel : ViewModelBase
         _notice = _notices.Dequeue();
         _noticeY = NoticeFromY;
         _noticeSettled = false;
-        _noticeTween.Jump(NoticeX, NoticeFromY);   // `(notice posn: 159 50)` — a teleport
+        _noticeTween.Jump(NoticeX, NoticeFromY);   // `(notice posn: 159 50)` â€” a teleport
 
         // The sounds the script plays at the `setScript:` itself, before the window moves.
         switch (_notice.Register)
@@ -2826,7 +2840,7 @@ public sealed partial class MainViewModel : ViewModelBase
         if (_noticeY < NoticeToY)
         {
             // One `setStep: 16 16` step of the MoveTo, exactly as before. The tween records
-            // where it has landed so the redraw can fill the 16 pixels in — see SmoothMotion.
+            // where it has landed so the redraw can fill the 16 pixels in â€” see SmoothMotion.
             _noticeY = Math.Min(NoticeToY, _noticeY + NoticeStep);
             _noticeTween.Step(NoticeX, _noticeY, NowMs, CycleMs);
             BuildScreen();
@@ -2837,7 +2851,7 @@ public sealed partial class MainViewModel : ViewModelBase
         {
             _noticeSettled = true;
 
-            // `(if (!= (gASoundEffect number:) 27) (gASoundEffect play: 23))` — the rent
+            // `(if (!= (gASoundEffect number:) 27) (gASoundEffect play: 23))` â€” the rent
             // notice is the one that arrives under effect 27, so it arrives in silence.
             if (_notice.Register != 2) Effect(Audio.LocationMusic.ButtonClick);
 
@@ -2869,7 +2883,7 @@ public sealed partial class MainViewModel : ViewModelBase
     /// <summary>
     /// Draws the notice over the board. It IS over the board in the original too: `startTrn`
     /// shows the walker again at `:212`, well before the first `moveNotice`, and the notice
-    /// is an `Act` in room1's cast at `priority 5` — so the marble, the badges and the
+    /// is an `Act` in room1's cast at `priority 5` â€” so the marble, the badges and the
     /// walker's head and feet around the window are the room, not a hole.
     /// </summary>
     private void BuildNotice()
@@ -2889,23 +2903,23 @@ public sealed partial class MainViewModel : ViewModelBase
 
         if (!_noticeSettled) return;
 
-        // `(Display … dsCOORD (- 160 (/ [local17 3] 2)) <y> dsCOLOR 0 dsBACKGROUND -1
-        //   dsFONT 4)` — measured, then centred on x 160. `[local17 3]` is TextSize's
+        // `(Display â€¦ dsCOORD (- 160 (/ [local17 3] 2)) <y> dsCOLOR 0 dsBACKGROUND -1
+        //   dsFONT 4)` â€” measured, then centred on x 160. `[local17 3]` is TextSize's
         // width, the fourth word it fills in.
         AddCentredNoticeLine(n.Name, n.NameY);
         AddCentredNoticeLine(n.Amount, n.AmountY);
     }
 
     // ------------------------------------------------------------------
-    // The ambulance — `moveAmbulance` and `ambulance`, `startTrn.sc:1072-1141`
+    // The ambulance â€” `moveAmbulance` and `ambulance`, `startTrn.sc:1072-1141`
     // ------------------------------------------------------------------
 
     /// <summary>
     /// One state of `moveAmbulance`. Each one sets the cel it drives in, teleports the vehicle
-    /// with `posn:` and then `MoveTo`s across one side of the board — so the corners are JUMPS
+    /// with `posn:` and then `MoveTo`s across one side of the board â€” so the corners are JUMPS
     /// in the original, not turns, and they are jumps here.
     /// </summary>
-    /// <param name="Cel">`(ambulance cel: n)` — loop 1's four facings.</param>
+    /// <param name="Cel">`(ambulance cel: n)` â€” loop 1's four facings.</param>
     private sealed record AmbulanceLeg(int Cel, int FromX, int FromY, int ToX, int ToY);
 
     /// <summary>
@@ -2921,7 +2935,7 @@ public sealed partial class MainViewModel : ViewModelBase
     /// (4 (ambulance posn:  59 155 cel: 0 setMotion: MoveTo 230 155 self))
     /// </code>
     ///
-    /// It drives the ring twice along the bottom — states 0 and 4 are the same run — which is
+    /// It drives the ring twice along the bottom â€” states 0 and 4 are the same run â€” which is
     /// what the script says, not a duplicate.
     /// </summary>
     private static readonly AmbulanceLeg[] AmbulanceLegs =
@@ -2934,12 +2948,12 @@ public sealed partial class MainViewModel : ViewModelBase
     ];
 
     /// <summary>
-    /// `ambulance` — view 608 loop 1, `setStep: 10 10`, `priority 5` (`:1097-1112`).
+    /// `ambulance` â€” view 608 loop 1, `setStep: 10 10`, `priority 5` (`:1097-1112`).
     ///
     /// <para>
     /// IT DECLARES `ticksToDo 8` (`startTrn.sc:1107`) AND THAT PROPERTY IS DEAD. `ticksToDo`
-    /// is read in exactly one place — `Cycle::init` (`Motion.sc:21`), i.e. when a cycler is
-    /// attached — and `moveAmbulance` never calls `setCycle:`. Every one of its five states
+    /// is read in exactly one place â€” `Cycle::init` (`Motion.sc:21`), i.e. when a cycler is
+    /// attached â€” and `moveAmbulance` never calls `setCycle:`. Every one of its five states
     /// writes the cel outright (`cel: 0`, `cel: 1`, `cel: 2`, `cel: 3`), because loop 1's four
     /// cels are the four FACINGS of the vehicle, not a cycle. So there is nothing here for
     /// <see cref="CelCycler"/> to drive, and the cel table above is already the whole truth.
@@ -2960,7 +2974,7 @@ public sealed partial class MainViewModel : ViewModelBase
     ///
     /// `ambulance::init` takes its `moveSpeed` from the marble (`(ScriptID 1 7) moveSpeed:`,
     /// which is `moveSpeed 1` on `room1.sc`'s `marble` instance), so it steps on the same
-    /// cycle the marble does — one step per <see cref="CycleMs"/>, ten pixels at a time.
+    /// cycle the marble does â€” one step per <see cref="CycleMs"/>, ten pixels at a time.
     /// </summary>
     private void StartAmbulance()
     {
@@ -2984,7 +2998,7 @@ public sealed partial class MainViewModel : ViewModelBase
         _ambulanceX = AmbulanceLegs[leg].FromX;
         _ambulanceY = AmbulanceLegs[leg].FromY;
 
-        // `posn:` — the vehicle is PUT there, so this must not be interpolated.
+        // `posn:` â€” the vehicle is PUT there, so this must not be interpolated.
         _ambulanceTween.Jump(_ambulanceX, _ambulanceY);
     }
 
@@ -3012,7 +3026,7 @@ public sealed partial class MainViewModel : ViewModelBase
             }
             else
             {
-                // State 5: `(client script: 0 cue:)` `(ambulance dispose:)` — the chain goes
+                // State 5: `(client script: 0 cue:)` `(ambulance dispose:)` â€” the chain goes
                 // on, which here means the next notice in the queue.
                 StopAmbulance();
                 StartNextNotice();
@@ -3067,8 +3081,8 @@ public sealed partial class MainViewModel : ViewModelBase
     ///
     /// The original interleaves it with the animation: `room1.sc:1381` asks script 300 for a
     /// destination, walks the marble there, and `DialogScript.sc:71` asks again the moment
-    /// that building's dialog closes. The decision loop is identical â€” see
-    /// <see cref="JonesTurn"/> â€” and only the pacing differs, because the marble walk is
+    /// that building's dialog closes. The decision loop is identical Ã¢â‚¬â€ see
+    /// <see cref="JonesTurn"/> Ã¢â‚¬â€ and only the pacing differs, because the marble walk is
     /// driven by a UI timer that the headless core knows nothing about.
     /// </summary>
     private void PlayJonesTurnIfNeeded()
@@ -3104,7 +3118,7 @@ public sealed partial class MainViewModel : ViewModelBase
     public static Audio.IAudioPlayer Sound { get; set; } = new Audio.SilentAudioPlayer();
 
     /// <summary>
-    /// The floppy build's two independent mutes â€” `Turn Music Off` (F2) and
+    /// The floppy build's two independent mutes Ã¢â‚¬â€ `Turn Music Off` (F2) and
     /// `Turn Sound Effects Off` (F3), `jones-dos-1.000.060/src/Menu.sc:128`.
     ///
     /// Held here rather than on <see cref="Audio.IAudioPlayer"/> so that the heads stay
@@ -3119,7 +3133,7 @@ public sealed partial class MainViewModel : ViewModelBase
     /// <summary>
     /// Dialogue, muted. There is NO such switch in the original: the floppy's Options menu
     /// has music (F2) and effects (F3) only, and the CD build dropped even those. It is
-    /// here because the two that do exist are function keys, and a phone has none — see
+    /// here because the two that do exist are function keys, and a phone has none â€” see
     /// <see cref="SpeechOn"/>.
     ///
     /// Separate from `Sound.Enabled`, which is Ctrl-V's master switch and kills everything.
@@ -3134,12 +3148,12 @@ public sealed partial class MainViewModel : ViewModelBase
     // A DEVIATION, and recorded as one in PARITY.md. The original does NOT persist its
     // volume: `global520` is a plain global initialised to 12 in the script's variable block
     // (`Main.sc:664`), and the only FileIO the game performs anywhere is READING a file named
-    // "version" into the buffer `global539` (`Main.sc:1199-1201`) — the version string that
+    // "version" into the buffer `global539` (`Main.sc:1199-1201`) â€” the version string that
     // `Menu.sc:176` prints and `Save.sc` hands to `SaveGame`. The CD decompilation calls the
     // receiving global `gVolume`; the floppy decompilation of the identical code calls it
     // `gVersion`. It has nothing to do with sound. See SettingsStore for the full trail.
     //
-    // What the original DOES do is carry the volume inside a saved game — `SaveGame`
+    // What the original DOES do is carry the volume inside a saved game â€” `SaveGame`
     // snapshots the heap, and `Game.sc:110` re-applies `(DoSound sndMASTER_VOLUME global520)`
     // on the restore path because of it. So this is an extension of something the game half
     // does, not an invention; but across a launch it is ours.
@@ -3175,10 +3189,15 @@ public sealed partial class MainViewModel : ViewModelBase
         // player who chose one and quit should not find it reset. `LoadSetting` defers to
         // `JONES_UI_FONT` if that is set, and to the bitmap face if Quicksand will not parse.
         UiFont.LoadSetting(file.Interface.QuicksandInterfaceFont);
+
+        // Straight onto the player rather than through the property, which would write the
+        // file straight back. The head sets this before its audio device is open and the
+        // player holds it until the mixer exists, so there is no race with start-up.
+        Sound.UseOriginalAudio = file.Interface.UseOriginalAudio;
     }
 
     /// <summary>
-    /// Writes the four switches. Called from every place one of them changes — both the key
+    /// Writes the four switches. Called from every place one of them changes â€” both the key
     /// handler and the on-screen switches go through the same properties, so there is one
     /// path. A failure is silent: the game has no message for it.
     /// </summary>
@@ -3196,6 +3215,7 @@ public sealed partial class MainViewModel : ViewModelBase
         new InterfaceSettings
         {
             QuicksandInterfaceFont = UiFont.Enabled,
+            UseOriginalAudio = Sound.UseOriginalAudio,
         });
     }
 
@@ -3204,7 +3224,7 @@ public sealed partial class MainViewModel : ViewModelBase
     // ------------------------------------------------------------------
 
     /// <summary>
-    /// THE INTERFACE FACE SWITCH, as the player sees it — off is the game's own font 10.
+    /// THE INTERFACE FACE SWITCH, as the player sees it â€” off is the game's own font 10.
     ///
     /// <para>
     /// A DELIBERATE DEVIATION, and it is live on purpose. Setting it rebuilds the screen
@@ -3218,11 +3238,11 @@ public sealed partial class MainViewModel : ViewModelBase
     /// F6, F7, F8, F9 and F10 (text 997[6]), Ctrl-Q, Ctrl-S, Ctrl-T, Ctrl-V, Ctrl-Y, Ctrl-Z,
     /// Esc, Ctrl-Left and Shift-Left (997[7]); this port has taken F2 and F3 for the floppy's
     /// music and effects items; and every list in the game binds the DIGITS as its own
-    /// accelerators — eighteen of them at Z-Mart alone (`discount.sc`), ten on the Factory's
+    /// accelerators â€” eighteen of them at Z-Mart alone (`discount.sc`), ten on the Factory's
     /// job list. What is left is F11 and F12, which the game never mentions, and inventing a
     /// binding out of them is exactly the kind of thing working rule 1 is defending against.
     /// So it lives beside the sound switches instead: modern chrome, outside the Viewbox,
-    /// where the port's other non-Sierra controls already are — and reachable on Android,
+    /// where the port's other non-Sierra controls already are â€” and reachable on Android,
     /// which has no keyboard at all.
     /// </para>
     /// </summary>
@@ -3248,11 +3268,50 @@ public sealed partial class MainViewModel : ViewModelBase
     public static bool QuicksandFontAvailable => UiFont.Available;
 
     // ------------------------------------------------------------------
+    // The soundtrack switch
+    // ------------------------------------------------------------------
+
+    /// <summary>
+    /// ORIGINAL SOUNDTRACK, as the player sees it â€” off is the game's own AdLib music, which
+    /// is the default and the shipped behaviour.
+    ///
+    /// <para>
+    /// LIVE, for the same reason the interface face is: the bed restarts on the other
+    /// synthesiser the moment this is set, in the room the player is standing in, so the two
+    /// can be heard against each other on one cue. A switch that took effect on the next
+    /// location would be no use for deciding which is better, and deciding that is the whole
+    /// reason it exists.
+    /// </para>
+    ///
+    /// <para>
+    /// A cue with no original version written yet still comes from the AdLib path even with
+    /// this on, per cue â€” so the original set can be filled in a batch at a time and there is
+    /// no point at which half the game is silent.
+    /// </para>
+    /// </summary>
+    public bool OriginalAudio
+    {
+        get => Sound.UseOriginalAudio;
+        set
+        {
+            if (Sound.UseOriginalAudio == value) return;
+
+            Sound.UseOriginalAudio = value;
+            SaveSoundSettings();
+
+            // Read back rather than assumed. A player with no synthesiser behind the switch —
+            // the silent player, or a head whose audio device never opened — leaves it where
+            // it was, and the toggle must show that rather than lie.
+            OnPropertyChanged();
+        }
+    }
+
+    // ------------------------------------------------------------------
     // The on-screen sound switches
     //
     // NOT PORTED FROM ANYTHING. The original's switches are `Turn Music Off `#2` and
     // `Turn Sound Effects Off `#3` on the floppy's Options menu (`Menu.sc:128`), with the
-    // master volume on Ctrl-V — all three keyboard-only, and this port is heading for
+    // master volume on Ctrl-V â€” all three keyboard-only, and this port is heading for
     // Android where there is no keyboard at all. So these are three touch targets that do
     // the same thing, plus a speech mute the game never had.
     //
@@ -3374,7 +3433,7 @@ public sealed partial class MainViewModel : ViewModelBase
         Sound.PlayEffect(soundResource, resumeMusicWhenDone: true);
     }
 
-    /// <summary>`gASoundEffect2 play: n` — the second effect slot, unless F3 is set.</summary>
+    /// <summary>`gASoundEffect2 play: n` â€” the second effect slot, unless F3 is set.</summary>
     private static void Effect2(int soundResource)
     {
         if (!EffectsOff) Sound.PlayEffect2(soundResource);
@@ -3392,7 +3451,7 @@ public sealed partial class MainViewModel : ViewModelBase
         // building would be the human moving Jones's marble.
         if (P.IsJones) return;
 
-        // `Place::doit` (room1.sc:146-167) plays the click in both of its branches â€” the
+        // `Place::doit` (room1.sc:146-167) plays the click in both of its branches Ã¢â‚¬â€ the
         // one that sends the marble off and the one that just re-opens the building you
         // are standing on. The whole handler is gated on hours remaining (room1.sc:141),
         // so a click with the week spent makes no sound.
@@ -3404,7 +3463,7 @@ public sealed partial class MainViewModel : ViewModelBase
         if (from == id)
         {
             // `Place::handleEvent`'s second branch is a bare `(self cue:)` (room1.sc:166),
-            // the same `cue` the marble's arrival runs â€” so the door animates on this path
+            // the same `cue` the marble's arrival runs Ã¢â‚¬â€ so the door animates on this path
             // too. See Arrive/EnterBuilding.
             OpenDoor(id, () =>
             {
@@ -3453,12 +3512,12 @@ public sealed partial class MainViewModel : ViewModelBase
         if (_route.Count == 0) { Arrive(); return; }
 
         // Smoothing starts from wherever the marble is standing now; the first tick steps
-        // away from here. See SmoothMotion — the 25ms per path index is untouched.
+        // away from here. See SmoothMotion â€” the 25ms per path index is untouched.
         var (sx, sy) = MarblePath.At(_marbleIndex);
         _marbleTween.Jump(sx, sy);
 
         // `MarblePath::init` ends with `(gTheWalker setCycle: Fwd)` (marblePath.sc:38), and
-        // `Cycle::init` sets `lastTime (GetTime)` — so the cel clock restarts here, with the
+        // `Cycle::init` sets `lastTime (GetTime)` â€” so the cel clock restarts here, with the
         // journey, and not on the marble's steps. See WalkerFrame.
         //
         // The CEL is deliberately not reset with it. `Cycle::init` does not touch the
@@ -3485,13 +3544,13 @@ public sealed partial class MainViewModel : ViewModelBase
 
         _marbleIndex = _route.Dequeue();
 
-        // The index — the thing the game counts — has already moved. This only records
+        // The index â€” the thing the game counts â€” has already moved. This only records
         // where that index is on screen and how long the marble has to get there.
         var (tx, ty) = MarblePath.At(_marbleIndex);
         _marbleTween.Step(tx, ty, NowMs, CycleMs);
 
         // The walker's cels are NOT advanced here. `setCycle: Fwd` runs on the walker's own
-        // `ticksToDo 10` clock, not on the marble's steps — see WalkerFrame, which reads it
+        // `ticksToDo 10` clock, not on the marble's steps â€” see WalkerFrame, which reads it
         // off the wall clock at draw time. Stepping it here is what made him vibrate.
         BuildScreen();
     }
@@ -3500,8 +3559,8 @@ public sealed partial class MainViewModel : ViewModelBase
     /// Which cel of the walk cycle is showing, and how far through that cel we are.
     ///
     /// THIS USED TO BE WRONG, and it was the whole of "the walker looks like trash". The
-    /// port advanced the cel once per marble step — `_walkCel = (_walkCel + 1) % 4` in
-    /// <see cref="WalkTick"/>, i.e. every <see cref="CycleMs"/> — so the four frames played
+    /// port advanced the cel once per marble step â€” `_walkCel = (_walkCel + 1) % 4` in
+    /// <see cref="WalkTick"/>, i.e. every <see cref="CycleMs"/> â€” so the four frames played
     /// in 100ms: ten complete walk cycles a second. Sixty per cent of the figure's pixels
     /// change between adjacent cels, so at that rate a photographed actor does not walk, he
     /// vibrates.
@@ -3512,11 +3571,11 @@ public sealed partial class MainViewModel : ViewModelBase
     /// <list type="bullet">
     /// <item>`theWalker` declares `ticksToDo 10` (room1.sc:1060);</item>
     /// <item>`marble` declares `ticksToDo 1` and `moveSpeed 1` (room1.sc:1083-1084), and the
-    ///   Game Speed gauge rewrites only the MARBLE's pair — `ticksToDo: (- 7 temp4)
+    ///   Game Speed gauge rewrites only the MARBLE's pair â€” `ticksToDo: (- 7 temp4)
     ///   moveSpeed: (- 7 temp4)` at Menu.sc:307-310, normal 6, so 1 at the default setting.
     ///   Nothing anywhere writes the walker's. The marble's own `ticksToDo` is in fact
     ///   INERT: nothing ever calls `setCycle:` on it, so no `Cycle` is ever attached to read
-    ///   the property — which is why Menu.sc:314 has to guard the third write with
+    ///   the property â€” which is why Menu.sc:314 has to guard the third write with
     ///   `(if ((ScriptID 1 7) cycler:))`. Its cel is the player's body, written directly.
     ///   `moveSpeed` is the half of that pair that does anything.</item>
     /// <item>`Cycle::nextCel` (Motion.sc:26-44) gates on `ticksToDo` against the WALL CLOCK,
@@ -3524,7 +3583,7 @@ public sealed partial class MainViewModel : ViewModelBase
     ///   `(u&lt; (+ ticksToDo lastTime) (GetTime))`, then resamples `lastTime`.</item>
     /// </list>
     ///
-    /// `GetTime` counts 60ths of a second — the same unit as `(proc0_3 240)` being the
+    /// `GetTime` counts 60ths of a second â€” the same unit as `(proc0_3 240)` being the
     /// notice's documented four seconds. The comparison is STRICT, so a cel holds for
     /// `ticksToDo + 1` ticks: 11/60s, and the four-cel cycle takes about 0.73s. That is a
     /// human walking pace, and it is what the marble's speed setting is deliberately not
@@ -3532,7 +3591,7 @@ public sealed partial class MainViewModel : ViewModelBase
     ///
     /// <para>
     /// The rule itself now lives in <see cref="CelCycler"/>, because the walker is not the
-    /// only actor that declares `ticksToDo` — Wild Willy declares 8 and had the same bug.
+    /// only actor that declares `ticksToDo` â€” Wild Willy declares 8 and had the same bug.
     /// This method is the walker's use of it plus the port's own in-between art.
     /// </para>
     ///
@@ -3540,13 +3599,13 @@ public sealed partial class MainViewModel : ViewModelBase
     /// <see cref="MarblePath"/> index per <see cref="CycleMs"/> tick in <see cref="WalkTick"/>,
     /// so a journey still takes the same number of ticks and the same real time; the hours it
     /// costs were charged by `Game.TravelTo` before it set off. All that changed is which
-    /// picture of the man is on screen while that happens — the cels are art, not position.
+    /// picture of the man is on screen while that happens â€” the cels are art, not position.
     ///
     /// <para>
     /// The second return value is the IN-BETWEEN frame within the cel. At 11 ticks a cel and
     /// a 16ms redraw the same picture is drawn eleven times over, which is a slideshow; the
     /// sub-frames are interpolated art generated by <c>tools/smooth_walk.py</c> and are
-    /// pure decoration — <see cref="SciArt.SubCel"/> falls back to the plain cel when they
+    /// pure decoration â€” <see cref="SciArt.SubCel"/> falls back to the plain cel when they
     /// are not on disk, and <see cref="SmoothMotion"/> off suppresses them entirely, which
     /// restores the original's own stepping for comparison.
     /// </para>
@@ -3565,7 +3624,7 @@ public sealed partial class MainViewModel : ViewModelBase
     }
 
     /// <summary>
-    /// `theWalker ticksToDo 10` (room1.sc:1060) — 11 ticks a cel, 183ms, a 0.73s walk cycle.
+    /// `theWalker ticksToDo 10` (room1.sc:1060) â€” 11 ticks a cel, 183ms, a 0.73s walk cycle.
     /// The arithmetic is <see cref="CelCycler"/>'s; this is only the script's number.
     /// </summary>
     private const int WalkerTicksToDo = 10;
@@ -3574,7 +3633,7 @@ public sealed partial class MainViewModel : ViewModelBase
     private const int WalkerCels = 4;
 
     /// <summary>
-    /// In-between frames generated per cel, including the cel itself — 4 gives about 22
+    /// In-between frames generated per cel, including the cel itself â€” 4 gives about 22
     /// distinct pictures a second out of a 5.5-per-second original. Must match the
     /// <c>SUBS</c> constant in <c>tools/smooth_walk.py</c>, which names the files.
     /// </summary>
@@ -3587,7 +3646,7 @@ public sealed partial class MainViewModel : ViewModelBase
         // door once the 60 Hours are gone; when it gets there `room1::doit`
         // (room1.sc:1369-1373) cues `marble::cue:` (room1.sc:1092), which zeroes the
         // clock, bumps the week if play has come back round to the first player, and calls
-        // `startTurn:`. That is the whole of Jones's turn hand-over â€” there is no button.
+        // `startTurn:`. That is the whole of Jones's turn hand-over Ã¢â‚¬â€ there is no button.
         if (_goingHome)
         {
             _goingHome = false;
@@ -3604,7 +3663,7 @@ public sealed partial class MainViewModel : ViewModelBase
     }
 
     /// <summary>
-    /// `Place::cue` from `((ScriptID sNumber 0) init: room1)` (`room1.sc:209`) onwards — the
+    /// `Place::cue` from `((ScriptID sNumber 0) init: room1)` (`room1.sc:209`) onwards â€” the
     /// building's dialog itself, once the door is open.
     /// </summary>
     private void EnterBuilding()
@@ -3614,8 +3673,8 @@ public sealed partial class MainViewModel : ViewModelBase
         _screen = Screen.LocationPanel;
 
         // Every building opens FRESH. In the original each location is a dialog that is
-        // built on entry and destroyed on the way out â€” `employment.sc:360-364` disposes
-        // the dialog and then the whole script â€” so nothing you were looking at last time
+        // built on entry and destroyed on the way out Ã¢â‚¬â€ `employment.sc:360-364` disposes
+        // the dialog and then the whole script Ã¢â‚¬â€ so nothing you were looking at last time
         // can still be on screen when you walk back in. Any drilled-in sub-screen state
         // has to be cleared here to match; leaving it set showed you the job list you
         // happened to be reading on your previous visit instead of the employer list.
@@ -3648,7 +3707,7 @@ public sealed partial class MainViewModel : ViewModelBase
 
     /// <summary>
     /// `gASong playBed: n`, the first thing every building's dialog does once it is on
-    /// screen â€” `appliance.sc:119`, `bank.sc:103`, `employment.sc:322` and the rest, one
+    /// screen Ã¢â‚¬â€ `appliance.sc:119`, `bank.sc:103`, `employment.sc:322` and the rest, one
     /// per location. Starting it replaces whatever the board was playing, which is what
     /// happens in the original too: there is a single `gASong`.
     /// </summary>
@@ -3669,11 +3728,11 @@ public sealed partial class MainViewModel : ViewModelBase
     ///
     /// This is the piece that was missing. Nothing in the port ever ended a turn, so once
     /// `Clock.TurnOver` went true every action was disabled and `TravelTo` refused every
-    /// destination â€” the board was still drawn, but no click did anything.
+    /// destination Ã¢â‚¬â€ the board was still drawn, but no click did anything.
     /// </summary>
     private void LeaveBuilding()
     {
-        // `(DoAudio audSTOP)` is the dialog's own exit step â€” see StopTalking().
+        // `(DoAudio audSTOP)` is the dialog's own exit step Ã¢â‚¬â€ see StopTalking().
         StopTalking();
 
         // The dialog is disposed on the way out and the panel's cycler with it
@@ -3761,22 +3820,22 @@ public sealed partial class MainViewModel : ViewModelBase
     }
 
     // ------------------------------------------------------------------
-    // Wild Willy — `muggedByMarket` / `muggedByBank`, script 114
+    // Wild Willy â€” `muggedByMarket` / `muggedByBank`, script 114
     // ------------------------------------------------------------------
 
     /// <summary>
-    /// One leg of Willy's walk: the loop he faces in, where he is going, and — for the two
-    /// states that are a pause rather than a move — how long he stands there.
+    /// One leg of Willy's walk: the loop he faces in, where he is going, and â€” for the two
+    /// states that are a pause rather than a move â€” how long he stands there.
     /// </summary>
     /// <param name="Loop">`setLoop:`.</param>
     /// <param name="ToX">Destination x, or the current x for a pause.</param>
     /// <param name="ToY">Destination y.</param>
     /// <param name="Cel">A fixed cel for a pause leg, or -1 to keep cycling `Fwd`.</param>
     /// <param name="PauseSeconds">`(= seconds 3)` for the robbery itself, 0 otherwise. WALL-CLOCK
-    /// seconds — see <see cref="WillyTick"/>, which is where this used to be counted wrong.</param>
+    /// seconds â€” see <see cref="WillyTick"/>, which is where this used to be counted wrong.</param>
     /// <param name="Restart">Whether this state calls `setCycle: Fwd`. That clears signal
     /// $1000 and resamples `Cycle::lastTime`, so the cel clock starts again here. The states
-    /// that only say `setLoop:` leave the running cycler — and its clock — alone.</param>
+    /// that only say `setLoop:` leave the running cycler â€” and its clock â€” alone.</param>
     /// <param name="ResetCel">Whether this state also writes `cel: 0` outright. Two of the
     /// four `setCycle: Fwd` states do and two do not; `setCycle:` itself never resets a cel.
     /// </param>
@@ -3791,10 +3850,10 @@ public sealed partial class MainViewModel : ViewModelBase
     /// </summary>
     private static readonly WillyLeg[] WillyAtBank =
     [
-        // (0 … loop: 3 setCycle: Fwd setMotion: MoveTo 5 125 self)
+        // (0 â€¦ loop: 3 setCycle: Fwd setMotion: MoveTo 5 125 self)
         new(3, 5, 125, Restart: true),
 
-        // (1 (willy setLoop: 4 setMotion: MoveTo 5 152 self))   — no setCycle:, so the
+        // (1 (willy setLoop: 4 setMotion: MoveTo 5 152 self))   â€” no setCycle:, so the
         // (2 (willy setLoop: 2 setMotion: MoveTo 10 152 self))     clock and cel carry on
         new(4, 5, 152),
         new(2, 10, 152),
@@ -3812,13 +3871,13 @@ public sealed partial class MainViewModel : ViewModelBase
     /// </summary>
     private static readonly WillyLeg[] WillyAtMarket =
     [
-        // (0 … loop: 5 setCycle: Fwd setMotion: MoveTo 64 141 self)
+        // (0 â€¦ loop: 5 setCycle: Fwd setMotion: MoveTo 64 141 self)
         new(5, 64, 141, Restart: true),
 
-        // (1 (willy setMotion: MoveTo 57 110 self))  — same loop, same running cycler
+        // (1 (willy setMotion: MoveTo 57 110 self))  â€” same loop, same running cycler
         new(5, 57, 110),
 
-        // `(willy setLoop: 7 setCel: 1)` — loop 7 holds ONE cel, so cel 1 does not exist.
+        // `(willy setLoop: 7 setCel: 1)` â€” loop 7 holds ONE cel, so cel 1 does not exist.
         // `Actor::setCel` clamps to `lastCel` (Actor.sc:153-159), so the original shows cel 0
         // too; the script's own number is recorded here and CelCycler.FixCel does the clamp.
         new(7, 57, 110, Cel: 1, PauseSeconds: 3),
@@ -3826,7 +3885,7 @@ public sealed partial class MainViewModel : ViewModelBase
         // (3 (willy setLoop: 3 cel: 0 setCycle: Fwd setMotion: MoveTo 17 109 self))
         new(3, 17, 109, Restart: true, ResetCel: true),
 
-        // (4 (willy setLoop: 5 setCycle: Fwd setMotion: MoveTo -10 72 self)) — NO `cel: 0`,
+        // (4 (willy setLoop: 5 setCycle: Fwd setMotion: MoveTo -10 72 self)) â€” NO `cel: 0`,
         // so the cel carries over from loop 3 and Fwd wraps it if it overshoots loop 5.
         new(5, -10, 72, Restart: true),
     ];
@@ -3838,11 +3897,11 @@ public sealed partial class MainViewModel : ViewModelBase
     private long _willyPauseStartMs;
     private DispatcherTimer? _willyTimer;
 
-    /// <summary>`willy`'s cycler. Its clock is his own, not the mover's — see <see cref="WillyTicksToDo"/>.</summary>
+    /// <summary>`willy`'s cycler. Its clock is his own, not the mover's â€” see <see cref="WillyTicksToDo"/>.</summary>
     private readonly CelCycler _willyCycler = new(WillyTicksToDo);
 
     /// <summary>
-    /// `willy` — view 340, `setStep: 3 3`, `moveSpeed 3`, `ticksToDo 8`
+    /// `willy` â€” view 340, `setStep: 3 3`, `moveSpeed 3`, `ticksToDo 8`
     /// (`muggedByMarket.sc:150-161`).
     ///
     /// <para>
@@ -3850,7 +3909,7 @@ public sealed partial class MainViewModel : ViewModelBase
     /// of constants now separates. `moveSpeed 3` belongs to the MOVER: it skips three game
     /// cycles between 3-pixel steps, which is the 100ms-per-step cadence below. `ticksToDo 8`
     /// belongs to the CYCLER and is measured against `GetTime`, so his eight-cel walk changes
-    /// picture every 9/60s — 150ms, not 100ms. The port drove the cels off the move cadence,
+    /// picture every 9/60s â€” 150ms, not 100ms. The port drove the cels off the move cadence,
     /// which ran the walk 50% fast. See <see cref="CelCycler"/>.
     /// </para>
     /// </summary>
@@ -3858,7 +3917,7 @@ public sealed partial class MainViewModel : ViewModelBase
 
     /// <summary>
     /// How many cels each of view 340's eight loops holds, read off the resource. The two
-    /// the scripts freeze on — 6 and 7 — hold exactly one apiece, which is why
+    /// the scripts freeze on â€” 6 and 7 â€” hold exactly one apiece, which is why
     /// `(willy setLoop: 7 setCel: 1)` asks for a cel that is not there.
     /// </summary>
     private static readonly int[] WillyCels = [8, 1, 8, 8, 6, 6, 1, 1];
@@ -3870,7 +3929,7 @@ public sealed partial class MainViewModel : ViewModelBase
         _willyLeg = 0;
         _willyCycle = 0;
 
-        // State 0 on both scripts is `init: … setCycle: Fwd`, and `init:` is the first time
+        // State 0 on both scripts is `init: â€¦ setCycle: Fwd`, and `init:` is the first time
         // the actor exists, so cel 0 with a fresh clock.
         _willyCycler.PutCel(0);
         EnterWillyLeg(0);
@@ -3898,12 +3957,12 @@ public sealed partial class MainViewModel : ViewModelBase
         {
             // `(= seconds 3)` IS THREE WALL-CLOCK SECONDS, not a count of game cycles.
             // `Timer::doit` (`System.sc:551-557`) decrements `seconds` only when
-            // `(GetTime 1)` — SysTime12, the real-time clock — changes value, exactly as
+            // `(GetTime 1)` â€” SysTime12, the real-time clock â€” changes value, exactly as
             // `ticksToDo` gates on `GetTime`. This used to be `3 * 60` counted down by this
             // 25ms timer, which is 40 ticks a second, not 60: the robbery froze for 4.5s.
             // Same conflation of the game cycle with the wall clock that `CelCycler` removed
             // from the cel rate one field above. The notice's `(proc0_3 240)` already
-            // converts the same way — `TimeSpan.FromSeconds(240 / 60.0)` in StartNextNotice.
+            // converts the same way â€” `TimeSpan.FromSeconds(240 / 60.0)` in StartNextNotice.
             if (NowMs - _willyPauseStartMs < leg.PauseSeconds * 1000L) { BuildScreen(); return; }
         }
         else
@@ -3915,7 +3974,7 @@ public sealed partial class MainViewModel : ViewModelBase
             _willyY += Math.Sign(leg.ToY - _willyY) * Math.Min(WillyStep, Math.Abs(leg.ToY - _willyY));
 
             // The step itself is unchanged: 3 pixels, once every fourth cycle. The tween
-            // spreads those 3 pixels over the 100ms between steps — see SmoothMotion.
+            // spreads those 3 pixels over the 100ms between steps â€” see SmoothMotion.
             _willyTween.Step(_willyX, _willyY, NowMs, CycleMs * (WillyMoveSpeed + 1));
 
             if (_willyX != leg.ToX || _willyY != leg.ToY) { BuildScreen(); return; }
@@ -3925,8 +3984,8 @@ public sealed partial class MainViewModel : ViewModelBase
 
         if (_willyLeg < _willyPath.Length) { EnterWillyLeg(_willyLeg); BuildScreen(); return; }
 
-        // State 5 on both scripts: `(willy dispose:)`, `(= global415 16)` — the street
-        // mugging headline — and then the paper, `((ScriptID 215 0) init: 0)`.
+        // State 5 on both scripts: `(willy dispose:)`, `(= global415 16)` â€” the street
+        // mugging headline â€” and then the paper, `((ScriptID 215 0) init: 0)`.
         StopWilly();
         _headlineToShow = 16;
         StartNewspaper();
@@ -3949,7 +4008,7 @@ public sealed partial class MainViewModel : ViewModelBase
         if (leg.Cel >= 0) _willyCycler.FixCel(leg.Cel, WillyCels[leg.Loop]);
 
         // `(= seconds 3)` is written by the same `changeState` case, so the countdown starts
-        // when the state is entered — not when the previous move happened to finish.
+        // when the state is entered â€” not when the previous move happened to finish.
         if (leg.PauseSeconds > 0) _willyPauseStartMs = NowMs;
     }
 
@@ -3968,7 +4027,7 @@ public sealed partial class MainViewModel : ViewModelBase
 
         // `setCycle: Fwd` runs the loop's cels round and round on WILLY'S OWN CLOCK; a pause
         // leg freezes on the cel the script names. This used to read
-        // `_willyCycle / (WillyMoveSpeed + 1) % cels` — the mover's cadence, not the
+        // `_willyCycle / (WillyMoveSpeed + 1) % cels` â€” the mover's cadence, not the
         // cycler's, which played his eight cels in 800ms instead of 1200ms. EnterWillyLeg
         // holds the cycler's state; all that happens here is reading it at draw time.
         var cel = _willyCycler.Advance(NowMs, WillyCels[leg.Loop]);
@@ -4009,10 +4068,10 @@ public sealed partial class MainViewModel : ViewModelBase
     /// <remarks>
     /// <c>BackgroundLoop</c> is loop 0 everywhere but the Rent Office. `rentOffice.sc:185-191`
     /// declares its `background` as <c>view 701 LOOP 1</c>, and loop 1 is the one 183x112 cel
-    /// that fills the dialog; view 701 loop 0 is the two title plates — cel 0 the 49x30
+    /// that fills the dialog; view 701 loop 0 is the two title plates â€” cel 0 the 49x30
     /// `RENT OFFICE` sign (`theShortTitle`) and cel 1 the 116x16 bar (`theLongTitleLeft`).
     /// Drawing loop 0 cel 0 as the backdrop left five sixths of the panel unpainted, so the
-    /// board — walker, badges and all — showed through it.
+    /// board â€” walker, badges and all â€” showed through it.
     /// </remarks>
     private static (int Background, int BackgroundLoop, int Talker, int Items) ArtFor(LocationId id) => id switch
     {
@@ -4032,13 +4091,13 @@ public sealed partial class MainViewModel : ViewModelBase
 
     /// <summary>
     /// `livesAt` in the SOURCE's own encoding, which is **0 for Low-Cost Housing and 2 for
-    /// Le Security Apartments** — `security.sc:47` and `:49` both test `== 2`, and
+    /// Le Security Apartments** â€” `security.sc:47` and `:49` both test `== 2`, and
     /// `rentOffice.sc:394` / `:437` are what write the two values. There is no 1.
     ///
     /// The port stores 0/1 on <see cref="Player.LivesAt"/> (`Player.cs:65`), and the core
     /// tests it as `LivesAt == 0` in several places (`Player.cs:280`, `:294`,
     /// `MainViewModel.cs:1578`). Rather than renumber the field and disturb all of that,
-    /// the two encodings are translated at this one boundary — the only place a script
+    /// the two encodings are translated at this one boundary â€” the only place a script
     /// literal (0 / 2) is compared against it.
     /// </summary>
     private int ScriptLivesAt => P.LivesAt == 0 ? 0 : 2;
@@ -4054,14 +4113,14 @@ public sealed partial class MainViewModel : ViewModelBase
     /// </code>
     ///
     /// <list type="bullet">
-    /// <item><c>1</c> — rent week, or a granted extension: the clerk, the long title bar and
+    /// <item><c>1</c> â€” rent week, or a granted extension: the clerk, the long title bar and
     ///   all five lines.</item>
-    /// <item><c>-1</c> — you WORK here and it is not rent week: the clerk and the short title
+    /// <item><c>-1</c> â€” you WORK here and it is not rent week: the clerk and the short title
     ///   plate, and no lines. This is the state that has nothing to click.</item>
-    /// <item><c>0</c> — shut: backdrop 697 and nothing else.</item>
+    /// <item><c>0</c> â€” shut: backdrop 697 and nothing else.</item>
     /// </list>
     ///
-    /// The order matters — the rent-week test runs SECOND and overwrites <c>-1</c>, so an
+    /// The order matters â€” the rent-week test runs SECOND and overwrites <c>-1</c>, so an
     /// employee still gets the full menu during a rent week.
     /// </summary>
     private int RentOfficeTemp1
@@ -4076,7 +4135,7 @@ public sealed partial class MainViewModel : ViewModelBase
     }
 
     /// <summary>
-    /// Whether the current player lives in the apartment being drawn — the condition both
+    /// Whether the current player lives in the apartment being drawn â€” the condition both
     /// apartment scripts wrap their backdrop, their contents and their relax button in
     /// (`lowcost.sc:47/49`, `security.sc:47/49`). False everywhere that is not an apartment.
     /// </summary>
@@ -4098,7 +4157,7 @@ public sealed partial class MainViewModel : ViewModelBase
     /// Whether the panel is on screen at all. Every shop but one adds `items` inside the
     /// `add:` list that precedes `eachElementDo: #init` / `#setSize` / `open:`, so it is
     /// drawn with the rest of the dialog. The Pawn Shoppe adds it AFTER `open:`
-    /// (`pawnShop.sc:441` then `:449`), so it is never initialised or drawn on entry â€”
+    /// (`pawnShop.sc:441` then `:449`), so it is never initialised or drawn on entry Ã¢â‚¬â€
     /// `items::doit` is what runs `init: setSize: draw:` there (`pawnShop.sc:915`), and the
     /// panel therefore stays blank until you take something off the rack.
     /// </summary>
@@ -4107,7 +4166,7 @@ public sealed partial class MainViewModel : ViewModelBase
     /// <summary>
     /// The cycler's own counter. `Cycle::nextCel` (`Motion.sc:45-57`) increments it once
     /// per game cycle and only changes cel once it passes `client cycleSpeed:`, which is
-    /// 300 on every one of these panels. A purchase sets it to âˆ’400
+    /// 300 on every one of these panels. A purchase sets it to Ã¢Ë†â€™400
     /// (`fastFood.sc:395` and siblings), which holds the bought item's picture on screen
     /// for a further 700 cycles before the parade resumes.
     /// </summary>
@@ -4126,7 +4185,7 @@ public sealed partial class MainViewModel : ViewModelBase
     /// </summary>
     private const int CycleMs = 25;
 
-    /// <summary>`items::cycleSpeed` â€” 300 in all six shops.</summary>
+    /// <summary>`items::cycleSpeed` Ã¢â‚¬â€ 300 in all six shops.</summary>
     private const int ItemsCycleSpeed = 300;
 
     /// <summary>The celNums of the six lines Z-Mart is showing, in the order it shows them.</summary>
@@ -4140,7 +4199,7 @@ public sealed partial class MainViewModel : ViewModelBase
     ///
     /// Note that this is a bare `cel:` and not the `doit:` that would also set the loop, so
     /// a first line with celNum 16 or 17 asks loop 1 for a cel it does not have (view 711
-    /// loop 1 holds 16). The original draws nothing in that case and so does this â€” see
+    /// loop 1 holds 16). The original draws nothing in that case and so does this Ã¢â‚¬â€ see
     /// `SciArt.Cel`, which returns null for a combination that is not in the resource.
     /// </summary>
     private void ResetItemsPanel(LocationId id)
@@ -4161,7 +4220,7 @@ public sealed partial class MainViewModel : ViewModelBase
             ? ZMartPanelCels() is { Length: > 0 } cels ? cels[0] : 0
             : panel.FirstCel;
 
-        // `items::init` is `(if (< global534 2) (self setCycle: FwdCount self))` â€” the Pawn
+        // `items::init` is `(if (< global534 2) (self setCycle: FwdCount self))` Ã¢â‚¬â€ the Pawn
         // Shoppe alone declares no init, so its panel has no cycler and does not run until
         // a purchase gives it an FCue.
         if (panel.Cycles) _itemsTimer.Start();
@@ -4171,7 +4230,7 @@ public sealed partial class MainViewModel : ViewModelBase
     /// One game cycle of the panel's cycler.
     ///
     /// `items::cycle` in all six shops is
-    /// <c>(if (== (DoAudio audPOSITION) -1) (super cycle:))</c> â€” the parade stops dead
+    /// <c>(if (== (DoAudio audPOSITION) -1) (super cycle:))</c> Ã¢â‚¬â€ the parade stops dead
     /// while anyone is speaking and picks up where it left off afterwards, which is why the
     /// shopkeeper's line is never competing with a moving picture.
     /// </summary>
@@ -4180,7 +4239,7 @@ public sealed partial class MainViewModel : ViewModelBase
         if (_screen != Screen.LocationPanel || _game is null) { _itemsTimer?.Stop(); return; }
         if (StoreLayout.ItemsFor(P.Location) is not { } panel) { _itemsTimer?.Stop(); return; }
 
-        // `(== (DoAudio audPOSITION) -1)` â€” nothing is playing.
+        // `(== (DoAudio audPOSITION) -1)` Ã¢â‚¬â€ nothing is playing.
         if (Sound.SpeechPosition is not null) return;
 
         if (++_itemsCount <= ItemsCycleSpeed) return;
@@ -4220,7 +4279,7 @@ public sealed partial class MainViewModel : ViewModelBase
     }
 
     /// <summary>
-    /// `(if (and gItems (IsObject gItems) (&lt; global534 2)) (gItems doit: celNum))` â€”
+    /// `(if (and gItems (IsObject gItems) (&lt; global534 2)) (gItems doit: celNum))` Ã¢â‚¬â€
     /// `WButton.sc:236-237`, inside `CostDItem::doit`'s success branch, and again at
     /// `pawnShop.sc:821-822` for a second-hand durable.
     ///
@@ -4246,8 +4305,8 @@ public sealed partial class MainViewModel : ViewModelBase
             _itemsCel = celNum;
         }
 
-        // `(cycler cycleCnt: -400)` â€” the picture holds before the parade resumes. The Pawn
-        // Shoppe uses âˆ’100 and an `FCue` that returns to cel 13 (`pawnShop.sc:915-923`).
+        // `(cycler cycleCnt: -400)` Ã¢â‚¬â€ the picture holds before the parade resumes. The Pawn
+        // Shoppe uses Ã¢Ë†â€™100 and an `FCue` that returns to cel 13 (`pawnShop.sc:915-923`).
         _itemsCount = panel.Cycles ? -400 : -100;
 
         // The Pawn Shoppe's panel is given its cycler only now, by the purchase itself
@@ -4257,13 +4316,13 @@ public sealed partial class MainViewModel : ViewModelBase
 
     /// <summary>
     /// Lays the interior out the way the store scripts do. Every shop dialog is the same
-    /// shape â€” `moveTo: 69 44`, nsRight 184, nsBottom 119 â€” and the backdrop DIcon fills
+    /// shape Ã¢â‚¬â€ `moveTo: 69 44`, nsRight 184, nsBottom 119 Ã¢â‚¬â€ and the backdrop DIcon fills
     /// it at loop 0, cel 0. The exit button is view 250 loop 0 at (143,108) and the work
     /// button view 250 loop 1 at (75,108), in all five shops.
     ///
     /// Item positions come from <see cref="StoreLayout"/>, which holds the explicit
     /// nsLeft/nsTop each script declares per item. ONLY Z-Mart computes them at runtime
-    /// (`discount.sc:186-193`): it shows a random six of eighteen, so it must â€”
+    /// (`discount.sc:186-193`): it shows a random six of eighteen, so it must Ã¢â‚¬â€
     /// `nsTop = (n + 1) * 13 + 20` and `nsLeft` 11 for the first two lines, 78 after.
     /// </summary>
     private void BuildLocationPanel()
@@ -4280,13 +4339,13 @@ public sealed partial class MainViewModel : ViewModelBase
         if (apartmentBg != 0) bg = apartmentBg;
 
         // A workplace's job list is its own dialog (scripts 216-224) with a DIFFERENT
-        // backdrop: view 706 CEL 1, the plain tan panel â€” not cel 0, which is the
+        // backdrop: view 706 CEL 1, the plain tan panel Ã¢â‚¬â€ not cel 0, which is the
         // Employment Office interior. It shows no shopkeeper.
         var showingJobs = here.Id == LocationId.EmploymentOffice && _jobListFor is not null;
 
         // A SHUT Rent Office is a different picture, not the open one with its contents
-        // removed. `rentOffice.sc:102-108` — the `else` arm of the three-way `cond` on
-        // `temp1` — replaces the backdrop with `view: 697 loop: 0 cel: 0`, the boarded
+        // removed. `rentOffice.sc:102-108` â€” the `else` arm of the three-way `cond` on
+        // `temp1` â€” replaces the backdrop with `view: 697 loop: 0 cel: 0`, the boarded
         // shopfront, and adds NOTHING: no `theTalker`, no title plate, no lines. The port
         // kept the open interior (701 loop 1) with the clerk and the title bar and merely
         // dropped the five lines, which is why it read as a broken empty room.
@@ -4329,14 +4388,14 @@ public sealed partial class MainViewModel : ViewModelBase
                 Sprites.Add(Icon(talker, 0, _talkerCel, tx, ty));
             }
 
-            // The `items` picture panel, third in every shop's `add:` list â€” after the
+            // The `items` picture panel, third in every shop's `add:` list Ã¢â‚¬â€ after the
             // backdrop and the shopkeeper, before the price lines (`appliance.sc:93-108`,
             // `market.sc:99-110`). It was missing entirely; the shops were drawing their
             // list against bare backdrop.
             if (_itemsShown && StoreLayout.ItemsFor(here.Id) is { } panel)
                 Sprites.Add(Icon(panel.View, _itemsLoop, _itemsCel, panel.Left, panel.Top));
 
-            // The Bank has no `items` panel at all â€” it never publishes `gItems` â€” it has
+            // The Bank has no `items` panel at all Ã¢â‚¬â€ it never publishes `gItems` Ã¢â‚¬â€ it has
             // `piggyBank`, which occupies the same slot and is third in its unconditional
             // `add:` list (`bank.sc:73-84`), right where `items` sits everywhere else.
             if (here.Id == LocationId.Bank)
@@ -4361,7 +4420,7 @@ public sealed partial class MainViewModel : ViewModelBase
         BuildLocationActions();
 
         // relaxButton: view 250 loop 3 at nsLeft 9, nsTop 108 (`lowcost.sc:104-113`,
-        // `security.sc:113-121`). It is a button, not a line of text — and both scripts add
+        // `security.sc:113-121`). It is a button, not a line of text â€” and both scripts add
         // it ONLY inside the lives-here branch (`lowcost.sc:49-50`, `security.sc:49-50`), so
         // there is nothing to relax on in the apartment you are merely visiting.
         if (livesHere)
@@ -4394,7 +4453,7 @@ public sealed partial class MainViewModel : ViewModelBase
             var (header, hLeft, hTop, firstTop, spacing) = StoreLayout.JobList(employer);
             var jobs = StoreLayout.JobListColours;
 
-            // `jobsAvailable` is a WButton with `state 0` — bit 0 clear, so `Item::handleEvent`
+            // `jobsAvailable` is a WButton with `state 0` â€” bit 0 clear, so `Item::handleEvent`
             // drops every event on it (`Interface.sc:410-416`). It is a CAPTION, and it is
             // drawn exactly like the lines below it: the same shadow 107, the same font 10
             // (`applianceJobs.sc:108-116` and its eight siblings). Nine of the port's eleven
@@ -4420,7 +4479,7 @@ public sealed partial class MainViewModel : ViewModelBase
                 // The label is the source string verbatim: its trailing spaces and pipes are
                 // the padding that puts every wage in one column in FONT 10. `Line` also
                 // names the `$N Hr.` suffix, which is what lets the outline face put that
-                // column back where font 10 had it — see `UiFont`. Neither edits the string.
+                // column back where font 10 had it â€” see `UiFont`. Neither edits the string.
                 var label = ItemText.WageLine(ItemText.For(j), wage);
 
                 MenuLines.Add(new MenuLineVm(label.Full, DialogX + StoreLayout.JobLeft, y,
@@ -4459,7 +4518,7 @@ public sealed partial class MainViewModel : ViewModelBase
                 else
                 {
                     // NOT WIRED: Z-Mart's eighteen items each declare a `key`
-                    // (`discount.sc` — 1-8, 10-12, 14, 16-18, 20, 23, 24), but they belong
+                    // (`discount.sc` â€” 1-8, 10-12, 14, 16-18, 20, 23, 24), but they belong
                     // to the ITEM and this screen is the one the port lays out at runtime
                     // from `Actions`, which carry a label and nothing that identifies which
                     // DiscountDItem they came from. Binding them needs the item identity
@@ -4477,7 +4536,7 @@ public sealed partial class MainViewModel : ViewModelBase
 
                 // `Enabled` is `state` bit 0. It used to be checked INSIDE the handler,
                 // which means the line still took the click and swallowed it;
-                // `Item::handleEvent` never gets that far — it tests the bit before it even
+                // `Item::handleEvent` never gets that far â€” it tests the bit before it even
                 // looks at the event (`Interface.sc:410`). The line is still drawn.
                 MenuLines.Add(new MenuLineVm(item.MenuText, DialogX + left, DialogY + top,
                     () => item.Command.Execute(null),
@@ -4523,7 +4582,7 @@ public sealed partial class MainViewModel : ViewModelBase
     /// * `Pawnable Items` (raw script 212 @0x1B29) at nsLeft 95 nsTop 27,
     ///   `Redeemable Items` (@0x1BA5) at 91/25, `Buyable Items` (@0x1B8C) at 93/25.
     /// * the redeem and buy lists are CostDItems at nsLeft 78, nsTop 40 + 10n, named from
-    ///   text 700 through text 212[2] `"%s"` and priced through 212[4] `"%s $%d"` â€” one
+    ///   text 700 through text 212[2] `"%s"` and priced through 212[4] `"%s $%d"` Ã¢â‚¬â€ one
     ///   space whatever the figure, because `aRedeemableItem` overrides `doFormat`.
     /// * `pawn` is view 250 loop 6 at (77,108); all three Done buttons are view 250 loop 2
     ///   at (110,108).
@@ -4566,7 +4625,7 @@ public sealed partial class MainViewModel : ViewModelBase
 
         if (_pawnMode == PawnMode.Pawn)
         {
-            // `pawnMessage`: state 288, so bit 0 is clear — a caption, not a control.
+            // `pawnMessage`: state 288, so bit 0 is clear â€” a caption, not a control.
             Texts.Add(new TextVm("Pawnable Items", DialogX + 95, DialogY + 27, 7,
                                  SciPalette.Hex(pawnColours.Text), true,
                                  shadow: pawnColours.Shadow));
@@ -4587,7 +4646,7 @@ public sealed partial class MainViewModel : ViewModelBase
                 row++;
             }
 
-            // `pawn`, view 250 loop 6 at (77,108) â€” the button that makes the offer.
+            // `pawn`, view 250 loop 6 at (77,108) Ã¢â‚¬â€ the button that makes the offer.
             // `key 5` (`pawnShop.sc:643-647`).
             Sprites.Add(Icon(250, 6, 0, 77, 108, TakeTheOffer));
             Accelerator(5, TakeTheOffer);
@@ -4612,7 +4671,7 @@ public sealed partial class MainViewModel : ViewModelBase
             var item = d;
             var from = owner;
 
-            // 212[4] "%s $%d" â€” one space regardless of the price, unlike CostDItem.
+            // 212[4] "%s $%d" Ã¢â‚¬â€ one space regardless of the price, unlike CostDItem.
             MenuLines.Add(new MenuLineVm(
                 $"{Catalogue.NameOf(item.IndexNum)} ${item.RedemptionPrice}",
                 DialogX + 78, DialogY + 40 + 10 * n,
@@ -4635,7 +4694,7 @@ public sealed partial class MainViewModel : ViewModelBase
     }
 
     /// <summary>
-    /// Durables that may be pawned: held, and not already in hock â€” unless you have more
+    /// Durables that may be pawned: held, and not already in hock Ã¢â‚¬â€ unless you have more
     /// than one, which is the `(> quantity 1)` half of `pawnButton::doit`'s test.
     /// </summary>
     private IEnumerable<Item> Pawnable() =>
@@ -4697,13 +4756,13 @@ public sealed partial class MainViewModel : ViewModelBase
         }
 
         // ONE balloon. The floppy's `pawnShop.sc:780` prints the offer and both buttons in a
-        // single `Print` â€” text 212[25], `I'll give you $%d for your %s, take it or leave
-        // it.`, `#width 107`, `#button {Take It} 1` and `#button {Leave It} 0` â€” and the CD
+        // single `Print` Ã¢â‚¬â€ text 212[25], `I'll give you $%d for your %s, take it or leave
+        // it.`, `#width 107`, `#button {Take It} 1` and `#button {Leave It} 0` Ã¢â‚¬â€ and the CD
         // speaks that same sentence as clip 92. CD text 212[3] (`Do you accept $%d for your
         // %s?`) is the short prompt the CD left behind; printing it as well made a second box.
         //
         // The `%s` is a NESTED resource reference: `(Format @global100 212 25 local1 700
-        // (local2 indexNum:))` feeds it from text 700 at the durable's own indexNum â€”
+        // (local2 indexNum:))` feeds it from text 700 at the durable's own indexNum Ã¢â‚¬â€
         // 700[21] `Refrigerator`, 700[29] `Computer`. The name is never spelled out in the
         // script.
         var offer = Pricing.PawnOffer(_game.GoodsIndex, item.PricePaid);
@@ -4711,7 +4770,7 @@ public sealed partial class MainViewModel : ViewModelBase
 
         SpeakQuestion(92, 107, answer =>
         {
-            // `(gASoundEffect play: 23)` on BOTH branches â€” `pawnShop.sc:684` and `:704`.
+            // `(gASoundEffect play: 23)` on BOTH branches Ã¢â‚¬â€ `pawnShop.sc:684` and `:704`.
             Effect(Audio.LocationMusic.ButtonClick);
             if (answer == 0) return;
 
@@ -4725,7 +4784,7 @@ public sealed partial class MainViewModel : ViewModelBase
         BuildScreen();
     }
 
-    /// <summary>True once this player has worked this turn â€” the original's `global329`.</summary>
+    /// <summary>True once this player has worked this turn Ã¢â‚¬â€ the original's `global329`.</summary>
     private bool _workedThisTurn;
 
     /// <summary>`global478`: the end-of-week chime sounds once a turn. See BuildBoard.</summary>
@@ -4736,7 +4795,7 @@ public sealed partial class MainViewModel : ViewModelBase
 
     /// <summary>
     /// A shift, and what the boss says about it. `proc108_0` (`n108.sc:18-57`) speaks every
-    /// outcome, at a clip id built from the base plus `global400` â€” which is the place
+    /// outcome, at a clip id built from the base plus `global400` Ã¢â‚¬â€ which is the place
     /// number, i.e. <see cref="Location.PlaceNum"/>:
     ///
     ///     900 + place  you are not properly dressed for work
@@ -4745,7 +4804,7 @@ public sealed partial class MainViewModel : ViewModelBase
     ///     960 + place  no time is left to work (the clock is already at 60)
     ///     980 + place  the landlord garnished your wages, once per turn
     ///
-    /// A shift that simply goes well says NOTHING â€” there is no "You earned $96." line in
+    /// A shift that simply goes well says NOTHING Ã¢â‚¬â€ there is no "You earned $96." line in
     /// the game, and `n108.sc` contains no `Print` at all. Text resource 108 holds the same
     /// five sentences as printed strings, but this build never formats them: they are the
     /// floppy's copies of what the CD speaks, which is why the subtitles match them.
@@ -4784,7 +4843,7 @@ public sealed partial class MainViewModel : ViewModelBase
             {
                 _garnishSpokenThisTurn = true;
 
-                // "Your Landlord garnished $%d." â€” the amount is what `n108.sc:93-99`
+                // "Your Landlord garnished $%d." Ã¢â‚¬â€ the amount is what `n108.sc:93-99`
                 // actually took out of this shift, which (the replicated quirk) it works
                 // out from the UN-prorated gross.
                 Speak(980 + place, _game.LastGarnished);
@@ -4798,7 +4857,7 @@ public sealed partial class MainViewModel : ViewModelBase
             // where `global566` is `proc108_0`'s return, and only the shift that actually
             // happened returns 1 (`n108.sc:114`). `TimeClock::doit` is `(self cel: 0
             // setCycle: FwdCount self 1)` then `(gASoundEffect play: 31)` (`WButton.sc:306-310`)
-            // â€” the clock face spinning down the six hours.
+            // Ã¢â‚¬â€ the clock face spinning down the six hours.
             //
             // The hours test is read AFTER the shift, because `localproc_0` spends them at
             // `n108.sc:116` before `workButton` gets its answer back. A shift that takes
@@ -4820,8 +4879,8 @@ public sealed partial class MainViewModel : ViewModelBase
     /// <summary>
     /// `relaxButton::doit` (`lowcost.sc:113-129`, `security.sc`). The six hours are spent
     /// first and the clock is read BEFORE they are; if the week was already gone the
-    /// apartment speaks clip 210 (Low Cost) or 370 (Security) â€” "No time is left to relax."
-    /// â€” and nothing else happens. A successful relax says nothing at all.
+    /// apartment speaks clip 210 (Low Cost) or 370 (Security) Ã¢â‚¬â€ "No time is left to relax."
+    /// Ã¢â‚¬â€ and nothing else happens. A successful relax says nothing at all.
     ///
     /// The apartments have no Talker, so the balloon has nowhere to hang and the subtitle
     /// does not appear: the line is audio only, exactly as the original plays it.
@@ -4845,12 +4904,12 @@ public sealed partial class MainViewModel : ViewModelBase
     ///
     /// * `enrollmentFee` is a display-only CostDItem at nsLeft 85, nsTop 32 whose text is
     ///   `Enrollment Fee ` (raw script 207 @0x1611) with the fee appended by CostDItem's
-    ///   own format â€” `Enrollment Fee  $50`, not "Pay enrollment fee" with a separate $50.
+    ///   own format Ã¢â‚¬â€ `Enrollment Fee  $50`, not "Pay enrollment fee" with a separate $50.
     /// * `enrollButton` is view 250 loop 10 at (105,108).
     /// * every course is an ICON: view 707 loop 2, cel = degreeId - 10, stacked UPWARD
     ///   from the bottom at nsLeft 76, nsTop 108 - 14n, highest degree first
     ///   (`localproc_2` adds publishing down to tradeSchool).
-    /// * lessons remaining is a BARE NUMBER â€” `Format â€¦ 207 0`, i.e. `"%d"` â€” displayed at
+    /// * lessons remaining is a BARE NUMBER Ã¢â‚¬â€ `Format Ã¢â‚¬Â¦ 207 0`, i.e. `"%d"` Ã¢â‚¬â€ displayed at
     ///   absolute x 222 (`university.sc:130-141`), which is 153 inside the dialog.
     /// * `books`, view 707 loop 1, is the shelf behind them, its cel chosen by how many
     ///   courses are showing.
@@ -4872,26 +4931,26 @@ public sealed partial class MainViewModel : ViewModelBase
             Sprites.Add(Icon(707, 1, courses.Count - 1, 71, 42 + (4 - courses.Count) * 14));
 
         // enrollButton, view 250 loop 10. ONE balloon, not two: the floppy's
-        // `university.sc:746` prints the whole question — text 207[28], "The enrollment fee
-        // is $%d. Would you like to enroll?" — with the talker tail, `#width 113` and both
+        // `university.sc:746` prints the whole question â€” text 207[28], "The enrollment fee
+        // is $%d. Would you like to enroll?" â€” with the talker tail, `#width 113` and both
         // buttons in a single `Print`. The CD speaks that same sentence as clip 406 and
         // keeps a short `Enroll for $%d?` at ITS 207[1]; printing that as well put a second
         // box on screen that the game never had. See <see cref="SpeakQuestion"/>.
         Sprites.Add(Icon(250, 10, 0, StoreLayout.EnrollLeft, StoreLayout.EnrollTop, () =>
         {
-            // `(enrollmentFee price:)` â€” the economy-adjusted fee, the same figure printed
+            // `(enrollmentFee price:)` Ã¢â‚¬â€ the economy-adjusted fee, the same figure printed
             // on the counter above.
             SpeakQuestion(406, 113, answer =>
             {
                 if (answer == 0)
                 {
-                    // `(global427 (proc0_18 408 …))` â€” university.sc:696-698. Declining is
+                    // `(global427 (proc0_18 408 â€¦))` Ã¢â‚¬â€ university.sc:696-698. Declining is
                     // not silent: the clerk says so, and nothing is charged.
                     Speak(408);
                     return;
                 }
 
-                // `(enrollmentFee doit:)` â€” a CostDItem, and `WButton::doit` plays 23
+                // `(enrollmentFee doit:)` Ã¢â‚¬â€ a CostDItem, and `WButton::doit` plays 23
                 // before anything else (`WButton.sc:152-153`).
                 Effect(Audio.LocationMusic.ButtonClick);
                 if (!University.Enroll(P, _game!.GoodsIndex)) SpeakNotEnoughCash();
@@ -4913,14 +4972,14 @@ public sealed partial class MainViewModel : ViewModelBase
                 var outcome = University.Study(P, degree.Id, _game!.Clock);
                 P.RecalculateGoals(_game!.Economy);
 
-                // `(if (global302 hasDegree: indexNum) â€¦ ((ScriptID 230 0) init: client
-                // indexNum))` â€” university.sc:205-223. The lesson that completes the course
+                // `(if (global302 hasDegree: indexNum) Ã¢â‚¬Â¦ ((ScriptID 230 0) init: client
+                // indexNum))` Ã¢â‚¬â€ university.sc:205-223. The lesson that completes the course
                 // opens the diploma; every other lesson draws nothing.
                 if (outcome == StudyOutcome.Graduated) { ShowDiploma(degree.Id); return; }
 
                 // The other outcomes are spoken in the original (clip 402 out of hours,
-                // 403 not enrolled â€” `university.sc:283-290`) and are still silent here;
-                // that is GATES.md Â§12's ordering item, not this change.
+                // 403 not enrolled Ã¢â‚¬â€ `university.sc:283-290`) and are still silent here;
+                // that is GATES.md Ã‚Â§12's ordering item, not this change.
                 BuildScreen();
             }));
 
@@ -4930,21 +4989,21 @@ public sealed partial class MainViewModel : ViewModelBase
             // `(222, [local5 temp3])` on a background of `[local9 temp3]`, with
             // `[local5 4] = [97 111 125 139]` and `[local9 4] = [98 75 87 56]`
             // (`university.sc:25-26`). Both are indexed by the same `temp3`, so THE COLOUR
-            // BELONGS TO THE ROW, not to the course — which is what makes it safe to port
+            // BELONGS TO THE ROW, not to the course â€” which is what makes it safe to port
             // even though the two loops walk their lists in different orders. The port's
             // rows land on exactly those four y values (DialogY + top + 1 = 139/125/111/97
             // for `CourseSlot` 0..3), so the mapping is by `top`.
             //
             // This one IS visible: the course bar (view 707 loop 2, 86x9) is transparent at
-            // x+77, and the panel behind it (view 807) is a flat #C8E0F8 there — so the
+            // x+77, and the panel behind it (view 807) is a flat #C8E0F8 there â€” so the
             // script is painting a coloured chip, not blanking in the panel's own colour the
             // way the other nineteen Display fills do.
             var chip = top switch
             {
-                94 => 56,   // y 139 — #38B038
-                80 => 87,   // y 125 — #6070C8
-                66 => 75,   // y 111 — #E03838
-                52 => 98,   // y  97 — #9898A8
+                94 => 56,   // y 139 â€” #38B038
+                80 => 87,   // y 125 â€” #6070C8
+                66 => 75,   // y 111 â€” #E03838
+                52 => 98,   // y  97 â€” #9898A8
                 _  => SciPalette.Transparent,
             };
 
@@ -4973,15 +5032,15 @@ public sealed partial class MainViewModel : ViewModelBase
     ///
     /// <code>
     /// (gASong fade:)                              ; :206
-    /// (global302 notEnoughEd: 0)                  ; :207  â€” done in University.Graduate
+    /// (global302 notEnoughEd: 0)                  ; :207  Ã¢â‚¬â€ done in University.Graduate
     /// (proc0_13 5) eduCredit/dependibility/expCredit +5    ; :208-213
-    /// ((ScriptID 230 0) init: client indexNum)    ; :223   â€” this dialog
-    /// (gASong play: 41)                           ; :227   â€” the U's bed comes back
+    /// ((ScriptID 230 0) init: client indexNum)    ; :223   Ã¢â‚¬â€ this dialog
+    /// (gASong play: 41)                           ; :227   Ã¢â‚¬â€ the U's bed comes back
     /// </code>
     ///
     /// The sting is a SONG, not a sound effect: `diploma.sc:59` is
-    /// `(gASong loop: 1 play: 42 compScript)` â€” resource 42, `loop: 1` meaning play it
-    /// through once â€” and there is no `gASoundEffect` call anywhere in script 230. It goes
+    /// `(gASong loop: 1 play: 42 compScript)` Ã¢â‚¬â€ resource 42, `loop: 1` meaning play it
+    /// through once Ã¢â‚¬â€ and there is no `gASoundEffect` call anywhere in script 230. It goes
     /// through <see cref="Audio.IAudioPlayer.PlayMusic"/> with looping off, which is the
     /// same call `gASong play:` maps onto everywhere else in this port, so it will sound
     /// the moment the audio work lands.
@@ -4997,7 +5056,7 @@ public sealed partial class MainViewModel : ViewModelBase
         Sound.StopMusic();
         Music(Audio.LocationMusic.Diploma, loop: false);
 
-        // `theDiploma::init` is `(if (not global534) (self setCycle: End self))` â€” the roll
+        // `theDiploma::init` is `(if (not global534) (self setCycle: End self))` Ã¢â‚¬â€ the roll
         // unfurls cel by cel and cues its own `cue:` at the end, which is what puts the
         // degree name on it. With detail turned down the original skips straight to
         // `(theDiploma cel: 4 draw: cue:)` (`diploma.sc:60-62`); the port has no detail
@@ -5030,21 +5089,21 @@ public sealed partial class MainViewModel : ViewModelBase
     private const int DiplomaLastCel = 4;
 
     /// <summary>
-    /// The diploma dialog (script 230), which the port had not built at all â€” finishing a
+    /// The diploma dialog (script 230), which the port had not built at all Ã¢â‚¬â€ finishing a
     /// course produced nothing on screen.
     ///
     /// Everything here is declared outright in `diploma.sc`:
     ///
-    /// * the dialog is the usual 184x119 at (69,44) â€” `nsRight 184`, `nsBottom 119`,
+    /// * the dialog is the usual 184x119 at (69,44) Ã¢â‚¬â€ `nsRight 184`, `nsBottom 119`,
     ///   `moveTo: (client nsLeft:) (client nsTop:)` where the client is the university
     ///   dialog, itself at `moveTo: 69 44`.
     /// * `background`, view 607 LOOP 1, priority 10, at the dialog origin (`diploma.sc:102`).
     /// * `theDiploma`, view 607 loop 0, priority 15, at nsLeft 22 nsTop 15
     ///   (`diploma.sc:121`).
     /// * `doneButton`, an ErasableDIcon, view 250 LOOP 2, nsLeft 143 nsTop 108, key 120
-    ///   â€” `x` (`diploma.sc:110`). Same corner as every other dialog's exit.
+    ///   Ã¢â‚¬â€ `x` (`diploma.sc:110`). Same corner as every other dialog's exit.
     /// * `diplomaText` (`diploma.sc:148-171`): the degree's name out of text 700 through
-    ///   text 230[0] `"%s"`, measured in FONT 8 and centred on (97,77) â€”
+    ///   text 230[0] `"%s"`, measured in FONT 8 and centred on (97,77) Ã¢â‚¬â€
     ///   `dsCOORD (- 97 (/ width 2)) (- 77 (/ height 2))`, `dsCOLOR 0`, `dsWIDTH 150`,
     ///   `dsBACKGROUND -1`, `dsFONT 8`. It is added by `theDiploma::cue`, so it appears
     ///   only once the roll has finished unfurling.
@@ -5056,7 +5115,7 @@ public sealed partial class MainViewModel : ViewModelBase
 
         if (_diplomaCel >= DiplomaLastCel)
         {
-            // `(Format @temp4 230 0 700 local0)` â€” text 700 at the degree's own id, which
+            // `(Format @temp4 230 0 700 local0)` Ã¢â‚¬â€ text 700 at the degree's own id, which
             // is exactly what Degrees.Name carries (700[10] `Trade School` through 700[20]
             // `Publishing`).
             var name = Degrees.ById(_diplomaDegreeId).Name;
@@ -5075,7 +5134,7 @@ public sealed partial class MainViewModel : ViewModelBase
     /// <summary>
     /// Leaving the diploma. Control returns into `UniversityDIcon::doit`, which brings the
     /// university's own bed back with `(gASong play: 41)` (`university.sc:227`) and redraws
-    /// the dialog â€” with the graduated course now gone from the shelf, which
+    /// the dialog Ã¢â‚¬â€ with the graduated course now gone from the shelf, which
     /// <see cref="BuildUniversity"/> handles on its own because `Degrees.AvailableTo` no
     /// longer lists it.
     /// </summary>
@@ -5093,7 +5152,7 @@ public sealed partial class MainViewModel : ViewModelBase
     {
         var here = Board.Get(P.Location);
 
-        // Relaxing is the relaxButton SPRITE (view 250 loop 3 at nsLeft 9, nsTop 108 â€”
+        // Relaxing is the relaxButton SPRITE (view 250 loop 3 at nsLeft 9, nsTop 108 Ã¢â‚¬â€
         // `lowcost.sc:103-112`), not a line of text. "Relax", "6 hrs, +3 relaxation" and
         // "You put your feet up." were all mine; the apartments' only line is the one they
         // speak when the week is already gone.
@@ -5105,7 +5164,7 @@ public sealed partial class MainViewModel : ViewModelBase
         // wage right-aligned in a second column rather than appended to its label.
 
         // Hi-Tech U's courses are ICONS, not menu lines, and its enrollment fee is a
-        // display-only CostDItem â€” see BuildUniversity.
+        // display-only CostDItem Ã¢â‚¬â€ see BuildUniversity.
 
         AddStore(here.Id, LocationId.ZMart, Catalogue.ZMart);
         AddStore(here.Id, LocationId.SocketCity, Catalogue.SocketCity);
@@ -5114,14 +5173,14 @@ public sealed partial class MainViewModel : ViewModelBase
         AddStore(here.Id, LocationId.MonolithBurgers, Catalogue.MonolithBurgers);
 
         // The Rent Office's five lines are the CostDItem/WButton `text` properties from
-        // raw script 201 â€” see StoreLayout.RentOffice. The `add:` list is
+        // raw script 201 Ã¢â‚¬â€ see StoreLayout.RentOffice. The `add:` list is
         // `theTalker theLongTitleLeft payRent moreTime rentLowCost rentSecurity`
         // (`rentOffice.sc:82-90`), with `payGarnishment` appended only when `rentOwed` is
         // non-zero (`:91-94`).
         //
         // The whole list is behind `temp1 == 1`. The other two arms of that `cond` add no
         // lines at all: `temp1 == -1` (you work here, outside a rent week) is the clerk and
-        // the short title plate, and `temp1 == 0` is the shut office — see
+        // the short title plate, and `temp1 == 0` is the shut office â€” see
         // <see cref="RentOfficeTemp1"/> and the backdrop swap in BuildLocationPanel.
         if (here.Id == LocationId.RentOffice)
         {
@@ -5129,7 +5188,7 @@ public sealed partial class MainViewModel : ViewModelBase
             // never disagree about which of the three offices this is.
             if (RentOfficeTemp1 == 1)
             {
-                // `payRent price: (global302 curRent:)` (`:74`) â€” `fixedPrice 1`, so it is
+                // `payRent price: (global302 curRent:)` (`:74`) Ã¢â‚¬â€ `fixedPrice 1`, so it is
                 // the rent itself and never the arrears.
                 Add(ItemText.PriceLine(StoreLayout.RentOffice[0].Label, P.CurRent), () =>
                 {
@@ -5149,7 +5208,7 @@ public sealed partial class MainViewModel : ViewModelBase
                 Add(ItemText.PriceLine(StoreLayout.RentOffice[3].Label, _game.RentAsking(2)),
                     () => { ResetWorkClock(); RentApartment(2); });
 
-                // `(if (global302 rentOwed:) (self add: payGarnishment) …)` â€” `:91-94`.
+                // `(if (global302 rentOwed:) (self add: payGarnishment) â€¦)` Ã¢â‚¬â€ `:91-94`.
                 if (P.RentOwed > 0)
                     Add(ItemText.PriceLine(StoreLayout.RentOffice[4].Label, P.RentOwed), () =>
                     {
@@ -5164,14 +5223,14 @@ public sealed partial class MainViewModel : ViewModelBase
         if (here.Id == LocationId.Bank)
         {
             // Exactly the five lines bank.sc lists, using its own label strings. The
-            // broker is NOT on this screen â€” "See The Broker" opens its own dialog.
+            // broker is NOT on this screen Ã¢â‚¬â€ "See The Broker" opens its own dialog.
             // Savings earn no interest; the bank exists to keep cash from Wild Willy.
             Add(ItemText.PriceLine(StoreLayout.Bank[0].Label, Bank.TransferLimit), () =>
             {
                 ResetWorkClock();                  // `bank.sc:185-187`
                 var moved = Bank.Deposit(P);
 
-                // `(if temp0 … (piggyBank cel: 0 doit: End))` â€” `bank.sc:191-198`. A press
+                // `(if temp0 â€¦ (piggyBank cel: 0 doit: End))` Ã¢â‚¬â€ `bank.sc:191-198`. A press
                 // that moves nothing leaves the pig alone.
                 if (moved > 0) RunPiggyBank(0, PiggyLastCel);
 
@@ -5183,7 +5242,7 @@ public sealed partial class MainViewModel : ViewModelBase
                 ResetWorkClock();                  // `bank.sc:236-238`
                 var moved = Bank.Withdraw(P);
 
-                // `(piggyBank cel: 4 doit: Beg)` â€” `bank.sc:259`, the same cels backwards.
+                // `(piggyBank cel: 4 doit: Beg)` Ã¢â‚¬â€ `bank.sc:259`, the same cels backwards.
                 if (moved > 0) RunPiggyBank(PiggyLastCel, 0);
 
                 P.RecalculateGoals(_game!.Economy);
@@ -5214,7 +5273,7 @@ public sealed partial class MainViewModel : ViewModelBase
 
                 // `bank.sc:360-373`. The teller works out the offer, SPEAKS clip 317 when
                 // there is already a balance to extend or 318 when there is not
-                // (`(= temp3 17)` / `18`, then `(proc0_18 (+ temp3 300) …)`), and then
+                // (`(= temp3 17)` / `18`, then `(proc0_18 (+ temp3 300) â€¦)`), and then
                 // puts the buttons on THAT sentence: the floppy's `bank.sc:474` is one
                 // `Print` of the already-formatted `@global100` with `#width 110` and
                 // Yes/No, so it is one balloon, not the line plus CD text 204[1].
@@ -5236,7 +5295,7 @@ public sealed partial class MainViewModel : ViewModelBase
                     if (answer == 0) return;                   // declining costs nothing
 
                     Bank.TakeLoan(P);
-                    Speak(319, offer);                         // "Here is your %d, payable â€¦"
+                    Speak(319, offer);                         // "Here is your %d, payable Ã¢â‚¬Â¦"
                     P.RecalculateGoals(_game!.Economy);
                 },
                 [offer],
@@ -5249,7 +5308,7 @@ public sealed partial class MainViewModel : ViewModelBase
                 ResetWorkClock();                  // `bank.sc:414-416`, inline as above
 
                 // `bank.sc:417-421`. Gated on the clock (clip 324), and the 2 hours are
-                // charged ONCE per bank visit â€” the `local0` latch â€” not once per press.
+                // charged ONCE per bank visit Ã¢â‚¬â€ the `local0` latch Ã¢â‚¬â€ not once per press.
                 if (_game!.Clock.TurnOver) { Speak(324); return; }
                 if (!_game.BrokerChargedThisVisit)
                 {
@@ -5267,7 +5326,7 @@ public sealed partial class MainViewModel : ViewModelBase
     /// `moreTime::doit` (`rentOffice.sc:235-311`). Every branch SPEAKS and most duck the
     /// bed under a sting: `(gASong pause: 1)` `(gASoundEffect play: 45 gASong)` for the yes
     /// and 44 for every no. The clip ids are the CD's, and they are the floppy's printed
-    /// text 201 indices plus 160 throughout this script â€” `(proc0_18 (+ temp2 160) â€¦)` at
+    /// text 201 indices plus 160 throughout this script Ã¢â‚¬â€ `(proc0_18 (+ temp2 160) Ã¢â‚¬Â¦)` at
     /// `:216` against `(Print 201 (Random 18 22))` in the floppy's `:255` is the statement
     /// of that offset.
     /// </summary>
@@ -5286,12 +5345,12 @@ public sealed partial class MainViewModel : ViewModelBase
                 break;
 
             case Game.MoreTimeOutcome.Granted:
-                DuckedSting(Audio.SoundEffects.GoodNews);      // `(gASoundEffect play: 45 â€¦)`
+                DuckedSting(Audio.SoundEffects.GoodNews);      // `(gASoundEffect play: 45 Ã¢â‚¬Â¦)`
                 Speak(184);
                 break;
 
             case Game.MoreTimeOutcome.Refused:
-                DuckedSting(Audio.SoundEffects.BadNews);       // `(gASoundEffect play: 44 â€¦)`
+                DuckedSting(Audio.SoundEffects.BadNews);       // `(gASoundEffect play: 44 Ã¢â‚¬Â¦)`
                 Speak(185);
                 break;
 
@@ -5301,7 +5360,7 @@ public sealed partial class MainViewModel : ViewModelBase
 
             case Game.MoreTimeOutcome.AskedAgainAfterNo:
                 // `switch triedExt` cases 2..5 speak 187, 188, 189, 190. There is no case 6,
-                // so a sixth press is silent â€” the original's own end of the joke.
+                // so a sixth press is silent Ã¢â‚¬â€ the original's own end of the joke.
                 if (tried is >= 2 and <= 5)
                 {
                     DuckedSting(Audio.SoundEffects.BadNews);
@@ -5339,8 +5398,8 @@ public sealed partial class MainViewModel : ViewModelBase
                 return;
 
             case Game.RentOutcome.Moved:
-                // `(if global427 (proc0_18 (+ temp2 160) â€¦))` with temp2 `(Random 13 17)`
-                // for the low-cost move and `(Random 8 12)` for the security one â€” the
+                // `(if global427 (proc0_18 (+ temp2 160) Ã¢â‚¬Â¦))` with temp2 `(Random 13 17)`
+                // for the low-cost move and `(Random 8 12)` for the security one Ã¢â‚¬â€ the
                 // clerk's chatter, gated on the non-essential-messages flag.
                 Speak(_stockRng.Next(scriptLivesAt == 0 ? 173 : 168,
                                      scriptLivesAt == 0 ? 177 : 172));
@@ -5349,7 +5408,7 @@ public sealed partial class MainViewModel : ViewModelBase
             case Game.RentOutcome.NeedsConfirmation:
                 var weeks = _game.PrepaidWeeksAt(scriptLivesAt == 0 ? 2 : 0);
 
-                // Clip 193 for the low-cost move, 197 for the security one â€” the sentence
+                // Clip 193 for the low-cost move, 197 for the security one Ã¢â‚¬â€ the sentence
                 // that names the weeks about to be forfeited. ONE balloon, buttons on it:
                 // the floppy's `rentOffice.sc:524` and `:647` are single `Print`s of text
                 // 201[33] / 201[37] with `#width 150` and both buttons.
@@ -5407,7 +5466,7 @@ public sealed partial class MainViewModel : ViewModelBase
             Add(label, () =>
             {
                 // `CostDItem::doit` opens by stopping the work clock and putting it back on
-                // cel 0 (`WButton.sc:197-200`) â€” before the affordability test, so it
+                // cel 0 (`WButton.sc:197-200`) Ã¢â‚¬â€ before the affordability test, so it
                 // happens whether or not the purchase goes through.
                 ResetWorkClock();
 
@@ -5433,7 +5492,7 @@ public sealed partial class MainViewModel : ViewModelBase
     }
 
     /// <summary>
-    /// `boughtItem::doit` â€” a random compliment from this shop's band, never the same one
+    /// `boughtItem::doit` Ã¢â‚¬â€ a random compliment from this shop's band, never the same one
     /// twice running (`while (== localN (= temp0 (Random lo hi))) 1`).
     /// </summary>
     private void SpeakBoughtItem()
@@ -5448,7 +5507,7 @@ public sealed partial class MainViewModel : ViewModelBase
         Speak(clip);
     }
 
-    /// <summary>`notEnoughCash::doit` â€” one fixed clip per location, spoken, never printed.</summary>
+    /// <summary>`notEnoughCash::doit` Ã¢â‚¬â€ one fixed clip per location, spoken, never printed.</summary>
     private void SpeakNotEnoughCash()
     {
         if (Audio.ShopSpeech.For(P.Location) is { } lines) Speak(lines.NotEnoughCash);
@@ -5458,7 +5517,7 @@ public sealed partial class MainViewModel : ViewModelBase
 
     /// <summary>
     /// Opens the paper bought at Black's Market. `newspaper.sc:120-130`: if `global415` is
-    /// not a usable story id it picks `(Random 25 62)` â€” one of the filler headlines â€” and
+    /// not a usable story id it picks `(Random 25 62)` Ã¢â‚¬â€ one of the filler headlines Ã¢â‚¬â€ and
     /// the paper returns to the shop you bought it in rather than to the board.
     /// </summary>
     private void ReadNewspaper()
@@ -5476,7 +5535,7 @@ public sealed partial class MainViewModel : ViewModelBase
     /// Actions stay CLICKABLE when the week's hours are gone. The original gates each
     /// action individually, and most are not gated at all.
     ///
-    /// `CostDItem::doit` (`WButton.sc:197-235`) â€” the buy action, used by every shop â€” has
+    /// `CostDItem::doit` (`WButton.sc:197-235`) Ã¢â‚¬â€ the buy action, used by every shop Ã¢â‚¬â€ has
     /// no clock test whatsoever: it checks that you can afford the item, hands the goods
     /// over and takes the money. Running out of hours at Monolith Burgers does not stop
     /// you buying a meal, which is exactly the point, because a player whose week has
@@ -5484,9 +5543,9 @@ public sealed partial class MainViewModel : ViewModelBase
     ///
     /// The clock checks that do exist are on specific actions and each one has its own
     /// answer rather than a dead button:
-    ///   work           `fastFood.sc:328` and its equivalents â€” `(and (&lt; global323 60)
+    ///   work           `fastFood.sc:328` and its equivalents Ã¢â‚¬â€ `(and (&lt; global323 60)
     ///                  (&gt; global566 0))`; the shift speaks clip 960 + placeNum instead
-    ///   job applying   `employment.sc:167` â€” sets global433 to 5, which speaks clip 425,
+    ///   job applying   `employment.sc:167` Ã¢â‚¬â€ sets global433 to 5, which speaks clip 425,
     ///                  "we're closing, come back next week"
     ///   studying       `university.sc:193`        relaxing  `lowcost.sc:183`
     ///   bank, broker   `bank.sc:341/417`, `broker.sc:770`
@@ -5511,14 +5570,14 @@ public sealed partial class MainViewModel : ViewModelBase
     /// </summary>
     public string WhereText => _game is null ? "" : Board.Get(P.Location).Name;
 
-    /// <summary>`Week #%2d` â€” text 1[2] / 700[85] / 994[0], the same string the board draws.</summary>
+    /// <summary>`Week #%2d` Ã¢â‚¬â€ text 1[2] / 700[85] / 994[0], the same string the board draws.</summary>
     public string WeekText => _game is null ? "" : $"Week #{_game.Calendar.Week,2}";
 
     // NO STATUS LINES. `{JobTitle()} - ${wage}/hr`, `Dep n  Exp n  Rlx n  Deg n/11`,
     // `{n} hrs left` and `${cash}` were all invented. The game has a stats screen with its
     // own format table (text 231: `Works at %-16s`, `As a %-20s`, `Hourly wage: $%-11d`,
-    // `Cash: $%-18s`, â€¦) which this port has not built yet, and on the board itself the
-    // hours are a CLOCK SPRITE (view 270) and the money a CALCULATOR (view 0 loop 4) â€”
+    // `Cash: $%-18s`, Ã¢â‚¬Â¦) which this port has not built yet, and on the board itself the
+    // hours are a CLOCK SPRITE (view 270) and the money a CALCULATOR (view 0 loop 4) Ã¢â‚¬â€
     // both of which BuildBoard already draws. The only one of these the port had right was
     // `Unemployed`, which is text 231[5].
 
@@ -5531,8 +5590,8 @@ public sealed partial class MainViewModel : ViewModelBase
         goal <= 0 ? 100 : Math.Clamp(100.0 * stat / goal, 0, 100);
 
     // THE TURN-START EVENTS ARE NOT DESCRIBED IN WORDS. There was a `Describe` method here
-    // turning each of the twenty `TurnStartEvent` cases into a sentence â€” "Wild Willy took
-    // 2 item(s).", "You were ill. The doctor cost $120.", "Something happened." â€” and not
+    // turning each of the twenty `TurnStartEvent` cases into a sentence Ã¢â‚¬â€ "Wild Willy took
+    // 2 item(s).", "You were ill. The doctor cost $120.", "Something happened." Ã¢â‚¬â€ and not
     // one of those sentences exists in the game. `startTrn.sc` has a single `Print` in the
     // whole chain (text 111[0], "What should be done with the remaining players?"); the
     // robbery, the crash and the boom are announced by the NEWSPAPER, which BeginTurn
@@ -5543,7 +5602,7 @@ public sealed partial class MainViewModel : ViewModelBase
 
     /// <summary>
     /// The setup dialogs open over the TOWN BOARD, not the title screen. They use the
-    /// invisible window, and the board's cream centre panel is what the buttons sit on â€”
+    /// invisible window, and the board's cream centre panel is what the buttons sit on Ã¢â‚¬â€
     /// there is no separate dialog backdrop at all.
     /// </summary>
     private void TitleBackdrop()
@@ -5589,7 +5648,7 @@ public sealed partial class MainViewModel : ViewModelBase
     {
         // NETWORK PLAY splits the keyboard in two. The Game menu's keys and the sound
         // switches belong to the machine they are pressed on (HandleSystemKey); everything
-        // else is the GAME's and belongs to whichever seat is acting — on a joiner it goes to
+        // else is the GAME's and belongs to whichever seat is acting â€” on a joiner it goes to
         // the host, and on the host it is ignored while a joiner is the one acting. Returning
         // false for an ignored key leaves Esc free to open the host's own menu bar.
         if (_remoteView) return HandleJoinerKey(key, ctrl, shift);
@@ -5599,13 +5658,13 @@ public sealed partial class MainViewModel : ViewModelBase
     }
 
     /// <summary>
-    /// The Game menu's accelerators and the sound switches — `MenuBar::handleEvent`'s own
+    /// The Game menu's accelerators and the sound switches â€” `MenuBar::handleEvent`'s own
     /// share of the keyboard, which the menu bar claims before any dialog sees the event.
     /// </summary>
     private bool HandleSystemKey(string key, bool ctrl)
     {
         // F5 Save, F7 Restore, F9 Restart (`Menu.sc:122-124`), and the keyboard while one
-        // of their `Print`s is up — which is modal, so it takes precedence over everything
+        // of their `Print`s is up â€” which is modal, so it takes precedence over everything
         // below. See MainViewModel.SaveRestore.cs.
         if (HandleSaveRestoreKey(key, ctrl)) return true;
 
@@ -5613,10 +5672,10 @@ public sealed partial class MainViewModel : ViewModelBase
         {
             switch (key)
             {
-                // `Menu.sc:211-217`, menu id 517: `(= gQuit (Print 997 10 â€¦))`. The YES/NO
-                // confirmation is a modal `Print` and the port has no modal machinery yet â€”
+                // `Menu.sc:211-217`, menu id 517: `(= gQuit (Print 997 10 Ã¢â‚¬Â¦))`. The YES/NO
+                // confirmation is a modal `Print` and the port has no modal machinery yet Ã¢â‚¬â€
                 // the same gap that leaves the pawn shop's "Take It / Leave It" and the
-                // university's "Enroll for $%d?" unasked â€” so this quits directly.
+                // university's "Enroll for $%d?" unasked Ã¢â‚¬â€ so this quits directly.
                 // THE ACCELERATOR AND THE MENU ITEM ARE ONE BRANCH OF ONE SWITCH in the
                 // original, so they are one method here: `QuitFromMenu` in
                 // MainViewModel.MenuBar.cs, which asks text 997[10] "Quitting?" and plays
@@ -5631,7 +5690,7 @@ public sealed partial class MainViewModel : ViewModelBase
                 // running 0..15 and calls `(DoSound sndMASTER_VOLUME global520)`. Neither
                 // the Gauge dialog nor a volume level exists in this port: `IAudioPlayer`
                 // offers `Enabled` and nothing else, so Ctrl-V is the two ends of that
-                // slider and nothing in between. Deliberately no on-screen feedback â€” the
+                // slider and nothing in between. Deliberately no on-screen feedback Ã¢â‚¬â€ the
                 // Gauge is art this port does not draw, and inventing a caption for it
                 // would be inventing user-visible text.
                 // Shared with the Options menu's Change Volume, for the same reason as
@@ -5645,15 +5704,15 @@ public sealed partial class MainViewModel : ViewModelBase
         }
 
         // F2 and F3. I reported twice that this build has no F2 binding; that was wrong
-        // both times, and wrong the same way the subtitle audit was â€” I only searched the
+        // both times, and wrong the same way the subtitle audit was Ã¢â‚¬â€ I only searched the
         // CD scripts. The FLOPPY build's Options menu (`jones-dos-1.000.060/src/Menu.sc:128`)
         // ends:
         //
-        //     â€¦ Change Volume `^V:Turn Music Off `#2:Turn Sound Effects Off `#3
+        //     Ã¢â‚¬Â¦ Change Volume `^V:Turn Music Off `#2:Turn Sound Effects Off `#3
         //
         // `` `# `` is the function-key escape and the digit is the F-number, so music is F2
         // and effects are F3. The CD build dropped both menu entries, which is why they are
-        // absent from its 997[6] help text â€” but they are unmistakably part of the game.
+        // absent from its 997[6] help text Ã¢â‚¬â€ but they are unmistakably part of the game.
         //
         // They are SEPARATE from Ctrl-V's master volume: you can silence the bed and keep
         // the button clicks, or the reverse.
@@ -5690,13 +5749,13 @@ public sealed partial class MainViewModel : ViewModelBase
     }
 
     /// <summary>
-    /// The game's own keys — the controls' accelerators, F4/F6, and the per-screen keys.
+    /// The game's own keys â€” the controls' accelerators, F4/F6, and the per-screen keys.
     /// Reached from the local keyboard when this machine may act, and from a network joiner
     /// through <see cref="ExecuteRemoteInput"/>.
     /// </summary>
     private bool HandleGameKey(string key, bool ctrl, bool shift)
     {
-        // Ctrl-A .. Ctrl-X are the `key` values 1..24 that the controls declare — see
+        // Ctrl-A .. Ctrl-X are the `key` values 1..24 that the controls declare â€” see
         // SciKey for the evidence. The menu bar's own six are handled above and above
         // only: `menuBarOK` is 1 on all 35 dialogs (`Interface.sc:1008`), so the menu
         // takes them first and the shop line that happens to share the number never
@@ -5707,13 +5766,13 @@ public sealed partial class MainViewModel : ViewModelBase
 
         switch (key)
         {
-            // F6 — Goals. `Menu.sc:390-395` dispatches menu id 1026 to `proc997_2`, and
+            // F6 â€” Goals. `Menu.sc:390-395` dispatches menu id 1026 to `proc997_2`, and
             // text 997[6] names it "F6 - View Goals Screens".
             case "F6":
                 ShowGoalsScreen();
                 return true;
 
-            // F4 — Statistics. `Menu.sc:386-389` dispatches menu id 1025 to `proc997_1`;
+            // F4 â€” Statistics. `Menu.sc:386-389` dispatches menu id 1025 to `proc997_1`;
             // text 997[6] names it "F4 - Current Player's Stats" and 997[7] gives it the
             // right mouse button and Shift-left as well.
             case "F4":
@@ -5736,7 +5795,7 @@ public sealed partial class MainViewModel : ViewModelBase
         // (`Interface.sc:230-236` sets state bit $0002 on the first item whose state has
         // bit 1, and hands it to `doit:` at `:241`). Esc is the one branch that fires even
         // with a selectable item present (`Interface.sc:1121-1124`): it returns -1, which
-        // `Print` maps to 0 at `:241-243` — the value of the No/Leave It button.
+        // `Print` maps to 0 at `:241-243` â€” the value of the No/Leave It button.
         if (key is "Escape" or "Return" && _question is { } pending && SpokenLine.Length == 0)
         {
             Answer(key == "Return" ? pending.Buttons[0].Value : 0);
@@ -5744,7 +5803,7 @@ public sealed partial class MainViewModel : ViewModelBase
         }
 
         // A text-only `Print` is dismissed by Enter, Esc, any mouse button or the joystick
-        // button â€” `Dialog::handleEvent`, `Interface.sc:1106-1123`, which claims the event
+        // button Ã¢â‚¬â€ `Dialog::handleEvent`, `Interface.sc:1106-1123`, which claims the event
         // and returns -1. The balloon is this port's `Print`.
         if (key is "Escape" or "Return" && IsBalloonShowing)
         {
@@ -5752,7 +5811,7 @@ public sealed partial class MainViewModel : ViewModelBase
             return true;
         }
 
-        // `key 120` â€” `x` â€” is the exitButton in EVERY dialog in the game: `fastFood.sc:300`
+        // `key 120` Ã¢â‚¬â€ `x` Ã¢â‚¬â€ is the exitButton in EVERY dialog in the game: `fastFood.sc:300`
         // and its twelve siblings, `diploma.sc:115`, `newspaper.sc:187`, `weekend.sc:268`,
         // `broker.sc:499`, `pawnShop.sc:618`. Same button the mouse already clicks.
         if (key == "X")
@@ -5769,7 +5828,7 @@ public sealed partial class MainViewModel : ViewModelBase
             return false;
         }
 
-        // `key 119` â€” `w` â€” is the workButton, declared on every workplace's own instance
+        // `key 119` Ã¢â‚¬â€ `w` Ã¢â‚¬â€ is the workButton, declared on every workplace's own instance
         // (`fastFood.sc:311`, `appliance.sc:506`, `bank.sc:458`, and so on). It is only
         // added to the dialog when the player works there, so the key only does anything
         // there either.
@@ -5801,7 +5860,7 @@ public sealed partial class MainViewModel : ViewModelBase
     }
 
     /// <summary>
-    /// Fires whatever control on the current screen declares this <c>key</c>, if any —
+    /// Fires whatever control on the current screen declares this <c>key</c>, if any â€”
     /// the port's <c>Item::handleEvent</c> (`Interface.sc:407-420`). Returns whether the
     /// event was claimed, which is what that method's `(event claimed: 1)` amounts to.
     /// </summary>
@@ -5811,7 +5870,7 @@ public sealed partial class MainViewModel : ViewModelBase
 
         // Deliberately the SAME action the mouse runs and nothing more. `WButton::track`
         // (`WButton.sc:80-114`) routes the keyboard branch and the mouse branch into one
-        // `doit`, so a key press and a click must not differ — including in whether they
+        // `doit`, so a key press and a click must not differ â€” including in whether they
         // play effect 23, which `ActionVm` already does for the lines that are ActionVms.
         press();
         return true;
@@ -5823,7 +5882,7 @@ public sealed partial class MainViewModel : ViewModelBase
     //   Ctrl-S     animation speed         Gauge.sc is unported; it also rewrites global475
     //                                      (`Menu.sc:317`), the travel cost, which Board.cs
     //                                      does not model
-    //   Ctrl-T     graphics detail         global534 has no equivalent here â€” the port
+    //   Ctrl-T     graphics detail         global534 has no equivalent here Ã¢â‚¬â€ the port
     //                                      draws everything at full detail unconditionally
     //   Ctrl-Y     save directory          `proc990_2` is a `Print` with a 29-character
     //                                      `#edit` field validated by `ValidPath`
@@ -5850,7 +5909,7 @@ public sealed partial class MainViewModel : ViewModelBase
         foreach (var n in new[]
         {
             nameof(ShowBoard), nameof(ShowPanel), nameof(WhereText), nameof(WeekText),
-            nameof(IsBalloonShowing),
+            nameof(IsBalloonShowing), nameof(CanJoinNetwork),
             nameof(WealthPct), nameof(HappinessPct), nameof(EducationPct), nameof(CareerPct),
         })
         {
@@ -5892,4 +5951,5 @@ public sealed class ActionVm(string label, Action run, bool enabled = true, stri
         () => { MainViewModel.Effect(Audio.LocationMusic.ButtonClick); run(); },
         () => enabled);
 }
+
 

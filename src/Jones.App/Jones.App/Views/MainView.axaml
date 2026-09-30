@@ -77,6 +77,28 @@
       <Setter Property="Background" Value="#55FFFFFF" />
     </Style>
 
+    <!-- The same look for the network switches, which open a box rather than toggling. -->
+    <Style Selector="Button.snd">
+      <Setter Property="Width" Value="44" />
+      <Setter Property="Height" Value="44" />
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="CornerRadius" Value="6" />
+      <Setter Property="HorizontalContentAlignment" Value="Center" />
+      <Setter Property="VerticalContentAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Button.snd /template/ ContentPresenter">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="CornerRadius" Value="6" />
+    </Style>
+    <Style Selector="Button.snd:pointerover /template/ ContentPresenter">
+      <Setter Property="Background" Value="#33FFFFFF" />
+    </Style>
+    <Style Selector="Button.snd:pressed /template/ ContentPresenter">
+      <Setter Property="Background" Value="#55FFFFFF" />
+    </Style>
+
   </UserControl.Styles>
 
   <!-- The whole game lives in the original's 320x200 space and is scaled as one unit,
@@ -575,6 +597,68 @@
           Background="#99000000" CornerRadius="8" Padding="3">
     <StackPanel Orientation="Horizontal" Spacing="2">
 
+      <!-- NETWORK PLAY: JOIN. Not in the original, which has no network play at all; see
+           MainViewModel.Network.cs. A phone has no command line, so `- -join` cannot reach
+           the Android head, and this row is the only surface it has.
+
+           Shown only on the title screen of a copy that is neither hosting nor joined, so it
+           can never throw away a game in progress. The box holds the host's address, as
+           typed - "100.64.1.2" or "pc.tailnet.ts.net:7117" - and nothing else: no caption,
+           no placeholder, for the reason the sound switches carry none.
+
+           The glyph is a chain link; the arrow connects. -->
+      <Button x:Name="JoinButton" Classes="snd" IsVisible="{Binding CanJoinNetwork}"
+              ToolTip.Tip="Join a network game">
+        <Panel Width="26" Height="26">
+          <Path Stroke="#F0F0F0" StrokeThickness="2" StrokeLineCap="Round"
+                Data="M13.5,18.5 L11,21 A3.5,3.5 0 0 1 6,16 L9.5,12.5 A3.5,3.5 0 0 1 14.5,12.5
+                      M12.5,7.5 L15,5 A3.5,3.5 0 0 1 20,10 L16.5,13.5 A3.5,3.5 0 0 1 11.5,13.5" />
+        </Panel>
+        <Button.Flyout>
+          <Flyout Placement="BottomEdgeAlignedRight">
+            <StackPanel Orientation="Horizontal" Spacing="6">
+              <TextBox Width="230" Text="{Binding JoinAddressText, Mode=TwoWay}"
+                       AcceptsReturn="False">
+                <TextBox.KeyBindings>
+                  <KeyBinding Gesture="Enter" Command="{Binding JoinCommand}" />
+                </TextBox.KeyBindings>
+              </TextBox>
+              <Button Command="{Binding JoinCommand}" Width="44" Height="36" Padding="0"
+                      ToolTip.Tip="Join">
+                <Path Stroke="#F0F0F0" StrokeThickness="2.2" StrokeLineCap="Round"
+                      StrokeJoin="Round" Data="M4,11 L18,11 M12,5 L18,11 L12,17" />
+              </Button>
+            </StackPanel>
+          </Flyout>
+        </Button.Flyout>
+      </Button>
+
+      <!-- NETWORK PLAY: JOINED. The same link, green while seated at the host and grey while
+           the connection is down (it reconnects by itself). Opens a single button that leaves
+           and returns to a fresh game of this copy's own. -->
+      <Button x:Name="LeaveButton" Classes="snd" IsVisible="{Binding IsRemoteView}"
+              ToolTip.Tip="Network game">
+        <Panel Width="26" Height="26">
+          <Path Stroke="#5BD75B" StrokeThickness="2" StrokeLineCap="Round"
+                IsVisible="{Binding IsConnected}"
+                Data="M13.5,18.5 L11,21 A3.5,3.5 0 0 1 6,16 L9.5,12.5 A3.5,3.5 0 0 1 14.5,12.5
+                      M12.5,7.5 L15,5 A3.5,3.5 0 0 1 20,10 L16.5,13.5 A3.5,3.5 0 0 1 11.5,13.5" />
+          <Path Stroke="#8A8A8A" StrokeThickness="2" StrokeLineCap="Round"
+                IsVisible="{Binding !IsConnected}"
+                Data="M13.5,18.5 L11,21 A3.5,3.5 0 0 1 6,16 L9.5,12.5 A3.5,3.5 0 0 1 14.5,12.5
+                      M12.5,7.5 L15,5 A3.5,3.5 0 0 1 20,10 L16.5,13.5 A3.5,3.5 0 0 1 11.5,13.5" />
+        </Panel>
+        <Button.Flyout>
+          <Flyout Placement="BottomEdgeAlignedRight">
+            <Button Command="{Binding LeaveCommand}" Width="44" Height="36" Padding="0"
+                    ToolTip.Tip="Leave">
+              <Path Stroke="#FF4B4B" StrokeThickness="2.4" StrokeLineCap="Round"
+                    Data="M5,5 L17,17 M17,5 L5,17" />
+            </Button>
+          </Flyout>
+        </Button.Flyout>
+      </Button>
+
       <!-- Sound effects: the button click, the stings, the chimes. F3. -->
       <ToggleButton Classes="snd" IsChecked="{Binding EffectsOn, Mode=TwoWay}"
                     ToolTip.Tip="Sound effects">
@@ -642,6 +726,38 @@
                      HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,3,0" />
           <Path Stroke="#FF4B4B" StrokeThickness="2.6" StrokeLineCap="Round"
                 Data="M4,22 L22,4" IsVisible="{Binding !QuicksandFont}" />
+        </Panel>
+      </ToggleButton>
+
+      <!-- THE SOUNDTRACK. Off - the default - is Sierra's arrangements on the emulated AdLib
+           card, exactly as the port has always played them. On is the music and effects
+           written for this port, on this port's own synthesiser.
+
+           LIVE, AND THAT IS THE POINT. Setting it restarts the bed the player is standing in
+           on the other synthesiser, so the two can be heard back to back on one cue. That
+           comparison is the only way to judge whether the replacement is actually better,
+           and the answer is the user's to give.
+
+           A cue with no original version written yet still comes from the AdLib path even
+           with this on, per cue, so the new set can be filled in a batch at a time.
+
+           IT IS HERE, NOT ON A KEY, for the reason set out on the font switch above: the
+           game's own key list is 997[6] and 997[7], this port has already taken F2 and F3,
+           and inventing another binding is what working rule 1 exists to stop. This row is
+           the port's own chrome and it is the only surface a phone can reach.
+
+           The glyph is a square wave - the FM chip - on the left, and a quaver on the
+           right. -->
+      <ToggleButton Classes="snd" IsChecked="{Binding OriginalAudio, Mode=TwoWay}"
+                    ToolTip.Tip="Soundtrack: the game's own, or this port's">
+        <Panel Width="26" Height="26">
+          <Path Stroke="#F0F0F0" StrokeThickness="1.8" StrokeLineCap="Square"
+                Data="M2,17 L2,10 L6,10 L6,17 L10,17 L10,10"
+                HorizontalAlignment="Left" VerticalAlignment="Center" />
+          <Path Fill="#F0F0F0"
+                Data="M14,20 A2.6,2.2 0 1 0 17.2,17.9 L17.2,7 L23,5.2 L23,8 L19.4,9.2 L19.4,18.2 A2.6,2.2 0 1 1 14,20 Z" />
+          <Path Stroke="#FF4B4B" StrokeThickness="2.6" StrokeLineCap="Round"
+                Data="M4,22 L22,4" IsVisible="{Binding !OriginalAudio}" />
         </Panel>
       </ToggleButton>
 

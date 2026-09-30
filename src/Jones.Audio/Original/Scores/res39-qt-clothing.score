@@ -1,0 +1,88 @@
+﻿# ---------------------------------------------------------------------------
+# RESOURCE 39 - QT CLOTHING
+#
+# `clothing.sc:107`, `playBed:`.
+#
+# Original: 1080 ticks = 18.00 s, loop point at the top.
+# Here:     8 bars at 107 bpm = 17.94 s, loop at the top.
+#
+# ORIGINAL MUSIC. Written to the ROLE the cue plays, never to its notes.
+#
+# Brief: the boutique. You come here to spend money on how you look, and the
+# room should flatter you for it. Smooth and a little vain: major ninths, a
+# bass that walks rather than punches, brushed kit, and a bell putting three
+# points of light a bar over the top.
+#
+# SEPARATED FROM Z-MART DELIBERATELY, because two shops are the likeliest
+# pair in the game to converge. This one is Db major, swung, lush, mid-tempo,
+# and led by sustained keys and a bell. Z-Mart is G major, almost straight,
+# faster, and led by a chirpy clav over plain triads. Different key, different
+# swing, different tempo, different instruments: one is a boutique and one is
+# a discount aisle, and they should not be cousins.
+#
+# Written to the v2 mix standard from the start - bass holding, pad voiced
+# with the 7th and 9th, keys sustaining - rather than written thin and
+# remixed afterwards. NO LEAD LINE: the bell is the top and it plays chord
+# tones, not a tune.
+# ---------------------------------------------------------------------------
+
+tempo 107
+steps 16
+swing 0.17
+loop 1
+loop-from 0
+space room
+
+part pad    patch=pad   gain=0.76  pan=-0.22
+part keys   patch=keys  gain=0.86  pan=0.16
+part bell   patch=bell  gain=0.98  pan=0.36
+part bass   patch=bass  gain=0.84  pan=0.00
+part drums  kit         gain=0.62  pan=0.00
+
+#          1    2    3    4    5    6    7    8    9   10   11   12   13   14   15   16
+
+pad:    Db3+F3+Ab3+C4   -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+pad:    Db3+F3+Ab3+C4   -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+pad:    Bb2+Db3+F3+Ab3  -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+pad:    Bb2+Db3+F3+Ab3  -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+pad:    Gb2+Bb2+Db3+F3  -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+pad:    Gb2+Bb2+Db3+F3  -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+pad:    Ab2+C3+Eb3+Gb3  -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+pad:    Ab2+C3+Eb3+Gb3  -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+
+keys:   .    .    F4+Ab4+C5+Eb5    -    -    -    -    -    .    .    F4+Ab4+C5+Eb5    -    -    -    -    -
+keys:   .    .    F4+Ab4+C5+Eb5    -    -    -    -    -    .    .    Eb4+Ab4+C5       -    -    -    -    -
+keys:   .    .    Db4+F4+Ab4+C5    -    -    -    -    -    .    .    Db4+F4+Ab4+C5    -    -    -    -    -
+keys:   .    .    Db4+F4+Ab4+C5    -    -    -    -    -    .    .    C4+F4+Ab4        -    -    -    -    -
+keys:   .    .    Bb3+Db4+F4+Gb4   -    -    -    -    -    .    .    Bb3+Db4+F4+Gb4   -    -    -    -    -
+keys:   .    .    Bb3+Db4+F4+Gb4   -    -    -    -    -    .    .    Db4+Gb4+Bb4      -    -    -    -    -
+keys:   .    .    C4+Eb4+Gb4+Ab4   -    -    -    -    -    .    .    C4+Eb4+Gb4+Ab4   -    -    -    -    -
+keys:   .    .    C4+Eb4+Gb4+Ab4   -    -    -    -    -    .    .    Eb4+Gb4+C5       -    -    -    -    -
+
+bell:   .    .    .    .    Ab5  .    .    .    .    .    F5   .    .    .    Db5  .
+bell:   .    .    .    .    Ab5  .    .    .    .    .    C6   .    .    .    .    .
+bell:   .    .    .    .    F5   .    .    .    .    .    Db5  .    .    .    Ab4  .
+bell:   .    .    .    .    F5   .    .    .    .    .    Ab5  .    .    .    .    .
+bell:   .    .    .    .    Db5  .    .    .    .    .    Bb4  .    .    .    Gb4  .
+bell:   .    .    .    .    Db5  .    .    .    .    .    F5   .    .    .    .    .
+bell:   .    .    .    .    Eb5  .    .    .    .    .    C5   .    .    .    Ab4  .
+bell:   .    .    .    .    Gb5  .    .    .    .    .    Eb5  .    .    .    .    .
+
+bass:   Db2  -    -    -    -    .    Ab1  -    -    -    .    F2   -    -    -    -
+bass:   Db2  -    -    -    -    .    Bb1  -    -    -    .    Ab1  -    -    -    -
+bass:   Bb1  -    -    -    -    .    F2   -    -    -    .    Db2  -    -    -    -
+bass:   Bb1  -    -    -    -    .    Ab1  -    -    -    .    Gb2  -    -    -    -
+bass:   Gb2  -    -    -    -    .    Db2  -    -    -    .    Bb1  -    -    -    -
+bass:   Gb2  -    -    -    -    .    Bb1  -    -    -    .    Ab1  -    -    -    -
+bass:   Ab1  -    -    -    -    .    Eb2  -    -    -    .    C2   -    -    -    -
+bass:   Ab1  -    -    -    -    .    C2   -    -    -    .    Eb2  -    -    -    -
+
+drums:  bd   .    hh   .    sd   .    hh   bd   .    .    hh   .    sd   .    hh   hh
+drums:  bd   .    hh   .    sd   .    hh   bd   .    .    hh   .    sd   .    hh   hh
+drums:  bd   .    hh   .    sd   .    hh   bd   .    .    hh   .    sd   .    hh   hh
+drums:  bd   .    hh   .    sd   .    hh   bd   .    .    hh   .    sd   .    hh   hh
+drums:  bd   .    hh   .    sd   .    hh   bd   .    .    hh   .    sd   .    hh   hh
+drums:  bd   .    hh   .    sd   .    hh   bd   .    .    hh   .    sd   .    hh   hh
+drums:  bd   .    hh   .    sd   .    hh   bd   .    .    hh   .    sd   .    hh   hh
+drums:  bd   .    hh   .    sd   .    hh   bd   .    .    hh   .    sd   .    hh   oh
+

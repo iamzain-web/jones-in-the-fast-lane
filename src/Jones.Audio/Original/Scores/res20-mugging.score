@@ -1,0 +1,41 @@
+# ---------------------------------------------------------------------------
+# RESOURCE 20 - THE MUGGING
+#
+# `muggedByMarket.sc:31` and `:95` - Wild Willy, both times.
+#
+# Original: 136 ticks = 2.27 s.
+# Here:     1 bar at 106 bpm = 2.26 s.
+#
+# ORIGINAL MUSIC. Written to the ROLE the cue plays, never to its notes.
+#
+# Brief: the one thing in the game that happens TO the player without warning,
+# so it is the one cue that starts at full height on step one. A crash and a
+# brass cluster together, then a fast chromatic fall, then nothing.
+#
+# It shares its harmony with Black's Market by design - E against F, the same
+# semitone that room leans on all the way through - because this is what that
+# room was quietly promising. Walking in, the discomfort is a colour; being
+# mugged, it is the whole chord.
+#
+# IT DOES NOT LINGER. Two and a quarter seconds, and most of the energy is in
+# the first half second. A jump scare that outstays its moment turns into
+# comedy, and this is the player losing money.
+# ---------------------------------------------------------------------------
+
+tempo 106
+steps 16
+swing 0.0
+loop 0
+space room
+
+part brass  patch=brass gain=0.94  pan=0.00
+part clav   patch=clav  gain=0.92  pan=0.22
+part bass   patch=bass  gain=0.92  pan=0.00
+part drums  kit         gain=0.88  pan=0.00
+
+#          1    2    3    4    5    6    7    8    9   10   11   12   13   14   15   16
+
+brass:  E4+F4+B4   -    -    -    .    .    .    .    .    .    .    .    .    .    .    .
+clav:   .    .    E5+F5   .    D5+Eb5   .    C5+Db5   .    B4+C5   .    .    .    .    .    .    .
+bass:   E2   -    -    -    .    D2   -    .    C2   -    .    B1   -    -    -    -
+drums:  cr   .    .    .    .    .    .    .    bd   .    .    .    .    .    .    .

@@ -167,13 +167,42 @@ public static class SciArt
     private static readonly Dictionary<Bitmap, Bitmap?> Loaded =
         new(ReferenceEqualityComparer.Instance);
 
+    // TEMPORARY DIAGNOSTIC — remove once the university overlay is settled. Writes to
+    // %TEMP%\jones_art_trace.log when JONES_ART_TRACE is set, and is completely inert
+    // otherwise. A WinExe has no console, so this cannot be Console.WriteLine.
+    private static readonly bool Tracing =
+        !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("JONES_ART_TRACE"));
+
+    internal static void Trace(string line)
+    {
+        if (!Tracing) return;
+        try
+        {
+            System.IO.File.AppendAllText(
+                System.IO.Path.Combine(System.IO.Path.GetTempPath(), "jones_art_trace.log"),
+                line + Environment.NewLine);
+        }
+        catch { /* diagnostics must never take the game down */ }
+    }
+
     private static void PairWithFile(Bitmap oneX, string file)
     {
-        if (RenderScale.ArtDirectories.Length == 0) return;
+        if (RenderScale.ArtDirectories.Length == 0)
+        {
+            Trace($"PairWithFile({file}): ArtDirectories EMPTY -> no twin registered");
+            return;
+        }
+
+        Trace($"PairWithFile({file}): factor={RenderScale.Factor} dirs=[{string.Join(", ", RenderScale.ArtDirectories)}]");
 
         // Resolved LAZILY, inside the factory, for the same reason the factory exists at
         // all: a screen that is never visited must not cost a directory probe per cel.
-        RegisterHighRes(oneX, () => Resolve(file) is { } p ? LoadFile(p) : null);
+        RegisterHighRes(oneX, () =>
+        {
+            var p = Resolve(file);
+            Trace($"  resolve({file}) -> {p ?? "<NOT FOUND>"}");
+            return p is { } q ? LoadFile(q) : null;
+        });
     }
 
     /// <summary>
@@ -225,7 +254,11 @@ public static class SciArt
         if (oneX is null || RenderScale.Factor <= 1) return oneX;
 
         if (Loaded.TryGetValue(oneX, out var cached)) return cached ?? oneX;
-        if (!Twins.TryGetValue(oneX, out var factory)) return oneX;
+        if (!Twins.TryGetValue(oneX, out var factory))
+        {
+            Trace($"HighRes({oneX.PixelSize.Width}x{oneX.PixelSize.Height}): NO TWIN REGISTERED -> drawing the 1x pixels");
+            return oneX;
+        }
 
         var hi = factory();
 
@@ -235,7 +268,15 @@ public static class SciArt
         if (hi is not null &&
             (hi.PixelSize.Width != oneX.PixelSize.Width * RenderScale.Factor ||
              hi.PixelSize.Height != oneX.PixelSize.Height * RenderScale.Factor))
+        {
+            Trace($"HighRes: twin REJECTED by the size guard — twin {hi.PixelSize.Width}x{hi.PixelSize.Height}, " +
+                  $"expected {oneX.PixelSize.Width * RenderScale.Factor}x{oneX.PixelSize.Height * RenderScale.Factor} " +
+                  $"(1x {oneX.PixelSize.Width}x{oneX.PixelSize.Height} * factor {RenderScale.Factor})");
             hi = null;
+        }
+
+        Trace($"HighRes(1x {oneX.PixelSize.Width}x{oneX.PixelSize.Height}) -> " +
+              (hi is null ? "1x pixels" : $"twin {hi.PixelSize.Width}x{hi.PixelSize.Height}"));
 
         Loaded[oneX] = hi;
         return hi ?? oneX;

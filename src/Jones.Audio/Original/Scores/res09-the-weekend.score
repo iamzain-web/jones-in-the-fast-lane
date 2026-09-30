@@ -1,0 +1,129 @@
+# ---------------------------------------------------------------------------
+# RESOURCE 9 - THE WEEKEND
+#
+# `weekend.sc:183`, the weekend dialog's own track.
+#
+# Original: 3838 ticks = 63.97 s.
+# Here:     16 bars at 60 bpm = 64.00 s exactly.
+#
+# ORIGINAL MUSIC. Written to the ROLE the cue plays, never to its notes.
+#
+# ---------------------------------------------------------------------------
+# THIS IS NOT A STING. It was catalogued as one and it is sixty-four seconds -
+# longer than every location bed in the game, and more than twenty times the
+# length of Bad News. It is a PIECE, and it is written and budgeted as one.
+#
+# Brief: the week is over and nothing is being decided. The player is reading
+# what they did with two days off. It is the only cue in the game that is not
+# attached to a transaction - no shop, no counter, no clock - and it should be
+# the most relaxed thing in the set.
+#
+# 60 bpm, C major, and a four-bar cycle that goes round four times with only
+# the bell changing. That repetition is the point: sixteen bars of development
+# would be a piece of music competing with a screen of text, and nothing here
+# asks for attention. It is the slowest cue in the game by ten beats.
+#
+# Sparse is not the same as thin, which is the lesson the first five beds
+# taught: the keys sustain right through, the pad carries the 7th and 9th, and
+# the bass holds rather than punctuates. What makes it restful is the TEMPO
+# and the harmony, not an absence of sound.
+# ---------------------------------------------------------------------------
+
+tempo 60
+steps 16
+swing 0.06
+loop 0
+space room
+
+part pad    patch=pad   gain=0.82  pan=-0.24
+part keys   patch=keys  gain=0.92  pan=0.14
+part bell   patch=bell  gain=0.86  pan=0.32
+part bass   patch=bass  gain=0.84  pan=0.00
+part drums  kit         gain=0.56  pan=0.00
+
+#          1    2    3    4    5    6    7    8    9   10   11   12   13   14   15   16
+
+pad:    C3+E3+G3+B3   -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+pad:    A2+C3+E3+G3   -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+pad:    F2+A2+C3+E3   -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+pad:    G2+C3+D3+F3   -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+pad:    C3+E3+G3+B3   -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+pad:    A2+C3+E3+G3   -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+pad:    F2+A2+C3+E3   -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+pad:    G2+C3+D3+F3   -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+pad:    C3+E3+G3+B3   -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+pad:    A2+C3+E3+G3   -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+pad:    F2+A2+C3+E3   -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+pad:    G2+C3+D3+F3   -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+pad:    C3+E3+G3+B3   -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+pad:    A2+C3+E3+G3   -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+pad:    F2+A2+C3+E3   -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+pad:    G2+C3+D3+F3   -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+
+keys:   E4+G4+B4+D5   -    -    -    -    -    -    -    -    -    -    -    -    -    .    .
+keys:   C4+E4+G4+B4   -    -    -    -    -    -    -    -    -    -    -    -    -    .    .
+keys:   A4+C5+E5+G5   -    -    -    -    -    -    -    -    -    -    -    -    -    .    .
+keys:   D4+F4+G4+C5   -    -    -    -    -    -    -    -    -    -    -    -    -    .    .
+keys:   E4+G4+B4+D5   -    -    -    -    -    -    -    -    -    -    -    -    -    .    .
+keys:   C4+E4+G4+B4   -    -    -    -    -    -    -    -    -    -    -    -    -    .    .
+keys:   A4+C5+E5+G5   -    -    -    -    -    -    -    -    -    -    -    -    -    .    .
+keys:   D4+F4+G4+C5   -    -    -    -    -    -    -    -    -    -    -    -    -    .    .
+keys:   E4+G4+B4+D5   -    -    -    -    -    -    -    -    -    -    -    -    -    .    .
+keys:   C4+E4+G4+B4   -    -    -    -    -    -    -    -    -    -    -    -    -    .    .
+keys:   A4+C5+E5+G5   -    -    -    -    -    -    -    -    -    -    -    -    -    .    .
+keys:   D4+F4+G4+C5   -    -    -    -    -    -    -    -    -    -    -    -    -    .    .
+keys:   E4+G4+B4+D5   -    -    -    -    -    -    -    -    -    -    -    -    -    .    .
+keys:   C4+E4+G4+B4   -    -    -    -    -    -    -    -    -    -    -    -    -    .    .
+keys:   A4+C5+E5+G5   -    -    -    -    -    -    -    -    -    -    -    -    -    .    .
+keys:   G4+C5+D5+F5   -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+
+bell:   G5   .    .    .    E5   .    .    .    C5   .    .    .    .    .    D5   .
+bell:   E5   .    .    .    C5   .    .    .    A4   .    .    .    .    .    B4   .
+bell:   C6   .    .    .    A5   .    .    .    F5   .    .    .    .    .    G5   .
+bell:   D5   .    .    .    F5   .    .    .    G5   .    .    .    .    .    E5   .
+bell:   B5   .    .    .    G5   .    .    .    E5   .    .    .    .    .    D5   .
+bell:   A5   .    .    .    E5   .    .    .    C5   .    .    .    .    .    E5   .
+bell:   A5   .    .    .    C6   .    .    .    E6   .    .    .    .    .    C6   .
+bell:   G5   .    .    .    D5   .    .    .    F5   .    .    .    .    .    A5   .
+bell:   G5   .    .    .    B5   .    .    .    D6   .    .    .    .    .    B5   .
+bell:   E5   .    .    .    G5   .    .    .    A5   .    .    .    .    .    C6   .
+bell:   F5   .    .    .    A5   .    .    .    C6   .    .    .    .    .    E6   .
+bell:   D6   .    .    .    C6   .    .    .    G5   .    .    .    .    .    F5   .
+bell:   E5   .    .    .    G5   .    .    .    B5   .    .    .    .    .    C6   .
+bell:   C6   .    .    .    A5   .    .    .    E5   .    .    .    .    .    G5   .
+bell:   A5   .    .    .    F5   .    .    .    C5   .    .    .    .    .    E5   .
+bell:   D5   .    .    .    G5   .    .    .    C6   -    -    -    -    -    -    -
+
+bass:   C2   -    -    -    -    -    -    .    G1   -    -    -    -    -    -    -
+bass:   A1   -    -    -    -    -    -    .    E2   -    -    -    -    -    -    -
+bass:   F2   -    -    -    -    -    -    .    C2   -    -    -    -    -    -    -
+bass:   G1   -    -    -    -    -    -    .    D2   -    -    -    -    -    -    -
+bass:   C2   -    -    -    -    -    -    .    G1   -    -    -    -    -    -    -
+bass:   A1   -    -    -    -    -    -    .    E2   -    -    -    -    -    -    -
+bass:   F2   -    -    -    -    -    -    .    C2   -    -    -    -    -    -    -
+bass:   G1   -    -    -    -    -    -    .    D2   -    -    -    -    -    -    -
+bass:   C2   -    -    -    -    -    -    .    G1   -    -    -    -    -    -    -
+bass:   A1   -    -    -    -    -    -    .    E2   -    -    -    -    -    -    -
+bass:   F2   -    -    -    -    -    -    .    C2   -    -    -    -    -    -    -
+bass:   G1   -    -    -    -    -    -    .    D2   -    -    -    -    -    -    -
+bass:   C2   -    -    -    -    -    -    .    G1   -    -    -    -    -    -    -
+bass:   A1   -    -    -    -    -    -    .    E2   -    -    -    -    -    -    -
+bass:   F2   -    -    -    -    -    -    .    C2   -    -    -    -    -    -    -
+bass:   G1   -    -    -    -    -    -    .    G1   -    -    -    -    -    -    -
+
+drums:  bd   .    hh   .    hh   .    hh   .    sd   .    hh   .    hh   .    hh   .
+drums:  bd   .    hh   .    hh   .    hh   .    sd   .    hh   .    hh   .    hh   .
+drums:  bd   .    hh   .    hh   .    hh   .    sd   .    hh   .    hh   .    hh   .
+drums:  bd   .    hh   .    hh   .    hh   .    sd   .    hh   .    hh   .    hh   .
+drums:  bd   .    hh   .    hh   .    hh   .    sd   .    hh   .    hh   .    hh   .
+drums:  bd   .    hh   .    hh   .    hh   .    sd   .    hh   .    hh   .    hh   .
+drums:  bd   .    hh   .    hh   .    hh   .    sd   .    hh   .    hh   .    hh   .
+drums:  bd   .    hh   .    hh   .    hh   .    sd   .    hh   .    hh   .    hh   oh
+drums:  bd   .    hh   .    hh   .    hh   .    sd   .    hh   .    hh   .    hh   .
+drums:  bd   .    hh   .    hh   .    hh   .    sd   .    hh   .    hh   .    hh   .
+drums:  bd   .    hh   .    hh   .    hh   .    sd   .    hh   .    hh   .    hh   .
+drums:  bd   .    hh   .    hh   .    hh   .    sd   .    hh   .    hh   .    hh   .
+drums:  bd   .    hh   .    hh   .    hh   .    sd   .    hh   .    hh   .    hh   .
+drums:  bd   .    hh   .    hh   .    hh   .    sd   .    hh   .    hh   .    hh   .
+drums:  bd   .    hh   .    hh   .    hh   .    sd   .    hh   .    hh   .    hh   .
+drums:  bd   .    hh   .    hh   .    hh   .    sd   .    hh   .    hh   .    hh   oh

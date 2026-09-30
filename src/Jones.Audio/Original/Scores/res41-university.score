@@ -1,0 +1,88 @@
+# ---------------------------------------------------------------------------
+# RESOURCE 41 - THE UNIVERSITY
+#
+# `university.sc:369` plays it as a bed. `university.sc:227` plays it as a
+# ONE-SHOT. It is the only location cue in the game used both ways.
+#
+# Original: 958 ticks = 15.97 s, loop point at the top.
+# Here:     6 bars at 90 bpm = 16.00 s exactly, loop at the top.
+#
+# ORIGINAL MUSIC. Written to the ROLE the cue plays, never to its notes.
+#
+# ---------------------------------------------------------------------------
+# TWO THINGS SHAPE THIS ONE.
+#
+# FIRST, IT MUST WORK CUT OFF. In the one-shot case the opening few seconds
+# are all anybody hears, so bar 1 has to be a statement rather than a
+# settling-in. Every other bed in the set eases in on an off-beat; this one
+# puts the chord, the bass and the first bell note all on step 1, and the bell
+# has climbed a fifth by the end of the bar. It still has to work as the top
+# of a loop, so bar 6 leads back to bar 1 rather than closing.
+#
+# SECOND, IT IS SIX BARS, not eight. Nothing else in the set is. An odd length
+# makes a loop harder to predict, which is worth having in a room where the
+# player sits reading a course list - and at 90 bpm it is also the slowest cue
+# except the Apartments.
+#
+# Brief: somewhere you go to better yourself, which in this game is literally
+# what it is. A major, major sevenths and ninths throughout, and a bell figure
+# that RISES in every bar - it is the only cue in the set whose top line goes
+# consistently upward, and that is the whole characterisation. Poised like the
+# Bank but warmer; calm like the Apartments but going somewhere. It takes the
+# one thing neither of those has - a snare, on the third beat only - so it has
+# forward motion without becoming a shop.
+#
+# Written to the v2 mix standard from the start. NO LEAD LINE: the bell is the
+# top and it plays chord tones.
+# ---------------------------------------------------------------------------
+
+tempo 90
+steps 16
+swing 0.11
+loop 1
+loop-from 0
+space room
+
+part pad    patch=pad   gain=0.78  pan=-0.24
+part keys   patch=keys  gain=0.88  pan=0.14
+part bell   patch=bell  gain=0.95  pan=0.34
+part bass   patch=bass  gain=0.84  pan=0.00
+part drums  kit         gain=0.58  pan=0.00
+
+#          1    2    3    4    5    6    7    8    9   10   11   12   13   14   15   16
+
+pad:    A2+C#3+E3+G#3   -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+pad:    A2+C#3+E3+G#3   -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+pad:    D3+F#3+A3+C#4   -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+pad:    E3+A3+B3+D4     -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+pad:    F#2+A2+C#3+E3   -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+pad:    B2+D3+F#3+A3    -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+
+keys:   C#4+E4+G#4+B4   -    -    -    -    -    -    -    -    -    -    -    -    .    .    .
+keys:   C#4+E4+G#4+B4   -    -    -    -    -    -    -    -    -    -    -    B3+E4+G#4    -    -    -
+keys:   F#4+A4+C#5+E5   -    -    -    -    -    -    -    -    -    -    -    -    .    .    .
+keys:   A4+B4+D5+E5     -    -    -    -    -    -    -    -    -    -    -    -    .    .    .
+keys:   C#4+E4+G#4+B4   -    -    -    -    -    -    -    -    -    -    -    -    .    .    .
+keys:   D4+F#4+A4+B4    -    -    -    -    -    -    -    -    -    -    -    G#4+B4+D5    -    -    -
+
+# The top line RISES in every bar. Nothing else in the set does this.
+bell:   E5   .    .    .    G#5  .    .    .    B5   .    .    .    .    .    C#6  .
+bell:   E5   .    .    .    G#5  .    .    .    C#6  .    .    .    .    .    B5   .
+bell:   F#5  .    .    .    A5   .    .    .    C#6  .    .    .    .    .    E6   .
+bell:   E5   .    .    .    A5   .    .    .    B5   .    .    .    .    .    D6   .
+bell:   C#5  .    .    .    E5   .    .    .    G#5  .    .    .    .    .    B5   .
+bell:   D5   .    .    .    F#5  .    .    .    A5   .    .    .    .    .    B5   .
+
+bass:   A1   -    -    -    -    -    .    E2   -    -    -    .    C#2  -    -    -
+bass:   A1   -    -    -    -    -    .    E2   -    -    -    .    G#1  -    -    -
+bass:   D2   -    -    -    -    -    .    A2   -    -    -    .    F#2  -    -    -
+bass:   E2   -    -    -    -    -    .    B1   -    -    -    .    A1   -    -    -
+bass:   F#2  -    -    -    -    -    .    C#2  -    -    -    .    A1   -    -    -
+bass:   B1   -    -    -    -    -    .    F#2  -    -    -    .    E2   -    -    -
+
+drums:  bd   .    .    hh   .    .    .    hh   sd   .    .    hh   .    .    .    hh
+drums:  bd   .    .    hh   .    .    .    hh   sd   .    .    hh   .    .    .    hh
+drums:  bd   .    .    hh   .    .    .    hh   sd   .    .    hh   .    .    .    hh
+drums:  bd   .    .    hh   .    .    .    hh   sd   .    .    hh   .    .    .    hh
+drums:  bd   .    .    hh   .    .    .    hh   sd   .    .    hh   .    .    .    hh
+drums:  bd   .    .    hh   .    .    .    hh   sd   .    .    hh   .    .    bd   oh

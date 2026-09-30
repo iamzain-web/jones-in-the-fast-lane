@@ -28,6 +28,12 @@ __pycache__/
 # Generated output, not source: frame strips and composed comparison images.
 /tools/samples/
 
+# Candidate faces fetched for tools/make_font_sheets.py's comparison sheets. They are
+# SAMPLES: no .csproj glob reaches tools/, nothing in src/ loads them, and the game's own
+# bitmap fonts in assets/raw/font are still the only fonts it renders with. Ignored so a
+# `git add -A` cannot quietly put a 2 MB TTF into the port.
+/tools/fonts/
+
 # The upscaler's native runtime (~79 MB of .dll/.dylib) — fetched, not authored.
 /tools/Upscale/*
 !/tools/Upscale/*.cs

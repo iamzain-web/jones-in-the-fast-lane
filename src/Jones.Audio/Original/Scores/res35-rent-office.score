@@ -1,0 +1,86 @@
+﻿# ---------------------------------------------------------------------------
+# RESOURCE 35 - THE RENT OFFICE
+#
+# `rentOffice.sc:118`, `playBed:`.
+#
+# Original: 1223 ticks = 20.38 s, loop point at the top.
+# Here:     8 bars at 94 bpm = 20.43 s, loop at the top.
+#
+# ORIGINAL MUSIC. Written to the ROLE the cue plays, never to its notes.
+#
+# Brief: where the rent gets paid, and where you are told you cannot have the
+# better apartment. Formal and a little cold - B minor, the only minor key in
+# the set with a bright tonic - with a CLAV STAB ONCE A BAR and nothing else
+# from it. One stamp per bar, on the same beat every time. That is the whole
+# characterisation: a room that processes you.
+#
+# It is not hostile. The Employment Office is brisk and busy because you are
+# queueing; this one is slower and emptier because you are waiting at a
+# counter. Same family, opposite tempo, and the clav does one thing here where
+# there it chatters on the back-beat.
+#
+# Written to the v2 mix standard from the start. NO LEAD LINE.
+# ---------------------------------------------------------------------------
+
+tempo 94
+steps 16
+swing 0.13
+loop 1
+loop-from 0
+space room
+
+part pad    patch=pad   gain=0.80  pan=-0.24
+part keys   patch=keys  gain=0.90  pan=0.14
+part clav   patch=clav  gain=1.00  pan=0.32
+part bass   patch=bass  gain=0.86  pan=0.00
+part drums  kit         gain=0.90  pan=0.00
+
+#          1    2    3    4    5    6    7    8    9   10   11   12   13   14   15   16
+
+pad:    B2+D3+F#3+A3    -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+pad:    B2+D3+F#3+A3    -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+pad:    E3+G3+B3+D4     -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+pad:    E3+G3+B3+D4     -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+pad:    G2+B2+D3+F#3    -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+pad:    G2+B2+D3+F#3    -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+pad:    F#2+B2+C#3+E3   -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+pad:    F#2+A#2+C#3+E3  -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+
+keys:   .    .    D4+F#4+A4+C#5   -    -    -    -    -    .    .    D4+F#4+A4+C#5   -    -    -    -    -
+keys:   .    .    D4+F#4+A4+C#5   -    -    -    -    -    .    .    C#4+F#4+A4      -    -    -    -    -
+keys:   .    .    G4+B4+D5+E5     -    -    -    -    -    .    .    G4+B4+D5+E5     -    -    -    -    -
+keys:   .    .    G4+B4+D5+E5     -    -    -    -    -    .    .    F#4+B4+D5       -    -    -    -    -
+keys:   .    .    D4+F#4+B4       -    -    -    -    -    .    .    D4+F#4+B4       -    -    -    -    -
+keys:   .    .    D4+F#4+B4       -    -    -    -    -    .    .    B3+D4+G4        -    -    -    -    -
+keys:   .    .    C#4+E4+A4+B4    -    -    -    -    -    .    .    C#4+E4+A4+B4    -    -    -    -    -
+keys:   .    .    A#3+C#4+E4+F#4  -    -    -    -    -    .    .    A#3+C#4+E4+F#4  -    -    -    -    -
+
+# One stamp a bar, on the same beat every time.
+clav:   .    .    .    .    F#5+B5   .    .    .    .    .    .    .    .    .    .    .
+clav:   .    .    .    .    F#5+B5   .    .    .    .    .    .    .    .    .    .    .
+clav:   .    .    .    .    G5+D6    .    .    .    .    .    .    .    .    .    .    .
+clav:   .    .    .    .    G5+D6    .    .    .    .    .    .    .    .    .    .    .
+clav:   .    .    .    .    B5+F#6   .    .    .    .    .    .    .    .    .    .    .
+clav:   .    .    .    .    B5+F#6   .    .    .    .    .    .    .    .    .    .    .
+clav:   .    .    .    .    C#6+E6   .    .    .    .    .    .    .    .    .    .    .
+clav:   .    .    .    .    A#5+E6   .    .    .    .    .    .    .    .    .    .    .
+
+bass:   B1   -    -    -    -    -    .    F#2  -    -    -    .    D2   -    -    -
+bass:   B1   -    -    -    -    -    .    F#2  -    -    -    .    A1   -    -    -
+bass:   E2   -    -    -    -    -    .    B1   -    -    -    .    G1   -    -    -
+bass:   E2   -    -    -    -    -    .    B1   -    -    -    .    D2   -    -    -
+bass:   G1   -    -    -    -    -    .    D2   -    -    -    .    B1   -    -    -
+bass:   G1   -    -    -    -    -    .    D2   -    -    -    .    F#2  -    -    -
+bass:   F#2  -    -    -    -    -    .    C#2  -    -    -    .    A1   -    -    -
+bass:   F#2  -    -    -    -    -    .    A#1  -    -    -    .    C#2  -    -    -
+
+drums:  bd   .    hh   hh   sd   .    hh   hh   .    bd   hh   hh   sd   .    hh   hh
+drums:  bd   .    hh   hh   sd   .    hh   hh   .    bd   hh   hh   sd   .    hh   hh
+drums:  bd   .    hh   hh   sd   .    hh   hh   .    bd   hh   hh   sd   .    hh   hh
+drums:  bd   .    hh   hh   sd   .    hh   hh   .    bd   hh   hh   sd   .    hh   hh
+drums:  bd   .    hh   hh   sd   .    hh   hh   .    bd   hh   hh   sd   .    hh   hh
+drums:  bd   .    hh   hh   sd   .    hh   hh   .    bd   hh   hh   sd   .    hh   hh
+drums:  bd   .    hh   hh   sd   .    hh   hh   .    bd   hh   hh   sd   .    hh   hh
+drums:  bd   .    hh   hh   sd   .    hh   hh   .    bd   hh   hh   sd   sd   hh   oh
+
+

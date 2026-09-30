@@ -46,13 +46,89 @@ public partial class MainView : UserControl
         top.AddHandler(PointerPressedEvent, TopLevel_PointerPressed, RoutingStrategies.Tunnel);
         top.AddHandler(PointerReleasedEvent, TopLevel_PointerReleased, RoutingStrategies.Tunnel);
 
-        if (Vm is { } vm)
-            vm.QuitRequested += () => (top as Window)?.Close();
+        // THE SAFE AREA. The Android head is fullscreen and lays out into the display cutout
+        // (values-v31/styles.xml), and from Android 15 every app is edge to edge whether it
+        // asks or not. That was fine for the playfield, which the Viewbox fits inside
+        // whatever it is given - but the menu bar is docked at the very top, and there it sat
+        // under the status bar and the camera, where a finger cannot reach it. On a phone
+        // with no Back button that left no way to Quit, Save or open Help at all.
+        //
+        // So the whole view is padded in by the insets the platform reports, on every side
+        // (in landscape the cutout is on the LEFT, over the first menu). The padding is inside
+        // the UserControl, so it stays black like the rest of the border. Done here rather
+        // than through TopLevel.AutoSafeAreaPadding so there is exactly one thing setting it.
+        // The desktop reports no insets, so this is a no-op there.
+        if (top.InsetsManager is { } insets)
+        {
+            TopLevel.SetAutoSafeAreaPadding(this, false);
+            Padding = insets.SafeAreaPadding;
+            insets.SafeAreaChanged += (_, a) => Padding = a.SafeAreaPadding;
+        }
+
+        Hook(Vm);
+    }
+
+    // ------------------------------------------------------------------
+    // The view model can be REPLACED: joining a network game swaps in a joiner's, and
+    // leaving swaps in a fresh local one (MainViewModel.Network.cs). So the two events the
+    // view listens to are hooked per view model, not once at attach.
+    // ------------------------------------------------------------------
+
+    private MainViewModel? _hooked;
+
+    protected override void OnDataContextChanged(System.EventArgs e)
+    {
+        base.OnDataContextChanged(e);
+        Hook(Vm);
+    }
+
+    private void Hook(MainViewModel? vm)
+    {
+        if (ReferenceEquals(_hooked, vm)) return;
+
+        if (_hooked is { } old)
+        {
+            old.QuitRequested -= OnQuitRequested;
+            old.Replace -= OnReplace;
+        }
+
+        _hooked = vm;
+
+        if (vm is { } next)
+        {
+            next.QuitRequested += OnQuitRequested;
+            next.Replace += OnReplace;
+        }
+    }
+
+    /// <summary>
+    /// How a head with no <see cref="Window"/> to close ends the game. On Android the top
+    /// level is the activity's view, not a Window, so closing "the window" did nothing: Quit
+    /// asked "Quitting?", took YES, and left the game running. The Android head sets this
+    /// to finish its activity. Null on the desktop, which has a Window.
+    /// </summary>
+    public static System.Action? QuitWithoutWindow { get; set; }
+
+    private void OnQuitRequested()
+    {
+        if (TopLevel.GetTopLevel(this) is Window window) window.Close();
+        else QuitWithoutWindow?.Invoke();
+    }
+
+    private void OnReplace(MainViewModel next)
+    {
+        JoinButton.Flyout?.Hide();
+        LeaveButton.Flyout?.Hide();
+        DataContext = next;
     }
 
     private void TopLevel_KeyDown(object? sender, KeyEventArgs e)
     {
         if (Vm is not { } vm) return;
+
+        // Typing a host address into the join box is typing, not playing: every digit and
+        // letter is also a game accelerator, and the box must get them instead.
+        if (TopLevel.GetTopLevel(this)?.FocusManager?.GetFocusedElement() is TextBox) return;
 
         // While the bar is down the game is not listening. `MenuSelect` runs the
         // interpreter's own event loop for as long as a menu is open, which is what text

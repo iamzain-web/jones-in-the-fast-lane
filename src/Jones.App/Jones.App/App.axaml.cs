@@ -27,9 +27,9 @@ public partial class App : Application
     /// to be a RUNTIME one.
     ///
     /// Developer Tools is desktop tooling: it stands up a connection bridge to a separate
-    /// tools process on the same machine. On a phone there is no such process, and this app's
-    /// manifest deliberately requests no permissions at all — including INTERNET — so
-    /// anything it does with a socket fails, and it fails inside <c>Initialize</c>, before
+    /// tools process on the same machine. On a phone there is no such process (the manifest
+    /// now requests INTERNET, for network play, but there is still nothing to connect to), so
+    /// anything it does with its socket fails, and it fails inside <c>Initialize</c>, before
     /// there is a window, a view or a log line. That is the shape of "installs and does not
     /// open", so it is gated off rather than left to chance, and wrapped besides: a debugging
     /// aid must never be the thing that stops the game starting.
@@ -95,6 +95,17 @@ public partial class App : Application
 
             var vm = new MainViewModel();
             if (Net.NetLaunch.Host) _host = Net.NetHost.Start(vm, Net.NetLaunch.Port);
+
+            // TEMPORARY DIAGNOSTIC — remove once the university overlay is settled.
+            // POSTED, not called inline: the view model is still being constructed here and
+            // BeginTurn starts timers that expect a running dispatcher and a live window.
+            if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("JONES_DEBUG_BOARD")))
+                Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+                {
+                    try { vm.DebugJumpToBoard(); }
+                    catch (Exception e) { SciArt.Trace("DebugJumpToBoard threw: " + e); }
+                }, Avalonia.Threading.DispatcherPriority.Background);
+
             return vm;
         });
 

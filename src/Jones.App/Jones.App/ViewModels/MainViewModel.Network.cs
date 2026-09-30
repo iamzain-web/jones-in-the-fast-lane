@@ -45,6 +45,82 @@ public sealed partial class MainViewModel
 
     public static MainViewModel CreateRemoteView() => new(remoteView: true);
 
+    // ------------------------------------------------------------------
+    // Joining from inside the app — the join switch in the chrome row
+    // ------------------------------------------------------------------
+    //
+    // A phone has no command line, so `--join` alone leaves the Android head unable to join.
+    // The chrome row outside the 320x200 canvas — where the sound switches already live, and
+    // for the same reason — carries one more switch: a link glyph that opens a box for the
+    // host's address. It is offered only on the title screen (a game in progress is never
+    // thrown away by it) and never on a host.
+
+    /// <summary>The joiner's connection, so leaving can close it. Set by <see cref="NetClient"/>.</summary>
+    internal IDisposable? Connection { get; set; }
+
+    private bool _isConnected;
+
+    /// <summary>True while a joiner is seated at the host. Drives the switch's glyph.</summary>
+    public bool IsConnected
+    {
+        get => _isConnected;
+        set
+        {
+            if (_isConnected == value) return;
+            _isConnected = value;
+            OnPropertyChanged(nameof(IsConnected));
+        }
+    }
+
+    /// <summary>The join switch is shown on the title screen of a game that is neither hosting nor joined.</summary>
+    public bool CanJoinNetwork =>
+        !_remoteView && !NetLaunch.Host && _screen is Screen.MainMenu or Screen.Intro;
+
+    /// <summary>What the join box holds: the last address that worked, until edited.</summary>
+    public string JoinAddressText { get; set; } = NetClient.LastAddress;
+
+    /// <summary>
+    /// Raised with the view model that should replace this one — the joiner's on Join, a
+    /// fresh local game on Leave. The view swaps its DataContext; nothing else needs to know.
+    /// </summary>
+    public event Action<MainViewModel>? Replace;
+
+    public ICommand JoinCommand => new CommunityToolkit.Mvvm.Input.RelayCommand(() =>
+    {
+        if (!CanJoinNetwork) return;
+        if (!Address.TrySplit(JoinAddressText, out var host, out var port)) return;
+
+        Shutdown();
+        Replace?.Invoke(NetClient.Start(host, port));
+    });
+
+    public ICommand LeaveCommand => new CommunityToolkit.Mvvm.Input.RelayCommand(() =>
+    {
+        if (!_remoteView) return;
+
+        StartupLog.Say("network: left the host");
+        Shutdown();
+        Replace?.Invoke(new MainViewModel());
+    });
+
+    /// <summary>
+    /// Silences and stops this view model before another takes the screen: its clocks, its
+    /// sound, and — on a joiner — its connection.
+    /// </summary>
+    private void Shutdown()
+    {
+        foreach (var timer in AnimationTimers) timer?.Stop();
+        _introTimer?.Stop();
+
+        LocalSound.StopSpeech();
+        LocalSound.StopMusic();
+        LocalSound.StopEffects();
+
+        Connection?.Dispose();
+        Connection = null;
+        IsConnected = false;
+    }
+
     private MainViewModel(bool remoteView)
     {
         _remoteView = remoteView;

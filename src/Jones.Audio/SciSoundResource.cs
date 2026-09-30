@@ -24,6 +24,12 @@ public readonly record struct SciEvent(int Tick, byte Status, byte Data1, byte D
 /// The device track we want is type 0x00, AdLib. Every resource has one. Types 0x06 and
 /// 0x16 are stubs pointing at another track's byte range and are ignored.
 ///
+/// All 34 resources actually carry FIVE device tracks, one per sound card Sierra shipped a
+/// driver for, and the track type is that card's id. Identified from the game's own files
+/// rather than from a table someone remembered — see <see cref="TrackAdLib"/> and friends.
+/// <see cref="Load"/> takes the wanted type so the other four can be read as well; the
+/// default is unchanged, so every existing caller still gets the AdLib arrangement.
+///
 /// The channel blobs are merged into ONE time-ordered stream, which is what the original
 /// parser feeds the driver. Several resources list the SAME MIDI channel twice — the
 /// setup (program, volume, pan, voice count) in one blob and the notes in another — so
@@ -31,7 +37,45 @@ public readonly record struct SciEvent(int Tick, byte Status, byte Data1, byte D
 /// </summary>
 public sealed class SciSoundResource
 {
-    private const byte TrackAdLib = 0x00;
+    /// <summary>
+    /// AdLib / Sound Blaster FM. Nine melodic voices, instruments from <c>patch.003</c>
+    /// (1344 bytes, 48 x 28 — the bank <see cref="AdLibBank"/> decodes). This is the track
+    /// the port plays and the default everywhere.
+    /// </summary>
+    public const byte TrackAdLib = 0x00;
+
+    /// <summary>
+    /// Creative Music System / Game Blaster, the card <c>CMS.DRV</c> ("Game Blaster Card")
+    /// drives, with its patch data in <c>patch.101</c> (610 bytes). Its arrangement is a
+    /// subset of <see cref="TrackMt32"/> and differs from the AdLib one in both directions.
+    /// </summary>
+    public const byte TrackGameBlaster = 0x09;
+
+    /// <summary>
+    /// Roland MT-32 — <c>MT32.DRV</c> ("Roland MT-32, MT-100, LAPC-I, CM-…"), timbres in
+    /// <c>patch.001</c>, whose first bytes are the 20-character display message
+    /// <c>Jones-InThe-FastLane</c> followed by the 10-character custom timbre names
+    /// (<c>Blip</c>, <c>B-3byKen</c>, <c>Elec Gtr 2</c>, <c>JonesDrm</c>, <c>SlapBassKA</c>,
+    /// <c>CrashCymb</c> …).
+    ///
+    /// This is the richest arrangement in the file: in every one of the 34 resources its
+    /// channel set is a superset of the AdLib one, and in six of them it carries an extra
+    /// part the AdLib track drops (resources 5, 7, 35, 39, 41 and 46).
+    /// </summary>
+    public const byte TrackMt32 = 0x0C;
+
+    /// <summary>
+    /// The PC's internal speaker — <c>STD.DRV</c> ("IBM PC or Compatible Internal Speaker").
+    /// Strictly one note channel in all 34 resources, which is what identifies it.
+    /// </summary>
+    public const byte TrackPcSpeaker = 0x12;
+
+    /// <summary>
+    /// Tandy/PCjr three-voice — <c>TANDY3V.DRV</c> ("Tandy Three-voice Only"). Never more
+    /// than three note channels in any of the 34.
+    /// </summary>
+    public const byte TrackTandy = 0x13;
+
     private const byte EndOfChannel = 0xFC;
     private const byte DeltaExtend = 0xF8;
     private const int DeltaExtendTicks = 240;
@@ -66,13 +110,18 @@ public sealed class SciSoundResource
         LoopTick = loopTick;
     }
 
-    public static SciSoundResource Load(byte[] data)
+    /// <param name="trackType">
+    /// Which device's arrangement to decode. Defaults to <see cref="TrackAdLib"/>, which is
+    /// what the port plays.
+    /// </param>
+    public static SciSoundResource Load(byte[] data, byte trackType = TrackAdLib)
     {
         ArgumentNullException.ThrowIfNull(data);
 
         var tracks = ParseTrackTable(data);
-        var adlib = tracks.FirstOrDefault(t => t.Type == TrackAdLib && t.Channels.Count > 0)
-            ?? throw new InvalidDataException("no AdLib (type 0x00) track in this sound resource");
+        var adlib = tracks.FirstOrDefault(t => t.Type == trackType && t.Channels.Count > 0)
+            ?? throw new InvalidDataException(
+                $"no device track of type 0x{trackType:X2} in this sound resource");
 
         // (tick, blobIndex, event) so the sort can stay stable in blob order for events
         // that land on the same tick — the order the original parser merges them in.

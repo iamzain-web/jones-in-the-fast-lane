@@ -1,0 +1,94 @@
+﻿# ---------------------------------------------------------------------------
+# RESOURCE 36 - LOW-COST HOUSING
+#
+# `lowcost.sc:62`, `playBed:`.
+#
+# Original: 1657 ticks = 27.62 s, loop point at tick 16.
+# Here:     8 bars at 70 bpm = 27.43 s, loop at the top (tick 16 of 1657 is
+#           1% in - setup, not a section).
+#
+# ORIGINAL MUSIC. Written to the ROLE the cue plays, never to its notes.
+#
+# ---------------------------------------------------------------------------
+# THE POORER RELATION, DELIBERATELY. This is the other home, and it is meant
+# to be heard against Security Apartments rather than apart from it - the two
+# are the only rooms in the game that are yours.
+#
+#   Security Apartments   Eb MAJOR, 72 bpm, a bell putting light over the top
+#   Low-Cost Housing      C MINOR, 70 bpm, no bell at all
+#
+# Almost the same tempo, so the family resemblance is obvious, and then every
+# other decision goes the other way. The bell is what the Apartments can
+# afford and this room cannot; in its place is a dry clav playing the same
+# figure the bell would have, which is the cheap version of the same idea. The
+# kit is plainer - kick, hat, one snare, no fills - and it plods where the
+# Apartments breathe.
+#
+# It is not a miserable cue. It is somewhere you live while you save up, and
+# it should sound like it knows that.
+#
+# Written to the v2 mix standard from the start. NO LEAD LINE.
+# ---------------------------------------------------------------------------
+
+tempo 70
+steps 16
+swing 0.10
+loop 1
+loop-from 0
+space room
+
+part pad    patch=pad   gain=0.88  pan=-0.26
+part keys   patch=keys  gain=1.00  pan=0.14
+part clav   patch=clav  gain=1.00  pan=0.32
+part bass   patch=bass  gain=0.84  pan=0.00
+part drums  kit         gain=0.86  pan=0.00
+
+#          1    2    3    4    5    6    7    8    9   10   11   12   13   14   15   16
+
+pad:    C3+Eb3+G3+Bb3   -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+pad:    C3+Eb3+G3+Bb3   -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+pad:    Ab2+C3+Eb3+G3   -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+pad:    Ab2+C3+Eb3+G3   -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+pad:    F2+Ab2+C3+Eb3   -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+pad:    F2+Ab2+C3+Eb3   -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+pad:    G2+C3+D3+F3     -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+pad:    G2+B2+D3+F3     -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+
+keys:   Eb4+G4+Bb4+D5   -    -    -    -    -    -    -    -    -    -    -    -    .    .    .
+keys:   Eb4+G4+Bb4+D5   -    -    -    -    -    -    -    -    -    -    -    D4+G4+Bb4    -    -    -
+keys:   C4+Eb4+G4+C5    -    -    -    -    -    -    -    -    -    -    -    -    .    .    .
+keys:   C4+Eb4+G4+C5    -    -    -    -    -    -    -    -    -    -    -    Bb3+Eb4+G4   -    -    -
+keys:   Ab3+C4+Eb4+Ab4  -    -    -    -    -    -    -    -    -    -    -    -    .    .    .
+keys:   Ab3+C4+Eb4+Ab4  -    -    -    -    -    -    -    -    -    -    -    G3+C4+Eb4    -    -    -
+keys:   F4+G4+Bb4+D5    -    -    -    -    -    -    -    -    -    -    -    -    .    .    .
+keys:   F4+G4+B4+D5     -    -    -    -    -    -    -    -    -    -    -    -    .    .    .
+
+# What the Apartments' bell plays, on a dry clav instead.
+clav:   .    .    .    .    G5+G6    .    .    .    Eb5+Eb6    .    .    .    .    .    C5+C6    .
+clav:   .    .    .    .    G5+G6    .    .    .    .    .    Bb5+Bb6    .    .    .    .    .
+clav:   .    .    .    .    Eb5+Eb6    .    .    .    C5+C6    .    .    .    .    .    Ab4+Ab5    .
+clav:   .    .    .    .    Eb5+Eb6    .    .    .    .    .    G5+G6    .    .    .    .    .
+clav:   .    .    .    .    C5+C6    .    .    .    Ab4+Ab5    .    .    .    .    .    F4+F5    .
+clav:   .    .    .    .    C5+C6    .    .    .    .    .    Eb5+Eb6    .    .    .    .    .
+clav:   .    .    .    .    D5+D6    .    .    .    Bb4+Bb5    .    .    .    .    .    G4+G5    .
+clav:   .    .    .    .    D5+D6    .    .    .    .    .    F5+F6    .    .    .    .    .
+
+bass:   C2   -    -    -    -    -    -    .    G1   -    -    -    -    -    -    -
+bass:   C2   -    -    -    -    -    -    .    Eb2  -    -    -    -    -    -    -
+bass:   Ab1  -    -    -    -    -    -    .    Eb2  -    -    -    -    -    -    -
+bass:   Ab1  -    -    -    -    -    -    .    C2   -    -    -    -    -    -    -
+bass:   F2   -    -    -    -    -    -    .    C2   -    -    -    -    -    -    -
+bass:   F2   -    -    -    -    -    -    .    Ab1  -    -    -    -    -    -    -
+bass:   G1   -    -    -    -    -    -    .    D2   -    -    -    -    -    -    -
+bass:   G1   -    -    -    -    -    -    .    F2   -    -    -    -    -    -    -
+
+drums:  bd   .    hh   .    oh   .    hh   .    sd   .    hh   .    oh   .    hh   .
+drums:  bd   .    hh   .    oh   .    hh   .    sd   .    hh   .    oh   .    hh   .
+drums:  bd   .    hh   .    oh   .    hh   .    sd   .    hh   .    oh   .    hh   .
+drums:  bd   .    hh   .    oh   .    hh   .    sd   .    hh   .    oh   .    hh   .
+drums:  bd   .    hh   .    oh   .    hh   .    sd   .    hh   .    oh   .    hh   .
+drums:  bd   .    hh   .    oh   .    hh   .    sd   .    hh   .    oh   .    hh   .
+drums:  bd   .    hh   .    oh   .    hh   .    sd   .    hh   .    oh   .    hh   .
+drums:  bd   .    hh   .    oh   .    hh   .    sd   .    hh   .    oh   .    hh   oh
+
+

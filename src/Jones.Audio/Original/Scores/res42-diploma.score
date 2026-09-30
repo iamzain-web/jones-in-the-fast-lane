@@ -1,0 +1,54 @@
+# ---------------------------------------------------------------------------
+# RESOURCE 42 - THE DIPLOMA
+#
+# `diploma.sc:59`, `(gASong loop: 1 play: 42 ...)` - played on the SONG object
+# rather than an effect slot, which is why it gets a loop count of one rather
+# than a fade.
+#
+# Original: 198 ticks = 3.30 s.
+# Here:     2 bars at 145 bpm = 3.31 s.
+#
+# ORIGINAL MUSIC. Written to the ROLE the cue plays, never to its notes.
+#
+# Brief: a small, dignified triumph. You have finished a course at the
+# University, which in this game is the slow way to a better job - so it is
+# the cue for patience paying off rather than for luck.
+#
+# It is deliberately the SMALL version of the winner's fanfare: same brass,
+# same rising shape, half the length, no drums beyond a single soft cymbal,
+# and it resolves onto a plain major chord instead of the fanfare's stacked
+# ninth. Graduating is not winning, and the two should sound related in that
+# order.
+#
+# A major, which is the University's own key - the only sting in the set tied
+# to a room, because it is the only one that can only happen in one.
+# ---------------------------------------------------------------------------
+
+tempo 145
+steps 16
+swing 0.0
+loop 0
+space room
+
+part brass  patch=brass gain=0.90  pan=-0.10
+part bell   patch=bell  gain=0.84  pan=0.22
+part pad    patch=pad   gain=0.80  pan=0.00
+part bass   patch=bass  gain=0.84  pan=0.00
+part drums  kit         gain=0.52  pan=0.00
+
+#          1    2    3    4    5    6    7    8    9   10   11   12   13   14   15   16
+
+brass:  A3+C#4+E4   -    -    -    -    -    -    -    D4+F#4+A4   -    -    -    -    -    -    -
+brass:  E4+G#4+B4   -    -    -    -    -    -    -    A4+C#5+E5   -    -    -    -    -    -    -
+
+bell:   E5   .    .    .    .    .    .    .    F#5  .    .    .    .    .    .    .
+bell:   B5   .    .    .    .    .    .    .    C#6  .    .    .    E6   -    -    -
+
+pad:    A2+C#3+E3   -    -    -    -    -    -    -    D3+F#3+A3   -    -    -    -    -    -    -
+pad:    E3+G#3+B3   -    -    -    -    -    -    -    A2+C#3+E3   -    -    -    -    -    -    -
+
+bass:   A1   -    -    -    -    -    -    -    D2   -    -    -    -    -    -    -
+bass:   E2   -    -    -    -    -    -    -    A1   -    -    -    -    -    -    -
+
+drums:  .    .    .    .    .    .    .    .    .    .    .    .    .    .    .    .
+drums:  .    .    .    .    .    .    .    .    cr   .    .    .    .    .    .    .

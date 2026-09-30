@@ -1,0 +1,90 @@
+# ---------------------------------------------------------------------------
+# DEMO CUE - "Town, 9am"
+#
+# An ORIGINAL piece written for this port. It is not a transcription, an
+# arrangement or a restyling of anything in the game's own sound resources; it
+# was written against the BRIEF those cues imply - a bright, busy, slightly
+# smug little loop for a game about jobs, rent and getting ahead - and nothing
+# else about them was consulted.
+#
+# It is here to answer one question and no other: does the from-scratch
+# synthesiser sound like something worth replacing the FM chip with? Nothing is
+# composed at scale until that is answered.
+#
+# HOW TO EDIT THIS
+#   Each part gets one line per bar. A line is 16 steps, one sixteenth each.
+#     C3          play C3 (middle C is C4)
+#     Eb4+G4+Bb4  play a chord
+#     C3:110      play it harder - velocity out of 127
+#     -           hold what is already sounding
+#     .           silence
+#   The drum part names drums instead of notes: bd sd hh oh cp
+#   Change a chord, move a snare, retune the bass - it is just text.
+# ---------------------------------------------------------------------------
+
+tempo 112
+steps 16
+swing 0.15
+loop 1
+space room
+
+part pad    patch=pad   gain=0.55  pan=-0.15
+part keys   patch=keys  gain=0.85  pan=0.20
+part bass   patch=bass  gain=1.00  pan=0.00
+part lead   patch=lead  gain=0.80  pan=0.10
+part drums  kit         gain=0.90  pan=0.00
+
+# --- bars 1-4: the vamp on its own -----------------------------------------
+#          1    2    3    4    5    6    7    8    9   10   11   12   13   14   15   16
+
+pad:    C3+Eb3+G3   -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+pad:    F2+Ab2+C3   -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+pad:    Ab2+C3+Eb3  -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+pad:    Bb2+D3+F3   -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+
+keys:   .    .    Eb4+G4+Bb4+D5   -    .    .    .    Eb4+G4+Bb4+D5   -    .    .    .    .    Eb4+G4+Bb4   -    .
+keys:   .    .    Ab4+C5+Eb5      -    .    .    .    Ab4+C5+Eb5      -    .    .    .    .    Ab4+C5+Eb5   -    .
+keys:   .    .    C4+Eb4+G4       -    .    .    .    C4+Eb4+G4       -    .    .    .    .    Eb4+G4+C5    -    .
+keys:   .    .    D4+F4+Ab4       -    .    .    .    D4+F4+Ab4       -    .    Ab4  .    .    F4+Ab4+D5    -    .
+
+bass:   C2   -    .    .    G1   .    C2   .    Eb2  .    .    C2   .    Bb1  .    .
+bass:   F2   -    .    .    C2   .    F2   .    Ab2  .    .    F2   .    Eb2  .    .
+bass:   Ab1  -    .    .    Eb2  .    Ab1  .    C2   .    .    Ab1  .    G1   .    .
+bass:   Bb1  -    .    .    F2   .    Bb1  .    D2   .    .    Bb1  .    Ab1  .    Bb1
+
+lead:   .    .    .    .    .    .    .    .    .    .    .    .    .    .    .    .
+lead:   .    .    .    .    .    .    .    .    .    .    .    .    .    .    .    .
+lead:   .    .    .    .    .    .    .    .    .    .    .    .    .    .    .    .
+lead:   .    .    .    .    .    .    .    .    .    .    .    .    .    .    Bb4  C5
+
+drums:  bd   .    hh   .    sd   .    hh   bd   .    .    hh   .    sd   .    hh   .
+drums:  bd   .    hh   .    sd   .    hh   bd   .    .    hh   .    sd   .    hh   .
+drums:  bd   .    hh   .    sd   .    hh   bd   .    .    hh   .    sd   .    hh   .
+drums:  bd   .    hh   .    sd   .    hh   bd   .    .    hh   .    sd   sd   hh   oh
+
+# --- bars 5-8: the tune over the top ---------------------------------------
+
+pad:    C3+Eb3+G3   -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+pad:    F2+Ab2+C3   -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+pad:    Ab2+C3+Eb3  -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+pad:    Bb2+D3+F3   -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+
+keys:   .    .    Eb4+G4+Bb4+D5   -    .    .    .    Eb4+G4+Bb4+D5   -    .    .    .    .    Eb4+G4+Bb4   -    .
+keys:   .    .    Ab4+C5+Eb5      -    .    .    .    Ab4+C5+Eb5      -    .    .    .    .    Ab4+C5+Eb5   -    .
+keys:   .    .    C4+Eb4+G4       -    .    .    .    C4+Eb4+G4       -    .    .    .    .    Eb4+G4+C5    -    .
+keys:   .    .    D4+F4+Ab4       -    .    .    .    D4+F4+Ab4       -    .    Ab4  .    .    F4+Ab4+D5    -    .
+
+bass:   C2   -    .    .    G1   .    C2   .    Eb2  .    .    C2   .    Bb1  .    .
+bass:   F2   -    .    .    C2   .    F2   .    Ab2  .    .    F2   .    Eb2  .    .
+bass:   Ab1  -    .    .    Eb2  .    Ab1  .    C2   .    .    Ab1  .    G1   .    .
+bass:   Bb1  -    .    .    F2   .    Bb1  .    D2   .    .    Bb1  .    Ab1  .    .
+
+lead:   Eb5  -    -    C5   .    Bb4  -    G4   -    -    .    Bb4  -    -    -    -
+lead:   C5   -    -    Ab4  .    G4   -    F4   -    -    -    -    .    .    Eb4  F4
+lead:   G4   -    -    Eb5  -    -    C5   -    -    Bb4  -    -    -    -    .    .
+lead:   D5   -    C5   -    Bb4  -    Ab4  -    G4   -    -    -    -    -    -    -
+
+drums:  bd   .    hh   .    sd   .    hh   bd   .    .    hh   .    sd   .    hh   .
+drums:  bd   .    hh   .    sd   .    hh   bd   .    bd   hh   .    sd   .    hh   .
+drums:  bd   .    hh   .    sd   .    hh   bd   .    .    hh   .    sd   .    hh   .
+drums:  bd   .    hh   cp   sd   .    hh   bd   .    .    hh   .    sd   sd   oh   .

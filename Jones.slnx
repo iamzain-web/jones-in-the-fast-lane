@@ -3,6 +3,7 @@
     <Project Path="src/Jones.Audio/Jones.Audio.csproj" />
     <Project Path="src/Jones.Core/Jones.Core.csproj" />
     <Project Path="src/Jones.Harness/Jones.Harness.csproj" />
+    <Project Path="src/Jones.Net/Jones.Net.csproj" />
     <Project Path="src/Jones.Tests/Jones.Tests.csproj" />
   </Folder>
   <Folder Name="/src/Jones.App/">

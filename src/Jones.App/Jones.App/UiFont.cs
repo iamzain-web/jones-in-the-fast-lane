@@ -61,10 +61,18 @@ public static class UiFont
     }
 
     /// <summary>
-    /// THE DEFAULT, AND IT IS THE ORIGINAL. A fresh install draws font 10, exactly as the
-    /// shipped game does; Quicksand is the alternative, not the replacement.
+    /// THE DEFAULT, AND IT IS NO LONGER THE ORIGINAL. The user compared the two faces on the
+    /// shop and job screens at both 4K and true phone scale and chose Quicksand outright —
+    /// "the text looks amazing, keep that" — so a fresh install now draws Quicksand.
+    ///
+    /// <para>
+    /// This is a DELIBERATE DEVIATION and it is recorded in `PARITY.md`. Font 10 has not gone
+    /// anywhere: it is the other half of a live switch, every column stop is asserted in BOTH
+    /// faces, and setting this back to <see cref="Face.Bitmap"/> — or toggling it in the game,
+    /// or `JONES_UI_FONT=bitmap` — restores the shipped rendering exactly.
+    /// </para>
     /// </summary>
-    public const Face Default = Face.Bitmap;
+    public const Face Default = Face.Quicksand;
 
     /// <summary>
     /// The weight actually drawn. Quicksand's variable file DEFAULTS to Light 300, which is too

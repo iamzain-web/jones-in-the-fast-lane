@@ -1,0 +1,81 @@
+# ---------------------------------------------------------------------------
+# RESOURCE 7 - THE WINNER'S FANFARE
+#
+# `winnerScript.sc:69`, after both effect slots have been cleared at `:67-68`
+# so that nothing plays over it. It is the last thing a game says.
+#
+# Original: 640 ticks = 10.67 s.
+# Here:     6 bars at 135 bpm = 10.67 s exactly.
+#
+# ORIGINAL MUSIC. Written to the ROLE the cue plays, never to its notes.
+#
+# Brief: somebody has met all four goals and the game is over. This is the
+# only cue in the set allowed to be triumphant without reservation, and the
+# only one written for BRASS, which is why that patch exists at all - the
+# palette could not do a fanfare and one new instrument was a better answer
+# than a worse fanfare.
+#
+# Shape: a four-note brass call on the tonic, answered a fourth higher, then
+# a descent through the subdominant onto a stacked Fmaj9 that holds for a bar
+# and a half. Bell doubles the call an octave up. Crashes on bars 1, 3 and 5.
+#
+# THE BASS IS PITCHED UP DELIBERATELY. A brass stack invites a low root and
+# the root here is F, which at F1 is 43.7 Hz - under what most speakers
+# reproduce, and exactly the fault that made the Factory inaudible. It plays
+# F2 and C2 throughout; nothing in this cue goes below G1 at 49 Hz.
+#
+# It is the big one and it is still under eleven seconds, because the script
+# ends the game while it plays.
+# ---------------------------------------------------------------------------
+
+tempo 135
+steps 16
+swing 0.0
+loop 0
+space room
+
+part brass  patch=brass gain=0.96  pan=-0.08
+part bell   patch=bell  gain=0.80  pan=0.24
+part pad    patch=pad   gain=0.82  pan=0.00
+part bass   patch=bass  gain=0.90  pan=0.00
+part drums  kit         gain=0.84  pan=0.00
+
+#          1    2    3    4    5    6    7    8    9   10   11   12   13   14   15   16
+
+# --- the call ---
+brass:  F4+A4+C5   -    -    -    F4+A4+C5   -    -    -    G4+Bb4+D5   -    -    -    A4+C5+F5   -    -    -
+brass:  Bb4+D5+F5  -    -    -    Bb4+D5+F5  -    -    -    C5+E5+G5    -    -    -    D5+F5+Bb5  -    -    -
+# --- the answer ---
+brass:  C5+F5+A5   -    -    -    C5+F5+A5   -    -    -    Bb4+D5+G5   -    -    -    A4+C5+F5   -    -    -
+brass:  G4+Bb4+E5  -    -    -    G4+Bb4+E5  -    -    -    A4+C5+F5    -    -    -    Bb4+D5+G5  -    -    -
+# --- the landing ---
+brass:  C5+E5+G5   -    -    -    -    -    -    -    C5+E5+A5   -    -    -    -    -    -    -
+brass:  F4+A4+C5+E5+G5   -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+
+bell:   F5   .    .    .    F5   .    .    .    G5   .    .    .    A5   .    .    .
+bell:   Bb5  .    .    .    Bb5  .    .    .    C6   .    .    .    D6   .    .    .
+bell:   C6   .    .    .    C6   .    .    .    Bb5  .    .    .    A5   .    .    .
+bell:   G5   .    .    .    G5   .    .    .    A5   .    .    .    Bb5  .    .    .
+bell:   C6   .    .    .    .    .    .    .    E6   .    .    .    .    .    .    .
+bell:   F6   -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+
+pad:    F3+A3+C4   -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+pad:    Bb2+D3+F3  -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+pad:    F3+A3+C4   -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+pad:    C3+E3+G3   -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+pad:    C3+E3+G3   -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+pad:    F3+A3+C4+E4   -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+
+bass:   F2   -    -    -    -    -    .    C2   -    -    -    .    A1   -    -    -
+bass:   Bb1  -    -    -    -    -    .    F2   -    -    -    .    D2   -    -    -
+bass:   F2   -    -    -    -    -    .    C2   -    -    -    .    A1   -    -    -
+bass:   C2   -    -    -    -    -    .    G1   -    -    -    .    Bb1  -    -    -
+bass:   C2   -    -    -    -    -    .    G2   -    -    -    .    Bb1  -    -    -
+bass:   F2   -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+
+drums:  cr   .    hh   .    sd   .    hh   .    bd   .    hh   .    sd   .    hh   .
+drums:  bd   .    hh   .    sd   .    hh   .    bd   .    hh   .    sd   .    hh   .
+drums:  cr   .    hh   .    sd   .    hh   .    bd   .    hh   .    sd   .    hh   .
+drums:  bd   .    hh   .    sd   .    hh   .    bd   .    hh   .    sd   sd   hh   .
+drums:  cr   .    hh   .    sd   .    hh   .    bd   .    hh   .    sd   sd   sd   .
+drums:  cr   .    .    .    .    .    .    .    bd   .    .    .    .    .    .    .

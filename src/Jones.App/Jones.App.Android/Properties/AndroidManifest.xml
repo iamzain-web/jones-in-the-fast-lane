@@ -1,6 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- NO PERMISSIONS. The template asked for INTERNET; this game has never talked to a
-     network and the assets all travel inside the APK, so the request came out. -->
+<!-- ONE PERMISSION: INTERNET, for network play only (joining a game hosted on another
+     machine - see Jones.Net). The template asked for it and it was taken out while the game
+     never talked to a network; it is back because a joiner opens a TCP connection to the
+     host. The assets still all travel inside the APK. INTERNET is a "normal" permission:
+     granted at install, no prompt. -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android" android:installLocation="auto">
+	<uses-permission android:name="android.permission.INTERNET" />
 	<application android:label="Jones in the Fast Lane" android:icon="@drawable/Icon" />
 </manifest>

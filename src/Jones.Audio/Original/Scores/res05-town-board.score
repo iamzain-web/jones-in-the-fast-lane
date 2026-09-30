@@ -1,0 +1,100 @@
+﻿# ---------------------------------------------------------------------------
+# RESOURCE 5 - THE TOWN BOARD
+#
+# `Game.sc:189`, `room1.sc:281`, `startTrn.sc` x5. The hub: the player is
+# looking at this more than any other screen, and it loops.
+#
+# Original: 1129 ticks = 18.82 s, loop point at the top.
+# Here:     8 bars at 102 bpm = 18.82 s exactly, loop at the top.
+#
+# ORIGINAL MUSIC. Written to the ROLE the cue plays, never to its notes.
+#
+# ---------------------------------------------------------------------------
+# VERSION 2. The first version was judged "horrible and tinny" and the
+# spectrum said why, which was NOT what that word usually means:
+#
+#   band            demo (liked)   v1 (rejected)
+#   below 200 Hz       -17.9 dB       -19.0 dB     <- fine
+#   200-800 Hz         -20.5          -24.0        <- 3.5 dB down
+#   800-2000 Hz        -30.5          -34.3        <- 3.8 dB down
+#   2-6 kHz            -36.2          -47.7        <- 11.5 dB down
+#
+# v1 was not short of bottom end. It was short of EVERYTHING ELSE. The bass
+# patch is within 0.2 dB of being entirely below 200 Hz, so with a sparse
+# keys part, no lead at all and a bass sounding only a third of the time, all
+# that was left was a boom and a few thin blips with a hole between them.
+# That is what "tinny" meant here: no substance, not too much treble.
+#
+# What changed, and nothing else did - same key, same tempo, same chords,
+# same length, same loop:
+#   - the bass holds its notes instead of stabbing them: 33% -> 88% sounding
+#   - the pad is louder and voiced with the 7th and 9th, which puts it in the
+#     low mid instead of only under it
+#   - the keys sustain across the bar rather than blipping
+#   - a LEAD is back, but sparse and low: two long notes a bar, chord tones,
+#     under the keys. It is there to fill the midrange, not to perform.
+#
+# "Sitting under the player" does not have to mean sounding thin, and the
+# first version conflated the two.
+# ---------------------------------------------------------------------------
+
+tempo 102
+steps 16
+swing 0.16
+loop 1
+loop-from 0
+space room
+
+part pad    patch=pad   gain=0.74  pan=-0.20
+part keys   patch=keys  gain=0.92  pan=0.22
+part lead   patch=lead  gain=0.62  pan=0.12
+part bass   patch=bass  gain=0.84  pan=0.00
+part drums  kit         gain=0.72  pan=0.00
+
+#          1    2    3    4    5    6    7    8    9   10   11   12   13   14   15   16
+
+pad:    F3+Ab3+C4+Eb4   -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+pad:    F3+Ab3+C4+Eb4   -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+pad:    Bb2+Db3+F3+Ab3  -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+pad:    Bb2+Db3+F3+Ab3  -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+pad:    Db3+F3+Ab3+C4   -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+pad:    Db3+F3+Ab3+C4   -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+pad:    C3+E3+G3+Bb3    -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+pad:    C3+E3+G3+Bb3    -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+
+keys:   .    .    Ab4+C5+Eb5   -    -    -    -    .    .    .    Ab4+C5+Eb5   -    -    -    -    -
+keys:   .    .    Ab4+C5+Eb5   -    -    -    -    .    .    .    G4+Bb4+Eb5   -    -    -    -    -
+keys:   .    .    Db4+F4+Ab4   -    -    -    -    .    .    .    Db4+F4+Ab4   -    -    -    -    -
+keys:   .    .    Db4+F4+Ab4   -    -    -    -    .    .    .    F4+Ab4+Db5   -    -    -    -    -
+keys:   .    .    Db4+F4+Ab4+C5 -   -    -    -    .    .    .    Db4+F4+Ab4+C5 -   -    -    -    -
+keys:   .    .    Db4+F4+Ab4+C5 -   -    -    -    .    .    .    Ab4+C5+F5   -    -    -    -    -
+keys:   .    .    F4+Bb4+C5   -    -    -    -    .    .    .    F4+Bb4+C5   -    -    -    -    -
+keys:   .    .    E4+Bb4+C5   -    -    -    -    .    .    .    E4+G4+Bb4   -    -    -    -    -
+
+lead:   .    .    .    .    C5   -    -    -    -    -    -    -    .    .    .    .
+lead:   .    .    Eb5  -    -    -    -    .    .    .    C5   -    -    -    -    -
+lead:   .    .    .    .    Db5  -    -    -    -    -    -    -    .    .    .    .
+lead:   .    .    F5   -    -    -    -    .    .    .    Eb5  -    -    -    -    -
+lead:   .    .    .    .    Ab4  -    -    -    -    -    -    -    .    .    .    .
+lead:   .    .    C5   -    -    -    -    .    .    .    Db5  -    -    -    -    -
+lead:   .    .    .    .    Bb4  -    -    -    -    -    -    -    .    .    .    .
+lead:   .    .    G4   -    -    -    -    .    .    .    C5   -    -    -    -    -
+
+bass:   F2   -    -    -    -    .    C3   -    -    .    Ab2  -    -    -    -    -
+bass:   F2   -    -    -    -    .    Eb2  -    -    .    C2   -    -    -    Db2  -
+bass:   Bb1  -    -    -    -    .    F2   -    -    .    Db2  -    -    -    -    -
+bass:   Bb1  -    -    -    -    .    Ab1  -    -    .    F2   -    -    -    -    -
+bass:   Db2  -    -    -    -    .    Ab2  -    -    .    F2   -    -    -    -    -
+bass:   Db2  -    -    -    -    .    C2   -    -    .    Ab1  -    -    -    -    -
+bass:   C2   -    -    -    -    .    G2   -    -    .    Bb1  -    -    -    -    -
+bass:   C2   -    -    -    -    .    Bb1  -    -    .    G1   -    -    -    C2   -
+
+drums:  bd   .    .    hh   .    .    sd   .    .    hh   .    .    bd   .    sd   .
+drums:  bd   .    .    hh   .    .    sd   .    .    hh   .    .    bd   .    sd   .
+drums:  bd   .    .    hh   .    .    sd   .    .    hh   .    .    bd   .    sd   .
+drums:  bd   .    .    hh   .    .    sd   .    .    hh   .    .    bd   .    sd   hh
+drums:  bd   .    .    hh   .    .    sd   .    .    hh   .    .    bd   .    sd   .
+drums:  bd   .    .    hh   .    .    sd   .    .    hh   .    .    bd   .    sd   .
+drums:  bd   .    .    hh   .    .    sd   .    .    hh   .    .    bd   .    sd   .
+drums:  bd   .    .    hh   .    .    sd   .    .    hh   .    .    bd   .    sd   oh
+

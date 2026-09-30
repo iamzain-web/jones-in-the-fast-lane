@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Threading;
 using AMedia = global::Android.Media;
 
@@ -27,7 +27,10 @@ internal sealed class AudioTrackStream : IDisposable
     private const int BufferCount = 4;
 
     private readonly Action<short[], int> _fill;
-    private readonly short[] _staging = new short[FramesPerBuffer];
+    private readonly short[] _staging;
+
+    /// <summary>Samples per buffer: frames x channels.</summary>
+    private readonly int _samplesPerBuffer;
 
     private AMedia.AudioTrack? _track;
     private Thread? _pump;
@@ -37,18 +40,30 @@ internal sealed class AudioTrackStream : IDisposable
     public bool IsOpen => _track is not null;
 
     /// <param name="sampleRate">Samples per second; the synth's own rate is used as-is.</param>
-    /// <param name="fill">Called on the pump thread to fill <c>count</c> mono samples.</param>
-    public AudioTrackStream(int sampleRate, Action<short[], int> fill)
+    /// <param name="fill">Called on the pump thread to fill <c>count</c> samples.</param>
+    /// <param name="channels">
+    /// 1 for the mono AdLib path this stream was written for, 2 for the interleaved stereo
+    /// the original synthesiser produces. A phone's speaker may well be a single driver,
+    /// but headphones are the normal way this build gets demonstrated and the chorus and
+    /// delay are worth nothing folded down.
+    /// </param>
+    public AudioTrackStream(int sampleRate, Action<short[], int> fill, int channels = 1)
     {
+        if (channels is < 1 or > 2) throw new ArgumentOutOfRangeException(nameof(channels));
+
         _fill = fill;
+        _samplesPerBuffer = FramesPerBuffer * channels;
+        _staging = new short[_samplesPerBuffer];
+
+        var mask = channels == 2 ? AMedia.ChannelOut.Stereo : AMedia.ChannelOut.Mono;
 
         // The device's own minimum, which varies by phone; never go below it or Write
         // underruns and the music stutters.
         var minBytes = AMedia.AudioTrack.GetMinBufferSize(
-            sampleRate, AMedia.ChannelOut.Mono, AMedia.Encoding.Pcm16bit);
-        if (minBytes <= 0) minBytes = FramesPerBuffer * BufferCount * 2;
+            sampleRate, mask, AMedia.Encoding.Pcm16bit);
+        if (minBytes <= 0) minBytes = _samplesPerBuffer * BufferCount * 2;
 
-        var bufferBytes = Math.Max(minBytes, FramesPerBuffer * BufferCount * 2);
+        var bufferBytes = Math.Max(minBytes, _samplesPerBuffer * BufferCount * 2);
 
         try
         {
@@ -62,7 +77,7 @@ internal sealed class AudioTrackStream : IDisposable
                 .SetAudioFormat(new AMedia.AudioFormat.Builder()!
                     .SetEncoding(AMedia.Encoding.Pcm16bit)!
                     .SetSampleRate(sampleRate)!
-                    .SetChannelMask(AMedia.ChannelOut.Mono)!
+                    .SetChannelMask(mask)!
                     .Build()!)!
                 .SetBufferSizeInBytes(bufferBytes)!
                 .SetTransferMode(AMedia.AudioTrackMode.Stream)!
@@ -107,7 +122,7 @@ internal sealed class AudioTrackStream : IDisposable
         {
             try
             {
-                _fill(_staging, FramesPerBuffer);
+                _fill(_staging, _samplesPerBuffer);
             }
             catch (Exception)
             {
@@ -121,7 +136,7 @@ internal sealed class AudioTrackStream : IDisposable
             {
                 // Blocking by default, which is the pacing: this returns when the device
                 // has room for the next buffer.
-                written = track.Write(_staging, 0, FramesPerBuffer);
+                written = track.Write(_staging, 0, _samplesPerBuffer);
             }
             catch (Exception)
             {
@@ -171,3 +186,4 @@ internal sealed class AudioTrackStream : IDisposable
         track.Release();
     }
 }
+

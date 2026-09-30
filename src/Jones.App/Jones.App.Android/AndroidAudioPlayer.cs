@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.IO;
 using System.Threading;
 using Jones.App.Audio;
@@ -44,8 +44,29 @@ public sealed class AndroidAudioPlayer : IAudioPlayer, IDisposable
     // Built on a background thread, then read from the UI thread. A reference assignment
     // is atomic, and a caller that gets here a moment early simply finds null and does
     // nothing - which is the right answer, because there is no device to hear it on yet.
-    private volatile Jones.Audio.SciSoundEngine? _engine;
+    private volatile Jones.Audio.JonesAudioMixer? _engine;
     private volatile AudioTrackStream? _stream;
+
+    // Set before the mixer exists, so the switch can be restored from settings during
+    // start-up without having to wait for the audio device.
+    private bool _useOriginal = true;
+
+    /// <summary>
+    /// The A/B switch. TRUE - the original set - is now the default; false is the AdLib path,
+    /// See <see cref="IAudioPlayer.UseOriginalAudio"/>.
+    /// </summary>
+    public bool UseOriginalAudio
+    {
+        get => _useOriginal;
+        set
+        {
+            _useOriginal = value;
+            var engine = _engine;
+            if (engine is not null)
+                engine.Source = value ? Jones.Audio.AudioSource.Original
+                                      : Jones.Audio.AudioSource.AdLib;
+        }
+    }
     private readonly Thread? _startingAudio;
 
     // Speech is created and torn down per line from the UI thread, and its position is
@@ -83,8 +104,20 @@ public sealed class AndroidAudioPlayer : IAudioPlayer, IDisposable
         _assets = assets;
 
         // No bank or no resources means no synthesised sound, but speech and the rest of
-        // the game carry on.
-        _sounds = Jones.Audio.SciSoundLibrary.FromAssetRoot(assetRoot);
+        // the game carry on. FromAssetRoot returns null when it finds nothing; the catch is
+        // for the case it does NOT cover - a patch.003 that is present but malformed, which
+        // on this head means an unpack that half-succeeded. Throwing out of here would take
+        // the whole app down during CustomizeAppBuilder, for a sound bank.
+        try
+        {
+            _sounds = Jones.Audio.SciSoundLibrary.FromAssetRoot(assetRoot);
+        }
+        catch (Exception e)
+        {
+            AndroidLog.Error("SciSoundLibrary.FromAssetRoot (music and effects disabled)", e);
+            _sounds = null;
+        }
+
         if (_sounds is null) return;
 
         // Off the startup path for the same reason as on Windows: standing up the two OPL
@@ -103,17 +136,36 @@ public sealed class AndroidAudioPlayer : IAudioPlayer, IDisposable
     {
         try
         {
-            var engine = new Jones.Audio.SciSoundEngine(_sounds!.Bank);
+            // The six synthesised effects are rendered here, on this same off-startup
+            // thread, so the first button click of a session does not pay for them. About
+            // four megabytes at worst, and only what the player triggers is kept.
+            var bank = new Jones.Audio.Original.OriginalSoundBank(Jones.Audio.JonesAudioMixer.SampleRate);
+            bank.PreRenderEffects();
+
+            var engine = new Jones.Audio.JonesAudioMixer(_sounds, bank)
+            {
+                Source = _useOriginal ? Jones.Audio.AudioSource.Original
+                                      : Jones.Audio.AudioSource.AdLib,
+            };
+
+            // STEREO, where this used to be mono. The AdLib path is still one mono chip up
+            // the middle and sounds exactly as it did; the width is for the original
+            // synthesiser, and on this head it is what headphones will actually show.
             _stream = new AudioTrackStream(
-                Jones.Audio.SciSoundEngine.SampleRate,
-                (buffer, count) => engine.Render(buffer.AsSpan(0, count)));
+                Jones.Audio.JonesAudioMixer.SampleRate,
+                (buffer, count) => engine.RenderStereo(buffer.AsSpan(0, count)),
+                channels: 2);
 
             // Published last: the play methods check this, and there is no point accepting
             // a sound before there is somewhere to put it.
             _engine = engine;
         }
-        catch (Exception)
+        catch (Exception e)
         {
+            // Logged rather than swallowed: this runs on a background thread, so without a
+            // line here a phone whose mixer refuses the output format is indistinguishable
+            // from a phone whose speakers are simply turned down.
+            AndroidLog.Error("audio device start (music and effects disabled)", e);
             _stream = null;
             _engine = null;
         }
@@ -336,12 +388,8 @@ public sealed class AndroidAudioPlayer : IAudioPlayer, IDisposable
     /// <summary>`gASong playBed: n`.</summary>
     public void PlayMusic(int soundResource, bool loop = true)
     {
-        if (!_enabled || _engine is null || _sounds is null) return;
-        if (soundResource <= 0) { _engine.StopMusic(); return; }
-
-        var res = _sounds.Get(soundResource);
-        if (res is null) return;
-        _engine.PlayMusic(res, loop);
+        if (!_enabled || _engine is null) return;
+        _engine.PlayMusic(soundResource, loop);
     }
 
     /// <summary>`gASong fade:` - a fade, not a cut.</summary>
@@ -356,18 +404,8 @@ public sealed class AndroidAudioPlayer : IAudioPlayer, IDisposable
     /// <summary>`gASoundEffect play: n`.</summary>
     public void PlayEffect(int soundResource, bool loop = false, bool resumeMusicWhenDone = false)
     {
-        if (!_enabled || _engine is null || _sounds is null) return;
-
-        var res = _sounds.Get(soundResource);
-        if (res is null)
-        {
-            // The sting is what was going to bring the paused bed back. With no resource
-            // there is nothing to cue it, so release it here rather than leave it silent.
-            if (resumeMusicWhenDone) _engine.ResumeMusic();
-            return;
-        }
-
-        _engine.PlayEffect(res, loop, resumeMusicWhenDone);
+        if (!_enabled || _engine is null) return;
+        _engine.PlayEffect(soundResource, loop, resumeMusicWhenDone);
     }
 
     /// <summary>`(gASoundEffect loop: 1)` - `lottoScript.sc:232`.</summary>
@@ -376,11 +414,8 @@ public sealed class AndroidAudioPlayer : IAudioPlayer, IDisposable
     /// <summary>`gASoundEffect2 play: n` - `room1.sc:1500` is its only caller.</summary>
     public void PlayEffect2(int soundResource)
     {
-        if (!_enabled || _engine is null || _sounds is null) return;
-
-        var res = _sounds.Get(soundResource);
-        if (res is null) return;
-        _engine.PlayEffect2(res);
+        if (!_enabled || _engine is null) return;
+        _engine.PlayEffect2(soundResource);
     }
 
     /// <summary>`winnerScript.sc:67-68` clears both effect slots.</summary>
@@ -398,3 +433,5 @@ public sealed class AndroidAudioPlayer : IAudioPlayer, IDisposable
         _stream?.Dispose();
     }
 }
+
+

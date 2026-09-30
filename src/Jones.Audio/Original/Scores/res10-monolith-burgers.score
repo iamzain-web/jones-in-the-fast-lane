@@ -1,0 +1,120 @@
+# ---------------------------------------------------------------------------
+# RESOURCES 10 AND 38 - MONOLITH BURGERS, AND THE RESTART BED
+#
+# ONE CUE, TWO JOBS, exactly as the original has it: 10.sound and 38.sound are
+# BYTE-IDENTICAL (MD5-checked). Sierra wrote one arrangement and shipped it
+# twice - `fastFood.sc:104` plays it as Monolith Burgers' bed, and
+# `Main.sc:1219` plays it as the bed for a restarted game.
+#
+# Original: 2018 ticks = 33.63 s, loop point at tick 577.
+# Here:     12 bars at 86 bpm = 33.49 s, loop from step 64 - FOUR BARS OF
+#           INTRO, heard once.
+#
+# The loop point is real: 577/2018 is 28.6% in, the largest structural intro
+# in the game. Four bars of twelve is 33%, which is as close as a whole number
+# of bars gets. That structure is the original's decision and it is kept. The
+# notes are not.
+#
+# ORIGINAL MUSIC. Written to the ROLE the cue plays, never to its notes.
+#
+# Brief: fast food, and it has to do double duty. Monolith is somewhere people
+# go constantly, so this is the most-heard thing left to write; the restart
+# bed wants the same quality - upbeat, welcoming, no particular location -
+# which is presumably why Sierra used one cue for both. F major, bright, with
+# a bell playing a jingle over the top and a kit that is busier than anything
+# except Black's Market. At 86 bpm with sixteenth hats it moves without being
+# fast, which is what stops a bed this energetic wearing out.
+#
+# The four-bar intro BUILDS - bass, then pad, then keys, then the bell pickup
+# into the loop - so a player walking in gets an arrival and a player who has
+# been standing there for two minutes never hears it again.
+#
+# Written to the v2 mix standard from the start. NO LEAD LINE.
+# ---------------------------------------------------------------------------
+
+tempo 86
+steps 16
+swing 0.12
+loop 1
+loop-from 64
+space room
+
+part pad    patch=pad   gain=0.78  pan=-0.22
+part keys   patch=keys  gain=0.88  pan=0.16
+part bell   patch=bell  gain=0.92  pan=0.34
+part bass   patch=bass  gain=0.86  pan=0.00
+part drums  kit         gain=0.76  pan=0.00
+
+#          1    2    3    4    5    6    7    8    9   10   11   12   13   14   15   16
+
+# --- bars 1-4: the intro. Heard once, on walking in. ---
+pad:    .    .    .    .    .    .    .    .    .    .    .    .    .    .    .    .
+pad:    F2+A2+C3+E3     -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+pad:    F2+A2+C3+E3     -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+pad:    C3+F3+G3+Bb3    -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+
+keys:   .    .    .    .    .    .    .    .    .    .    .    .    .    .    .    .
+keys:   .    .    .    .    .    .    .    .    .    .    .    .    .    .    .    .
+keys:   A4+C5+E5+G5     -    -    -    -    -    -    -    -    -    -    -    -    .    .    .
+keys:   F4+G4+Bb4+C5    -    -    -    -    -    -    -    -    -    -    -    -    .    .    .
+
+bell:   .    .    .    .    .    .    .    .    .    .    .    .    .    .    .    .
+bell:   .    .    .    .    .    .    .    .    .    .    .    .    .    .    .    .
+bell:   .    .    .    .    .    .    .    .    .    .    .    .    .    .    .    .
+bell:   .    .    .    .    .    .    .    .    C5   .    E5   .    F5   .    A5   .
+
+bass:   F2   -    -    -    -    -    .    C3   -    -    -    .    A2   -    -    -
+bass:   F2   -    -    -    -    -    .    C3   -    -    -    .    A2   -    -    -
+bass:   Bb1  -    -    -    -    -    .    F2   -    -    -    .    D2   -    -    -
+bass:   C2   -    -    -    -    -    .    G2   -    -    -    .    Bb1  -    -    -
+
+drums:  bd   .    hh   .    .    .    hh   .    bd   .    hh   .    .    .    hh   .
+drums:  bd   .    hh   .    .    .    hh   .    bd   .    hh   .    .    .    hh   .
+drums:  bd   .    hh   .    sd   .    hh   .    bd   .    hh   .    sd   .    hh   .
+drums:  bd   .    hh   .    sd   .    hh   .    bd   .    hh   .    sd   sd   hh   oh
+
+# --- bars 5-12: the loop. ---
+pad:    F2+A2+C3+E3     -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+pad:    Bb2+D3+F3+G3    -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+pad:    G2+Bb2+D3+F3    -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+pad:    C3+F3+G3+Bb3    -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+pad:    F2+A2+C3+E3     -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+pad:    Bb2+D3+F3+G3    -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+pad:    G2+Bb2+D3+F3    -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+pad:    C3+E3+G3+Bb3    -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+
+keys:   .    .    A4+C5+E5+G5     -    -    -    -    -    .    .    A4+C5+E5+G5     -    -    -    -    -
+keys:   .    .    D4+G4+Bb4+D5    -    -    -    -    -    .    .    D4+G4+Bb4+D5    -    -    -    -    -
+keys:   .    .    Bb4+D5+F5+G5    -    -    -    -    -    .    .    Bb4+D5+F5+G5    -    -    -    -    -
+keys:   .    .    F4+G4+Bb4+C5    -    -    -    -    -    .    .    F4+G4+Bb4+C5    -    -    -    -    -
+keys:   .    .    A4+C5+E5+G5     -    -    -    -    -    .    .    A4+C5+E5+G5     -    -    -    -    -
+keys:   .    .    D4+G4+Bb4+D5    -    -    -    -    -    .    .    D4+G4+Bb4+D5    -    -    -    -    -
+keys:   .    .    Bb4+D5+F5+G5    -    -    -    -    -    .    .    Bb4+D5+F5+G5    -    -    -    -    -
+keys:   .    .    E4+G4+Bb4+C5    -    -    -    -    -    .    .    E4+G4+Bb4+C5    -    -    -    -    -
+
+bell:   C5   .    .    .    E5   .    .    .    G5   .    .    .    .    .    A5   .
+bell:   D5   .    .    .    F5   .    .    .    Bb5  .    .    .    .    .    G5   .
+bell:   Bb4  .    .    .    D5   .    .    .    F5   .    .    .    .    .    G5   .
+bell:   C5   .    .    .    F5   .    .    .    G5   .    .    .    .    .    Bb5  .
+bell:   C5   .    .    .    E5   .    .    .    A5   .    .    .    .    .    G5   .
+bell:   D5   .    .    .    F5   .    .    .    Bb5  .    .    .    .    .    D6   .
+bell:   Bb4  .    .    .    D5   .    .    .    G5   .    .    .    .    .    F5   .
+bell:   C5   .    .    .    E5   .    .    .    G5   .    .    .    .    .    Bb5  .
+
+bass:   F2   -    -    -    -    -    .    C3   -    -    -    .    A2   -    -    -
+bass:   Bb1  -    -    -    -    -    .    F2   -    -    -    .    D2   -    -    -
+bass:   G1   -    -    -    -    -    .    D2   -    -    -    .    Bb1  -    -    -
+bass:   C2   -    -    -    -    -    .    G2   -    -    -    .    Bb1  -    -    -
+bass:   F2   -    -    -    -    -    .    C3   -    -    -    .    A2   -    -    -
+bass:   Bb1  -    -    -    -    -    .    F2   -    -    -    .    D2   -    -    -
+bass:   G1   -    -    -    -    -    .    D2   -    -    -    .    Bb1  -    -    -
+bass:   C2   -    -    -    -    -    .    G2   -    -    -    .    E2   -    -    -
+
+drums:  bd   .    hh   hh   sd   .    hh   .    bd   .    hh   hh   sd   .    hh   .
+drums:  bd   .    hh   hh   sd   .    hh   .    bd   .    hh   hh   sd   .    hh   .
+drums:  bd   .    hh   hh   sd   .    hh   .    bd   .    hh   hh   sd   .    hh   .
+drums:  bd   .    hh   hh   sd   .    hh   .    bd   .    hh   hh   sd   .    hh   oh
+drums:  bd   .    hh   hh   sd   .    hh   .    bd   .    hh   hh   sd   .    hh   .
+drums:  bd   .    hh   hh   sd   .    hh   .    bd   .    hh   hh   sd   .    hh   .
+drums:  bd   .    hh   hh   sd   .    hh   .    bd   .    hh   hh   sd   .    hh   .
+drums:  bd   .    hh   hh   sd   .    hh   .    bd   bd   hh   hh   sd   sd   hh   oh

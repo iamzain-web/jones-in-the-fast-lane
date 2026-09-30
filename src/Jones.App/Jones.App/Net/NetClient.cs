@@ -23,12 +23,44 @@ namespace Jones.App.Net;
 /// </summary>
 public static class NetClient
 {
+    /// <summary>The address last joined successfully, for the join box to offer again.</summary>
+    public static string LastAddress
+    {
+        get
+        {
+            try { return System.IO.File.Exists(LastAddressFile) ? System.IO.File.ReadAllText(LastAddressFile).Trim() : ""; }
+            catch (Exception) { return ""; }
+        }
+        set
+        {
+            try
+            {
+                System.IO.Directory.CreateDirectory(System.IO.Path.GetDirectoryName(LastAddressFile)!);
+                System.IO.File.WriteAllText(LastAddressFile, value);
+            }
+            catch (Exception) { }
+        }
+    }
+
+    // LocalApplicationData is the app's private files directory on Android, and
+    // %LOCALAPPDATA% on Windows: somewhere this app may always write, on both heads.
+    private static string LastAddressFile => System.IO.Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Jones", "last-join.txt");
+
     public static MainViewModel Start(string host, int port)
     {
         var vm = MainViewModel.CreateRemoteView();
         var client = new JoinClient(host, port);
 
         vm.SendInput = client.Send;
+        vm.Connection = client;
+        client.Welcomed += _ => Dispatcher.UIThread.Post(() =>
+        {
+            vm.IsConnected = true;
+            LastAddress = Address.Format(host, port);
+        });
+        client.Disconnected += () => Dispatcher.UIThread.Post(() => vm.IsConnected = false);
+        client.Refused += _ => Dispatcher.UIThread.Post(() => vm.IsConnected = false);
 
         FrameMsg? pending = null;
         client.Frame += frame =>
@@ -80,14 +112,11 @@ public static class NetLaunch
                     break;
 
                 case "--join" when i + 1 < args.Length:
-                    var target = args[++i];
-                    var colon = target.LastIndexOf(':');
-                    if (colon > 0 && int.TryParse(target[(colon + 1)..], out var jp))
+                    if (Address.TrySplit(args[++i], out var host, out var port))
                     {
-                        Port = jp;
-                        target = target[..colon];
+                        JoinAddress = host;
+                        Port = port;
                     }
-                    JoinAddress = target;
                     break;
             }
         }

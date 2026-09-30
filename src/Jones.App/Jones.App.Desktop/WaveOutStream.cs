@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
 using System.Threading;
@@ -10,7 +10,7 @@ namespace Jones.App.Desktop;
 /// callback on a dedicated thread.
 ///
 /// WHY NOT MCI, which this head already uses for speech: MCI plays a finished FILE. The
-/// music here is not a file — it is an OPL2 being driven in real time, so that a music
+/// music here is not a file â€” it is an OPL2 being driven in real time, so that a music
 /// bed can loop at its own marked loop point, fade out over the five seconds the scripts
 /// ask for, and have a button click land over the top of it without either one being
 /// re-rendered. That needs a stream, and waveOut is the streaming interface.
@@ -93,20 +93,33 @@ public sealed class WaveOutStream : IDisposable
     /// <summary>True when the device opened and audio is actually flowing.</summary>
     public bool IsOpen => _device != IntPtr.Zero;
 
-    /// <param name="sampleRate">Samples per second; the OPL's native rate is used as-is.</param>
-    /// <param name="fill">Called on the pump thread to fill <c>count</c> mono samples.</param>
-    public WaveOutStream(int sampleRate, Action<short[], int> fill)
-    {
-        _fill = fill;
-        _staging = new short[FramesPerBuffer];
+    /// <summary>Samples per buffer: frames x channels.</summary>
+    private readonly int _samplesPerBuffer;
 
+    /// <param name="sampleRate">Samples per second; the OPL's native rate is used as-is.</param>
+    /// <param name="fill">Called on the pump thread to fill <c>count</c> samples.</param>
+    /// <param name="channels">
+    /// 1 for the mono AdLib path this stream was written for, 2 for the interleaved stereo
+    /// the original synthesiser produces — its chorus and its delay are stereo effects and
+    /// folding them down throws away most of what they do. The mono path is unchanged and
+    /// still the default.
+    /// </param>
+    public WaveOutStream(int sampleRate, Action<short[], int> fill, int channels = 1)
+    {
+        if (channels is < 1 or > 2) throw new ArgumentOutOfRangeException(nameof(channels));
+
+        _fill = fill;
+        _samplesPerBuffer = FramesPerBuffer * channels;
+        _staging = new short[_samplesPerBuffer];
+
+        var blockAlign = (short)(channels * 2);
         var format = new WaveFormatEx
         {
             wFormatTag = 1,          // WAVE_FORMAT_PCM
-            nChannels = 1,
+            nChannels = (short)channels,
             nSamplesPerSec = sampleRate,
-            nAvgBytesPerSec = sampleRate * 2,
-            nBlockAlign = 2,
+            nAvgBytesPerSec = sampleRate * blockAlign,
+            nBlockAlign = blockAlign,
             wBitsPerSample = 16,
             cbSize = 0,
         };
@@ -121,9 +134,9 @@ public sealed class WaveOutStream : IDisposable
 
         for (var i = 0; i < BufferCount; i++)
         {
-            _data[i] = Marshal.AllocHGlobal(FramesPerBuffer * 2);
+            _data[i] = Marshal.AllocHGlobal(_samplesPerBuffer * 2);
             _headers[i] = Marshal.AllocHGlobal(_headerSize);
-            var hdr = new WaveHdr { lpData = _data[i], dwBufferLength = FramesPerBuffer * 2 };
+            var hdr = new WaveHdr { lpData = _data[i], dwBufferLength = _samplesPerBuffer * 2 };
             Marshal.StructureToPtr(hdr, _headers[i], false);
             waveOutPrepareHeader(_device, _headers[i], _headerSize);
             // Mark done so the first pass through the pump fills and queues all of them.
@@ -162,7 +175,7 @@ public sealed class WaveOutStream : IDisposable
 
                 try
                 {
-                    _fill(_staging, FramesPerBuffer);
+                    _fill(_staging, _samplesPerBuffer);
                 }
                 catch (Exception)
                 {
@@ -171,10 +184,18 @@ public sealed class WaveOutStream : IDisposable
                     Array.Clear(_staging);
                 }
 
-                Marshal.Copy(_staging, 0, _data[i], FramesPerBuffer);
+                Marshal.Copy(_staging, 0, _data[i], _samplesPerBuffer);
 
                 hdr.dwFlags = WhdrPrepared;   // clears DONE and INQUEUE
-                hdr.dwBufferLength = FramesPerBuffer * 2;
+
+                // BYTES, so frames x channels x 2 — `_samplesPerBuffer * 2`, exactly as the
+                // allocation at init uses. This read `FramesPerBuffer * 2`, which is the same
+                // number ONLY in mono; in stereo it is half the buffer, so every re-queue
+                // played the first 512 frames of 1024 and then jumped to the next buffer,
+                // truncating mid-frame and swapping which channel led. That is why the music
+                // sounded broken in the game while the rendered WAVs — which never touch this
+                // path — were fine.
+                hdr.dwBufferLength = _samplesPerBuffer * 2;
                 Marshal.StructureToPtr(hdr, _headers[i], false);
 
                 if (waveOutWrite(_device, _headers[i], _headerSize) != MmsyserrNoerror)
@@ -217,3 +238,4 @@ public sealed class WaveOutStream : IDisposable
         _device = IntPtr.Zero;
     }
 }
+

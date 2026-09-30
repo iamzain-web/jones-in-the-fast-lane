@@ -100,13 +100,19 @@ internal static class GameAssets
             }
 
             if (stamp is not null) File.WriteAllText(stampFile, stamp);
+            AndroidLog.Info($"unpacked {zip.Entries.Count} entries to {root}");
         }
-        catch (Exception)
+        catch (Exception e)
         {
             // A failed unpack must not stop the game starting. Every shared loader treats
             // a missing resource as "show nothing" already, so the worst case is a silent
             // game with no printed strings - which is exactly what the desktop head does
             // when it cannot find assets/ either.
+            //
+            // LOGGED, THOUGH. Swallowed silently, this failure presents as a game with no
+            // text and no sound and no reason given, which is the hardest kind to diagnose
+            // from a phone - see AndroidLog.
+            AndroidLog.Error("GameAssets.Unpack (the game will print nothing and stay silent)", e);
         }
     }
 

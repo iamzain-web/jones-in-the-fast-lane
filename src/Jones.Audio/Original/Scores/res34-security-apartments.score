@@ -1,0 +1,91 @@
+﻿# ---------------------------------------------------------------------------
+# RESOURCE 34 - SECURITY APARTMENTS
+#
+# `security.sc:71`, `playBed:`. The better of the two homes.
+#
+# Original: 1595 ticks = 26.58 s, loop point at the top.
+# Here:     8 bars at 72 bpm = 26.67 s, loop at the top.
+#
+# ORIGINAL MUSIC. Written to the ROLE the cue plays, never to its notes.
+#
+# ---------------------------------------------------------------------------
+# VERSION 2 - the same treatment the town board got, and for the same reason:
+# v1 measured 5.8 dB under the demo in the low mid and 11.1 dB under it in the
+# 2-6 kHz band. All bottom, nothing above it.
+#
+# What changed: the bass holds instead of stabbing, the pad is voiced with the
+# 7th and 9th so it occupies the low mid instead of hiding under it, and the
+# keys sustain across the bar instead of ringing off half way.
+#
+# WHAT DID NOT CHANGE, because it is the character of the room: there is
+# STILL NO SNARE anywhere in this cue, the kick is still on the bar and
+# nothing else, and the bell still plays four notes a bar and gets out of the
+# way. This is where the player is safe.
+#
+# AND IT IS STILL THE QUIETEST OF THE FIVE. The board is the hub and can be
+# the loudest; home should not be. It comes out around 2 dB under the demo
+# where the board sits about 1 dB over it - so the balance is right without
+# the level being pushed up to match.
+# ---------------------------------------------------------------------------
+
+tempo 72
+steps 16
+swing 0.08
+loop 1
+loop-from 0
+space room
+
+part pad    patch=pad   gain=0.80  pan=-0.25
+part keys   patch=keys  gain=0.86  pan=0.15
+part bell   patch=bell  gain=1.00  pan=0.35
+part bass   patch=bass  gain=0.82  pan=0.00
+part drums  kit         gain=0.62  pan=0.00
+
+#          1    2    3    4    5    6    7    8    9   10   11   12   13   14   15   16
+
+pad:    Eb3+G3+Bb3+D4   -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+pad:    Eb3+G3+Bb3+D4   -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+pad:    C3+Eb3+G3+Bb3   -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+pad:    C3+Eb3+G3+Bb3   -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+pad:    F3+Ab3+C4+Eb4   -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+pad:    F3+Ab3+C4+Eb4   -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+pad:    Bb2+Eb3+F3+Ab3  -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+pad:    Bb2+D3+F3+Ab3   -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+
+keys:   G4+Bb4+D5+F5    -    -    -    -    -    -    -    -    -    -    -    -    .    .    .
+keys:   G4+Bb4+D5+F5    -    -    -    -    -    -    -    -    -    -    -    F4+Bb4+D5     -    -    -
+keys:   Eb4+G4+Bb4+D5   -    -    -    -    -    -    -    -    -    -    -    -    .    .    .
+keys:   Eb4+G4+Bb4+D5   -    -    -    -    -    -    -    -    -    -    -    D4+G4+Bb4     -    -    -
+keys:   Ab4+C5+Eb5+G5   -    -    -    -    -    -    -    -    -    -    -    -    .    .    .
+keys:   Ab4+C5+Eb5+G5   -    -    -    -    -    -    -    -    -    -    -    G4+C5+Eb5     -    -    -
+keys:   Eb4+F4+Ab4+Bb4  -    -    -    -    -    -    -    -    -    -    -    -    .    .    .
+keys:   D4+F4+Ab4+Bb4   -    -    -    -    -    -    -    -    -    -    -    -    .    .    .
+
+bell:   .    .    .    .    Bb5  .    .    .    G5   .    .    .    .    .    Eb5  .
+bell:   .    .    .    .    Bb5  .    .    .    .    .    D6   .    .    .    .    .
+bell:   .    .    .    .    G5   .    .    .    Eb5  .    .    .    .    .    C5   .
+bell:   .    .    .    .    G5   .    .    .    .    .    Bb5  .    .    .    .    .
+bell:   .    .    .    .    C6   .    .    .    Ab5  .    .    .    .    .    F5   .
+bell:   .    .    .    .    C6   .    .    .    .    .    Eb6  .    .    .    .    .
+bell:   .    .    .    .    Bb5  .    .    .    F5   .    .    .    .    .    Eb5  .
+bell:   .    .    .    .    D5   .    .    .    .    .    F5   .    .    .    .    .
+
+bass:   Eb2  -    -    -    -    -    -    .    Bb1  -    -    -    -    -    -    -
+bass:   Eb2  -    -    -    -    -    -    .    G1   -    -    -    -    -    -    -
+bass:   C2   -    -    -    -    -    -    .    G1   -    -    -    -    -    -    -
+bass:   C2   -    -    -    -    -    -    .    Eb2  -    -    -    -    -    -    -
+bass:   F2   -    -    -    -    -    -    .    C2   -    -    -    -    -    -    -
+bass:   F2   -    -    -    -    -    -    .    Ab1  -    -    -    -    -    -    -
+bass:   Bb1  -    -    -    -    -    -    .    F2   -    -    -    -    -    -    -
+bass:   Bb1  -    -    -    -    -    -    .    Bb1  -    -    -    -    -    -    -
+
+drums:  bd   .    .    hh   .    .    .    hh   .    .    .    hh   .    .    .    hh
+drums:  bd   .    .    hh   .    .    .    hh   .    .    .    hh   .    .    .    hh
+drums:  bd   .    .    hh   .    .    .    hh   .    .    .    hh   .    .    .    hh
+drums:  bd   .    .    hh   .    .    .    hh   .    .    .    hh   .    .    .    hh
+drums:  bd   .    .    hh   .    .    .    hh   .    .    .    hh   .    .    .    hh
+drums:  bd   .    .    hh   .    .    .    hh   .    .    .    hh   .    .    .    hh
+drums:  bd   .    .    hh   .    .    .    hh   .    .    .    hh   .    .    .    hh
+drums:  bd   .    .    hh   .    .    .    hh   .    .    .    hh   .    .    .    oh
+
+

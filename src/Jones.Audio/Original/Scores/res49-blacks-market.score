@@ -1,0 +1,90 @@
+﻿# ---------------------------------------------------------------------------
+# RESOURCE 49 - BLACK'S MARKET
+#
+# `market.sc:125`, `playBed:`. Also `market.sc:356` plays it as a one-shot.
+#
+# Original: 973 ticks = 16.22 s, loop point at tick 14.
+# Here:     8 bars at 118 bpm = 16.27 s, loop at the top (tick 14 of 973 is
+#           1.4% in - setup, not a section).
+#
+# ORIGINAL MUSIC. Written to the ROLE the cue plays, never to its notes.
+#
+# Brief: THE LEAST COMFORTABLE CUE IN THE GAME, and it has earned it - this
+# is where Wild Willy mugs you (`muggedByMarket.sc:31`). But it is a shop you
+# choose to visit for cheap goods, not a horror set piece, so the tension is
+# harmonic rather than theatrical.
+#
+# THE DEVICE IS ONE NOTE. E minor with a Phrygian flat second: the chord on
+# bars 3-4 is an F major sitting a semitone above the tonic, and the bass
+# leans on F natural against E all the way through. That semitone is the whole
+# discomfort. No dissonant effects, no stingers, no minor seconds hammered in
+# the top - just a chord that should not be there, in a room you keep going
+# back to because the prices are good.
+#
+# The bass is an ostinato that never lets go, the clav stabs off the beat, and
+# the hats run sixteenths. It is the busiest bed in the set and the only one
+# that does not relax.
+#
+# Written to the v2 mix standard from the start. NO LEAD LINE.
+# ---------------------------------------------------------------------------
+
+tempo 118
+steps 16
+swing 0.08
+loop 1
+loop-from 0
+space room
+
+part pad    patch=pad   gain=0.72  pan=-0.28
+part keys   patch=keys  gain=0.78  pan=0.12
+part clav   patch=clav  gain=0.94  pan=0.30
+part bass   patch=bass  gain=0.86  pan=0.00
+part drums  kit         gain=0.72  pan=0.00
+
+#          1    2    3    4    5    6    7    8    9   10   11   12   13   14   15   16
+
+pad:    E3+G3+B3+D4     -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+pad:    E3+G3+B3+D4     -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+pad:    F3+A3+C4+E4     -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+pad:    F3+A3+C4+E4     -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+pad:    E3+G3+B3+D4     -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+pad:    E3+G3+B3+D4     -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+pad:    B2+D#3+F#3+A3   -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+pad:    B2+D#3+F#3+A3   -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+
+keys:   .    .    G4+B4+D5+E5   -    -    -    -    -    .    .    G4+B4+D5+E5   -    -    -    -    -
+keys:   .    .    G4+B4+D5+E5   -    -    -    -    -    .    .    F4+A4+D5      -    -    -    -    -
+keys:   .    .    A4+C5+E5+F5   -    -    -    -    -    .    .    A4+C5+E5+F5   -    -    -    -    -
+keys:   .    .    A4+C5+E5+F5   -    -    -    -    -    .    .    G4+C5+E5      -    -    -    -    -
+keys:   .    .    G4+B4+D5+E5   -    -    -    -    -    .    .    G4+B4+D5+E5   -    -    -    -    -
+keys:   .    .    G4+B4+D5+E5   -    -    -    -    -    .    .    F4+B4+D5      -    -    -    -    -
+keys:   .    .    D#4+F#4+A4+B4 -    -    -    -    -    .    .    D#4+F#4+A4+B4 -    -    -    -    -
+keys:   .    .    D#4+F#4+A4+B4 -    -    -    -    -    .    .    F#4+A4+D#5    -    -    -    -    -
+
+clav:   .    .    E4+B4   .    .    .    G4+D5   .    .    E4+B4   .    .    .    F4+C5   .    .
+clav:   .    .    E4+B4   .    .    .    G4+D5   .    .    E4+B4   .    .    .    F4+C5   .    .
+clav:   .    .    F4+C5   .    .    .    A4+E5   .    .    F4+C5   .    .    .    G4+D5   .    .
+clav:   .    .    F4+C5   .    .    .    A4+E5   .    .    F4+C5   .    .    .    E4+B4   .    .
+clav:   .    .    E4+B4   .    .    .    G4+D5   .    .    E4+B4   .    .    .    F4+C5   .    .
+clav:   .    .    E4+B4   .    .    .    G4+D5   .    .    E4+B4   .    .    .    G4+D5   .    .
+clav:   .    .    D#4+A4  .    .    .    F#4+B4  .    .    D#4+A4  .    .    .    F#4+B4  .    .
+clav:   .    .    D#4+A4  .    .    .    F#4+B4  .    .    F#4+B4  .    .    .    D#4+A4  .    .
+
+bass:   E2   -    -    .    E2   .    F2   -    -    .    E2   -    .    D2   -    -
+bass:   E2   -    -    .    E2   .    F2   -    -    .    E2   -    .    B1   -    -
+bass:   F2   -    -    .    F2   .    E2   -    -    .    F2   -    .    C2   -    -
+bass:   F2   -    -    .    F2   .    E2   -    -    .    F2   -    .    A1   -    -
+bass:   E2   -    -    .    E2   .    F2   -    -    .    E2   -    .    D2   -    -
+bass:   E2   -    -    .    E2   .    G2   -    -    .    E2   -    .    B1   -    -
+bass:   B1   -    -    .    B1   .    D#2  -    -    .    B1   -    .    F#2  -    -
+bass:   B1   -    -    .    D#2  .    F#2  -    -    .    B1   -    .    B1   -    -
+
+drums:  bd   hh   hh   hh   sd   hh   hh   hh   bd   hh   bd   hh   sd   hh   hh   hh
+drums:  bd   hh   hh   hh   sd   hh   hh   hh   bd   hh   bd   hh   sd   hh   hh   hh
+drums:  bd   hh   hh   hh   sd   hh   hh   hh   bd   hh   bd   hh   sd   hh   hh   hh
+drums:  bd   hh   hh   hh   sd   hh   hh   hh   bd   hh   bd   hh   sd   hh   hh   hh
+drums:  bd   hh   hh   hh   sd   hh   hh   hh   bd   hh   bd   hh   sd   hh   hh   hh
+drums:  bd   hh   hh   hh   sd   hh   hh   hh   bd   hh   bd   hh   sd   hh   hh   hh
+drums:  bd   hh   hh   hh   sd   hh   hh   hh   bd   hh   bd   hh   sd   hh   hh   hh
+drums:  bd   hh   hh   hh   sd   hh   hh   hh   bd   hh   bd   hh   sd   sd   hh   oh
+

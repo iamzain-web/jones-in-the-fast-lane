@@ -1,0 +1,85 @@
+# ---------------------------------------------------------------------------
+# RESOURCE 40 - SOCKET CITY
+#
+# `appliance.sc:119`, `playBed:`.
+#
+# Original: 1122 ticks = 18.70 s, loop point at tick 14.
+# Here:     8 bars at 103 bpm = 18.64 s, loop at the top (tick 14 of 1122 is
+#           1.2% in - setup, not a section).
+#
+# ORIGINAL MUSIC. Written to the ROLE the cue plays, never to its notes.
+#
+# Brief: the electronics shop. The character is a SEQUENCER - a bell running
+# chord tones in eighths under everything, which is what a room full of
+# gadgets should sound like. It is deliberately not the Factory's machine:
+# that one is a pedal that never moves, in D minor, with no swing and nothing
+# pretty about it. This one is A minor, consumer-friendly and bright, and its
+# pattern follows the harmony instead of grinding against it.
+#
+# The bell figure is strictly CHORD TONES with no contour of its own. It is
+# texture, not a tune - a memorable line over a bed the player hears forty
+# times is the failure mode that only shows up after an hour of play.
+#
+# Written to the v2 mix standard from the start. NO LEAD LINE.
+# ---------------------------------------------------------------------------
+
+tempo 103
+steps 16
+swing 0.10
+loop 1
+loop-from 0
+space room
+
+part pad    patch=pad   gain=0.74  pan=-0.24
+part keys   patch=keys  gain=0.80  pan=0.14
+part bell   patch=bell  gain=0.70  pan=0.34
+part bass   patch=bass  gain=0.86  pan=0.00
+part drums  kit         gain=0.70  pan=0.00
+
+#          1    2    3    4    5    6    7    8    9   10   11   12   13   14   15   16
+
+pad:    A2+C3+E3+G3     -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+pad:    A2+C3+E3+G3     -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+pad:    D3+F3+A3+C4     -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+pad:    D3+F3+A3+C4     -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+pad:    F2+A2+C3+E3     -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+pad:    F2+A2+C3+E3     -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+pad:    E3+G#3+B3+D4    -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+pad:    E3+G#3+B3+D4    -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+
+keys:   .    .    C4+E4+G4+B4   -    -    -    -    -    .    .    C4+E4+G4+B4   -    -    -    -    -
+keys:   .    .    C4+E4+G4+B4   -    -    -    -    -    .    .    B3+E4+G4      -    -    -    -    -
+keys:   .    .    F4+A4+C5      -    -    -    -    -    .    .    F4+A4+C5      -    -    -    -    -
+keys:   .    .    F4+A4+C5      -    -    -    -    -    .    .    E4+A4+C5      -    -    -    -    -
+keys:   .    .    A3+C4+E4+G4   -    -    -    -    -    .    .    A3+C4+E4+G4   -    -    -    -    -
+keys:   .    .    A3+C4+E4+G4   -    -    -    -    -    .    .    G3+C4+E4      -    -    -    -    -
+keys:   .    .    G#3+B3+D4+E4  -    -    -    -    -    .    .    G#3+B3+D4+E4  -    -    -    -    -
+keys:   .    .    G#3+B3+D4+E4  -    -    -    -    -    .    .    B3+D4+G#4     -    -    -    -    -
+
+# The sequencer. Eighths, chord tones only, up and back down.
+bell:   A4   .    C5   .    E5   .    C5   .    A4   .    C5   .    E5   .    G5   .
+bell:   A4   .    C5   .    E5   .    C5   .    A4   .    C5   .    E5   .    C5   .
+bell:   D5   .    F5   .    A5   .    F5   .    D5   .    F5   .    A5   .    C6   .
+bell:   D5   .    F5   .    A5   .    F5   .    D5   .    F5   .    A5   .    F5   .
+bell:   C5   .    E5   .    A5   .    E5   .    C5   .    E5   .    A5   .    G5   .
+bell:   C5   .    E5   .    A5   .    E5   .    C5   .    E5   .    A5   .    E5   .
+bell:   B4   .    D5   .    G#5  .    D5   .    B4   .    D5   .    G#5  .    B5   .
+bell:   B4   .    D5   .    G#5  .    D5   .    B4   .    E5   .    G#5  .    B4   .
+
+bass:   A1   -    -    -    -    .    E2   -    -    -    .    C2   -    -    -    -
+bass:   A1   -    -    -    -    .    E2   -    -    -    .    G2   -    -    -    -
+bass:   D2   -    -    -    -    .    A2   -    -    -    .    F2   -    -    -    -
+bass:   D2   -    -    -    -    .    A2   -    -    -    .    C2   -    -    -    -
+bass:   F2   -    -    -    -    .    C2   -    -    -    .    A1   -    -    -    -
+bass:   F2   -    -    -    -    .    C2   -    -    -    .    E2   -    -    -    -
+bass:   E2   -    -    -    -    .    B1   -    -    -    .    G#1  -    -    -    -
+bass:   E2   -    -    -    -    .    G#1  -    -    -    .    B1   -    -    -    -
+
+drums:  bd   .    .    hh   .    .    sd   .    .    hh   .    bd   .    .    sd   hh
+drums:  bd   .    .    hh   .    .    sd   .    .    hh   .    bd   .    .    sd   hh
+drums:  bd   .    .    hh   .    .    sd   .    .    hh   .    bd   .    .    sd   hh
+drums:  bd   .    .    hh   .    .    sd   .    .    hh   .    bd   .    .    sd   hh
+drums:  bd   .    .    hh   .    .    sd   .    .    hh   .    bd   .    .    sd   hh
+drums:  bd   .    .    hh   .    .    sd   .    .    hh   .    bd   .    .    sd   hh
+drums:  bd   .    .    hh   .    .    sd   .    .    hh   .    bd   .    .    sd   hh
+drums:  bd   .    .    hh   .    .    sd   .    .    hh   .    bd   .    .    sd   oh

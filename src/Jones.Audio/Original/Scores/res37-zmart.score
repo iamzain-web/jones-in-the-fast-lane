@@ -1,0 +1,85 @@
+# ---------------------------------------------------------------------------
+# RESOURCE 37 - Z-MART
+#
+# `discount.sc:207`, `playBed:`.
+#
+# Original: 958 ticks = 15.97 s, loop point at the top.
+# Here:     8 bars at 120 bpm = 16.00 s, loop at the top.
+#
+# ORIGINAL MUSIC. Written to the ROLE the cue plays, never to its notes.
+#
+# Brief: the discount store. Cheap, cheerful and slightly plastic - the music
+# a shop plays at you rather than for you. G MAJOR, PLAIN TRIADS, and the pad
+# is voiced as a triad with the root doubled an octave up rather than with a
+# 7th and a 9th like every other cue in the set. That is the point: this is
+# the one room whose harmony is deliberately unsophisticated, and a major
+# ninth anywhere in it would make it sound like somewhere you could afford to
+# shop comfortably.
+#
+# SEPARATED FROM QT CLOTHING DELIBERATELY. That one is Db major, swung 0.17,
+# 107 bpm, lush ninths, sustained keys and a bell. This one is G major, almost
+# straight at 0.06, 120 bpm, plain triads, and led by a chirpy clav. The two
+# shops share nothing but a palette.
+#
+# Written to the v2 mix standard from the start. NO LEAD LINE.
+# ---------------------------------------------------------------------------
+
+tempo 120
+steps 16
+swing 0.06
+loop 1
+loop-from 0
+space room
+
+part pad    patch=pad   gain=0.74  pan=-0.20
+part keys   patch=keys  gain=0.84  pan=0.10
+part clav   patch=clav  gain=0.92  pan=0.30
+part bass   patch=bass  gain=0.86  pan=0.00
+part drums  kit         gain=0.74  pan=0.00
+
+#          1    2    3    4    5    6    7    8    9   10   11   12   13   14   15   16
+
+pad:    G2+B2+D3+G3     -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+pad:    G2+B2+D3+G3     -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+pad:    C3+E3+G3+C4     -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+pad:    C3+E3+G3+C4     -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+pad:    D3+F#3+A3+D4    -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+pad:    D3+F#3+A3+D4    -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+pad:    G2+B2+D3+G3     -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+pad:    D3+F#3+A3+D4    -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+
+keys:   G4+B4+D5   -    -    -    -    -    -    .    G4+B4+D5   -    -    -    -    -    -    .
+keys:   G4+B4+D5   -    -    -    -    -    -    .    G4+B4+D5   -    -    -    -    -    -    .
+keys:   C5+E5+G5   -    -    -    -    -    -    .    C5+E5+G5   -    -    -    -    -    -    .
+keys:   C5+E5+G5   -    -    -    -    -    -    .    C5+E5+G5   -    -    -    -    -    -    .
+keys:   D5+F#5+A5  -    -    -    -    -    -    .    D5+F#5+A5  -    -    -    -    -    -    .
+keys:   D5+F#5+A5  -    -    -    -    -    -    .    C5+E5+A5   -    -    -    -    -    -    .
+keys:   G4+B4+D5   -    -    -    -    -    -    .    G4+B4+D5   -    -    -    -    -    -    .
+keys:   D5+F#5+A5  -    -    -    -    -    -    .    D5+G5+B5   -    -    -    -    -    -    .
+
+clav:   .    .    B4   .    .    D5   .    .    B4   .    .    G4   .    .    B4   .
+clav:   .    .    B4   .    .    D5   .    .    B4   .    .    G4   .    .    D5   .
+clav:   .    .    E5   .    .    G5   .    .    E5   .    .    C5   .    .    E5   .
+clav:   .    .    E5   .    .    G5   .    .    E5   .    .    C5   .    .    G5   .
+clav:   .    .    F#5  .    .    A5   .    .    F#5  .    .    D5   .    .    F#5  .
+clav:   .    .    F#5  .    .    A5   .    .    F#5  .    .    D5   .    .    A5   .
+clav:   .    .    B4   .    .    D5   .    .    B4   .    .    G4   .    .    B4   .
+clav:   .    .    F#5  .    .    A5   .    .    D5   .    .    B4   .    .    A4   .
+
+bass:   G1   -    -    -    .    D2   -    -    -    .    B1   -    -    -    G1   -
+bass:   G1   -    -    -    .    D2   -    -    -    .    B1   -    -    -    C2   -
+bass:   C2   -    -    -    .    G2   -    -    -    .    E2   -    -    -    C2   -
+bass:   C2   -    -    -    .    G2   -    -    -    .    E2   -    -    -    D2   -
+bass:   D2   -    -    -    .    A2   -    -    -    .    F#2  -    -    -    D2   -
+bass:   D2   -    -    -    .    A2   -    -    -    .    F#2  -    -    -    C2   -
+bass:   G1   -    -    -    .    D2   -    -    -    .    B1   -    -    -    G1   -
+bass:   D2   -    -    -    .    A2   -    -    -    .    F#2  -    -    -    D2   -
+
+drums:  bd   .    hh   hh   sd   .    hh   hh   bd   .    hh   hh   sd   .    hh   hh
+drums:  bd   .    hh   hh   sd   .    hh   hh   bd   .    hh   hh   sd   .    hh   hh
+drums:  bd   .    hh   hh   sd   .    hh   hh   bd   .    hh   hh   sd   .    hh   hh
+drums:  bd   .    hh   hh   sd   .    hh   hh   bd   .    hh   hh   sd   .    hh   hh
+drums:  bd   .    hh   hh   sd   .    hh   hh   bd   .    hh   hh   sd   .    hh   hh
+drums:  bd   .    hh   hh   sd   .    hh   hh   bd   .    hh   hh   sd   .    hh   hh
+drums:  bd   .    hh   hh   sd   .    hh   hh   bd   .    hh   hh   sd   .    hh   hh
+drums:  bd   .    hh   hh   sd   .    hh   hh   bd   .    hh   hh   sd   sd   hh   oh

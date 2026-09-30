@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 
 namespace Jones.App.Audio;
 
@@ -7,7 +7,7 @@ namespace Jones.App.Audio;
 /// implementation: Windows has System.Media/NAudio, Android has its own MediaPlayer, and
 /// neither works on the other. Same split as the SmbSpace project's ISmbClient.
 ///
-/// Nothing in the game logic references this — the core stays silent and headless.
+/// Nothing in the game logic references this â€” the core stays silent and headless.
 /// </summary>
 public interface IAudioPlayer
 {
@@ -31,20 +31,20 @@ public interface IAudioPlayer
 
     /// <summary>
     /// Cuts the current line off mid-word. Every location script does this as its dialog
-    /// closes — `(DoAudio audSTOP)` appears in all thirteen of them plus room1, weekend
+    /// closes â€” `(DoAudio audSTOP)` appears in all thirteen of them plus room1, weekend
     /// and goalsDefine (e.g. `employment.sc:346`, `bank.sc:134`, `market.sc:156`),
     /// immediately before `(gASong fade:)`. Walking out of a shop silences the shopkeeper.
     /// </summary>
     void StopSpeech();
 
-    /// <summary>Starts a music track looping — the "bed" a location plays under itself.</summary>
+    /// <summary>Starts a music track looping â€” the "bed" a location plays under itself.</summary>
     void PlayMusic(int soundResource, bool loop = true);
 
-    /// <summary>`gASong fade:` — the five-second fade every location exit performs.</summary>
+    /// <summary>`gASong fade:` â€” the five-second fade every location exit performs.</summary>
     void StopMusic();
 
     /// <summary>
-    /// `gASong stop:` — a CUT, which is a different call from the fade and is used where
+    /// `gASong stop:` â€” a CUT, which is a different call from the fade and is used where
     /// something takes the screen over: `newspaper.sc:203`, `lottoScript.sc:42`,
     /// `muggedByMarket.sc:30` and `room1.sc:1499`.
     /// </summary>
@@ -53,7 +53,7 @@ public interface IAudioPlayer
     /// <summary>
     /// `gASong pause: 1`. Paired with <see cref="PlayEffect"/>'s
     /// <c>resumeMusicWhenDone</c>, which is the `gASong` argument in
-    /// `(gASoundEffect play: 44 gASong)` — the bed ducks under the sting and comes back
+    /// `(gASoundEffect play: 44 gASong)` â€” the bed ducks under the sting and comes back
     /// when it ends.
     /// </summary>
     void PauseMusic();
@@ -67,19 +67,37 @@ public interface IAudioPlayer
     /// </summary>
     void PlayEffect(int soundResource, bool loop = false, bool resumeMusicWhenDone = false);
 
-    /// <summary>`(gASoundEffect loop: 1)` — `lottoScript.sc:232`.</summary>
+    /// <summary>`(gASoundEffect loop: 1)` â€” `lottoScript.sc:232`.</summary>
     void EndEffectLoop();
 
     /// <summary>
-    /// `gASoundEffect2 play:` — the second effect object (`Main.sc:1297`), used where an
+    /// `gASoundEffect2 play:` â€” the second effect object (`Main.sc:1297`), used where an
     /// effect has to sound over one already playing. `room1.sc:1500` is its only call.
     /// </summary>
     void PlayEffect2(int soundResource);
 
-    /// <summary>`(gASoundEffect stop:)` + `(gASoundEffect2 stop:)` — `winnerScript.sc:67-68`.</summary>
+    /// <summary>`(gASoundEffect stop:)` + `(gASoundEffect2 stop:)` â€” `winnerScript.sc:67-68`.</summary>
     void StopEffects();
 
     bool Enabled { get; set; }
+
+    /// <summary>
+    /// Switches between the music and effects written for this port and Sierra's arrangements on
+    /// the emulated AdLib card. **TRUE IS NOW THE DEFAULT**: every resource the scripts can
+    ///
+    /// It exists so the two can be heard back to back on the same cue, in the room the cue
+    /// belongs to, which is the only way to judge whether the replacement is actually
+    /// better. Flipping it restarts the bed that is playing on the other synthesiser; it
+    /// does not need a restart and does not reopen the audio device.
+    ///
+    /// A cue with no original version written yet still comes from the AdLib path even
+    /// with this on, per cue, so the set can be filled in a batch at a time without any
+    /// point at which half the game is silent.
+    ///
+    /// Defaulted here rather than required, so the network and silent players â€” which have
+    /// no synthesiser of their own â€” do not have to care.
+    /// </summary>
+    bool UseOriginalAudio { get => true; set { } }
 }
 
 /// <summary>Does nothing. Used until a head supplies a real player, and in tests.</summary>
@@ -104,7 +122,7 @@ public sealed class SilentAudioPlayer : IAudioPlayer
 /// call: `(if (proc0_14) (= tmp (Random lo hi)) (proc0_18 (+ tmp base) ...))`.
 ///
 /// The offsets are NOT uniform. The Employment Office greets with
-/// `420 + Random(6, 12)` — starting at offset SIX — because ids 420..425 are the
+/// `420 + Random(6, 12)` â€” starting at offset SIX â€” because ids 420..425 are the
 /// job-application outcomes. Assuming every band greets from its base is exactly how
 /// you end up being congratulated on a job as you walk through the door.
 ///
@@ -139,7 +157,7 @@ public static class SpeechBands
 /// What a shopkeeper says when you buy something, and when you cannot afford it.
 ///
 /// `boughtItem` and `notEnoughCash` are `Obj` instances in every shop script and both are
-/// SPOKEN — there is not one `Print` in discount.sc, appliance.sc, clothing.sc, market.sc
+/// SPOKEN â€” there is not one `Print` in discount.sc, appliance.sc, clothing.sc, market.sc
 /// or fastFood.sc. The purchase line is drawn from a band and never repeats the previous
 /// one (`while (== localN (= temp0 (Random lo hi))) 1`), which is why each band is stored
 /// as the already-offset first and last clip rather than a base plus a range.
@@ -195,13 +213,13 @@ public static class LocationMusic
     /// <summary>The universal button click.</summary>
     public const int ButtonClick = 23;
 
-    /// <summary>The winner's fanfare — `(gASong play: 7)`, `winnerScript.sc:69`.</summary>
+    /// <summary>The winner's fanfare â€” `(gASong play: 7)`, `winnerScript.sc:69`.</summary>
     public const int Winner = 7;
 
-    /// <summary>The weekend dialog's own track — `(gASong play: 9)`, `weekend.sc:183`.</summary>
+    /// <summary>The weekend dialog's own track â€” `(gASong play: 9)`, `weekend.sc:183`.</summary>
     public const int Weekend = 9;
 
-    /// <summary>The diploma sting — `(gASong loop: 1 play: 42 …)`, `diploma.sc:59`.</summary>
+    /// <summary>The diploma sting â€” `(gASong loop: 1 play: 42 â€¦)`, `diploma.sc:59`.</summary>
     public const int Diploma = 42;
 }
 
@@ -212,22 +230,22 @@ public static class LocationMusic
 /// </summary>
 public static class SoundEffects
 {
-    /// <summary>Wild Willy — `muggedByMarket.sc:31` and `:95`, both muggings.</summary>
+    /// <summary>Wild Willy â€” `muggedByMarket.sc:31` and `:95`, both muggings.</summary>
     public const int Mugging = 20;
 
-    /// <summary>The ambulance — `startTrn.sc:1078`, `moveAmbulance` state 0.</summary>
+    /// <summary>The ambulance â€” `startTrn.sc:1078`, `moveAmbulance` state 0.</summary>
     public const int Ambulance = 21;
 
-    /// <summary>The newspaper unfolding — `newspaper.sc:204`.</summary>
+    /// <summary>The newspaper unfolding â€” `newspaper.sc:204`.</summary>
     public const int Newspaper = 8;
 
-    /// <summary>The lotto machine, played LOOPING — `lottoScript.sc:43`.</summary>
+    /// <summary>The lotto machine, played LOOPING â€” `lottoScript.sc:43`.</summary>
     public const int Lotto = 25;
 
-    /// <summary>The eviction notice — `startTrn.sc:485`, ducking the song.</summary>
+    /// <summary>The eviction notice â€” `startTrn.sc:485`, ducking the song.</summary>
     public const int EvictionNotice = 27;
 
-    /// <summary>The week's 60 Hours are gone — `room1.sc:1500`, on `gASoundEffect2`.</summary>
+    /// <summary>The week's 60 Hours are gone â€” `room1.sc:1500`, on `gASoundEffect2`.</summary>
     public const int WeekOver = 29;
 
     /// <summary>
@@ -236,12 +254,13 @@ public static class SoundEffects
     /// </summary>
     public const int Sacked = 30;
 
-    /// <summary>The work clock spinning down the shift — `WButton.sc:308`.</summary>
+    /// <summary>The work clock spinning down the shift â€” `WButton.sc:308`.</summary>
     public const int WorkClock = 31;
 
-    /// <summary>Bad news, under a refusal — `employment.sc:36`, `rentOffice.sc:266`.</summary>
+    /// <summary>Bad news, under a refusal â€” `employment.sc:36`, `rentOffice.sc:266`.</summary>
     public const int BadNews = 44;
 
-    /// <summary>Good news, under a hire or a raise — `employment.sc:53`, `rentOffice.sc:259`.</summary>
+    /// <summary>Good news, under a hire or a raise â€” `employment.sc:53`, `rentOffice.sc:259`.</summary>
     public const int GoodNews = 45;
 }
+

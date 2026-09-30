@@ -164,6 +164,123 @@ public class SciAudioTests
                  && e.Data1 == 0x7F);
     }
 
+    // ------------------------------------------------------------------
+    // The other four device tracks
+    //
+    // Every one of the 34 resources carries FIVE arrangements, one per sound card Sierra
+    // shipped a driver for, and only the AdLib one is played. These tests exist because the
+    // parser now takes the track type: they pin the identification down against the bytes,
+    // so that a claim about which track is which can be checked rather than believed.
+    //
+    // The identification comes from the game's own files, not from a remembered table:
+    //   patch.003  1344 bytes, 48 x 28 AdLib instruments      -> 0x00 AdLib
+    //   patch.101    610 bytes, CMS.DRV "Game Blaster Card"   -> 0x09 Game Blaster
+    //   patch.001  12953 bytes, opening "Jones-InThe-FastLane"
+    //              then 10-character Roland timbre names      -> 0x0C MT-32
+    //   STD.DRV    "IBM PC or Compatible Internal Speaker"    -> 0x12, one voice
+    //   TANDY3V.DRV "Tandy Three-voice Only"                  -> 0x13, three voices
+    // ------------------------------------------------------------------
+
+    private static byte[] RawSound(int number) =>
+        File.ReadAllBytes(Path.Combine(AssetRoot(), "raw", "sound", $"{number}.sound"));
+
+    private static int NoteChannels(SciSoundResource res) =>
+        res.Events.Where(e => (e.Status & 0xF0) == 0x90 && e.Data2 > 0)
+                  .Select(e => e.Status & 0x0F).Distinct().Count();
+
+    [Theory]
+    [MemberData(nameof(EveryResource))]
+    public void EveryResourceCarriesAllFiveDeviceArrangements(int number)
+    {
+        var bytes = RawSound(number);
+
+        foreach (var track in new[]
+                 {
+                     SciSoundResource.TrackAdLib, SciSoundResource.TrackGameBlaster,
+                     SciSoundResource.TrackMt32, SciSoundResource.TrackPcSpeaker,
+                     SciSoundResource.TrackTandy,
+                 })
+        {
+            var res = SciSoundResource.Load(bytes, track);
+            Assert.True(res.Events.Count > 0,
+                $"resource {number} track 0x{track:X2} decoded to nothing");
+            Assert.True(res.DurationTicks > 0,
+                $"resource {number} track 0x{track:X2} has no duration");
+        }
+    }
+
+    /// <summary>
+    /// The capability argument, as an assertion. A one-voice device gets a one-voice part
+    /// and a three-voice device gets at most three; that is what identifies 0x12 as the
+    /// internal speaker and 0x13 as the Tandy, and it holds in all 34 resources.
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(EveryResource))]
+    public void TheNarrowTracksFitTheCardsTheyAreNamedFor(int number)
+    {
+        var bytes = RawSound(number);
+
+        Assert.Equal(1, NoteChannels(SciSoundResource.Load(bytes, SciSoundResource.TrackPcSpeaker)));
+        Assert.InRange(NoteChannels(SciSoundResource.Load(bytes, SciSoundResource.TrackTandy)), 1, 3);
+    }
+
+    /// <summary>
+    /// The MT-32 track is the fullest arrangement in the file — never fewer parts than the
+    /// AdLib one, and the same written length.
+    ///
+    /// This is the finding that would matter if the port ever wanted better-sounding music
+    /// out of the game's OWN data: 0x0C is what the composer wrote for the good hardware
+    /// and 0x00 is the cut-down version of it. Nothing acts on that today; the AdLib track
+    /// is still the one played, and the original-music work went in a different direction.
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(EveryResource))]
+    public void TheMt32TrackIsNeverPoorerThanTheAdLibOne(int number)
+    {
+        // ...with ONE exception, and it is the exception that proves what the resource is
+        // for. Resource 100 is the fallback the game swaps in when the sound device cannot
+        // manage four voices — `(if (<= (DoSound sndGET_POLYPHONY) 3) (aSong number: 100)
+        // …)`, Main.sc:1188-1191 — so it exists FOR the weak devices, and its MT-32 track
+        // is the one that was left thin, at one part against the AdLib track's two.
+        if (number == 100) return;
+
+        var bytes = RawSound(number);
+        var adlib = SciSoundResource.Load(bytes, SciSoundResource.TrackAdLib);
+        var mt32 = SciSoundResource.Load(bytes, SciSoundResource.TrackMt32);
+
+        Assert.True(NoteChannels(mt32) >= NoteChannels(adlib),
+            $"resource {number}: MT-32 has {NoteChannels(mt32)} parts, AdLib has {NoteChannels(adlib)}");
+        Assert.Equal(adlib.DurationTicks, mt32.DurationTicks);
+        Assert.Equal(adlib.LoopTick, mt32.LoopTick);
+    }
+
+    /// <summary>
+    /// The six resources where the MT-32 arrangement carries a part the AdLib one does not.
+    /// Written down as a list rather than a count so that a change to the parser shows up
+    /// as "resource 39 lost its extra part", not as "6 became 5".
+    /// </summary>
+    [Fact]
+    public void SixResourcesHaveAnExtraPartOnTheMt32Track()
+    {
+        var richer = AllResources.Where(n =>
+        {
+            var bytes = RawSound(n);
+            return NoteChannels(SciSoundResource.Load(bytes, SciSoundResource.TrackMt32)) >
+                   NoteChannels(SciSoundResource.Load(bytes, SciSoundResource.TrackAdLib));
+        }).ToArray();
+
+        Assert.Equal([5, 7, 35, 39, 41, 46], richer);
+    }
+
+    [Fact]
+    public void AskingForADeviceTrackThatIsNotThereSaysSo()
+    {
+        // 0x06 exists in eight resources and carries only the control channel; 0x7A exists
+        // nowhere at all.
+        var ex = Assert.Throws<InvalidDataException>(() => SciSoundResource.Load(RawSound(5), 0x7A));
+        Assert.Contains("0x7A", ex.Message);
+    }
+
     [Fact]
     public void ElevenResourcesMarkALoopPoint()
     {

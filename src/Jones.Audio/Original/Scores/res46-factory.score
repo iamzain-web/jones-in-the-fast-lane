@@ -1,0 +1,98 @@
+﻿# ---------------------------------------------------------------------------
+# RESOURCE 46 - THE FACTORY
+#
+# `factory.sc:63`, `playBed:`.
+#
+# Original: 969 ticks = 16.15 s, loop point at tick 138.
+# Here:     8 bars at 119 bpm = 16.13 s, loop from step 16 - ONE BAR OF INTRO.
+#
+# The loop point is real here: 138/969 is 14.2% in, which is an eighth of the
+# cue heard once and never again. That structure is the original's decision
+# about this room and it is kept. The notes are not.
+#
+# ORIGINAL MUSIC. Written to the ROLE the cue plays, never to its notes.
+#
+# ---------------------------------------------------------------------------
+# VERSION 2, and this one had the worst measurement of the five: its 800-2000
+# Hz band was 9.1 dB under the demo's. The cause was specific and is worth
+# writing down - THE BASS WAS PLAYING D1, which is 36.7 Hz. Almost everything
+# it produced was below the range a phone speaker or a laptop can reproduce at
+# all, so on most hardware the part was simply inaudible and the cue had no
+# bottom OR middle, just clav.
+#
+# What changed: the bass moved up an octave to D2 for the pulse and keeps D1
+# only as an accent, it holds instead of stabbing, the pad is voiced with the
+# 7th and 9th, and a LEAD has been added as a DRONE - a held fifth that moves
+# with the chord and never plays a tune. That is the midrange fill, and a
+# drone is the only kind that suits this room.
+#
+# WHAT DID NOT CHANGE, because it is why this cue is not QT Clothing:
+# swing is still ZERO, the pedal D still never moves, the clav figure still
+# repeats without variation, and the kit is still more press than drum kit.
+# ---------------------------------------------------------------------------
+
+tempo 119
+steps 16
+swing 0.0
+loop 1
+loop-from 16
+space room
+
+part pad    patch=pad   gain=0.84  pan=-0.30
+part lead   patch=lead  gain=0.58  pan=-0.10
+part clav   patch=clav  gain=0.76  pan=0.25
+part bass   patch=bass  gain=0.90  pan=0.00
+part drums  kit         gain=0.76  pan=0.00
+
+#          1    2    3    4    5    6    7    8    9   10   11   12   13   14   15   16
+
+# --- bar 1: the intro. Heard once, on entering the room. ---
+pad:    .    .    .    .    .    .    .    .    .    .    .    .    D3+A3+C4  -    -    -
+lead:   .    .    .    .    .    .    .    .    .    .    .    .    .    .    .    .
+clav:   .    .    .    .    .    .    .    .    .    .    .    .    .    .    .    .
+bass:   .    .    .    .    .    .    .    .    D2   -    -    -    -    -    -    -
+drums:  .    .    .    .    hh   .    .    .    hh   .    hh   .    hh   .    hh   hh
+
+# --- bars 2-8: the loop. ---
+pad:    D3+F3+A3+C4     -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+pad:    D3+F3+A3+C4     -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+pad:    Bb2+D3+F3+A3    -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+pad:    Bb2+D3+F3+A3    -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+pad:    G2+Bb2+D3+F3    -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+pad:    G2+Bb2+D3+F3    -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+pad:    A2+C3+E3+G3     -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+
+# The drone. A held fifth that tracks the chord and never becomes a melody -
+# midrange, not a hook.
+lead:   D4+A4  -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+lead:   D4+A4  -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+lead:   D4+F4  -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+lead:   D4+F4  -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+lead:   D4+G4  -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+lead:   D4+G4  -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+lead:   E4+A4  -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+
+clav:   D4   .    D4   .    .    F4   .    D4   .    .    D4   .    C4   .    D4   .
+clav:   D4   .    D4   .    .    F4   .    D4   .    .    D4   .    C4   .    D4   .
+clav:   D4   .    D4   .    .    F4   .    D4   .    .    D4   .    Bb3  .    D4   .
+clav:   D4   .    D4   .    .    F4   .    D4   .    .    D4   .    Bb3  .    D4   .
+clav:   D4   .    D4   .    .    G4   .    D4   .    .    D4   .    Bb3  .    D4   .
+clav:   D4   .    D4   .    .    G4   .    D4   .    .    D4   .    Bb3  .    D4   .
+clav:   E4   .    E4   .    .    G4   .    E4   .    .    E4   .    C4   .    A3   .
+
+bass:   D2   -    -    -    -    -    -    .    D2   -    -    -    -    -    D1   -
+bass:   D2   -    -    -    -    -    -    .    D2   -    -    -    -    -    C2   -
+bass:   Bb1  -    -    -    -    -    -    .    Bb1  -    -    -    -    -    Bb1  -
+bass:   Bb1  -    -    -    -    -    -    .    Bb1  -    -    -    -    -    A1   -
+bass:   G1   -    -    -    -    -    -    .    G2   -    -    -    -    -    G1   -
+bass:   G1   -    -    -    -    -    -    .    G2   -    -    -    -    -    C2   -
+bass:   A1   -    -    -    -    -    -    .    A2   -    -    -    -    -    E2   -
+
+drums:  bd   .    hh   .    sd   .    hh   .    bd   bd   hh   .    sd   .    hh   .
+drums:  bd   .    hh   .    sd   .    hh   .    bd   bd   hh   .    sd   .    hh   .
+drums:  bd   .    hh   .    sd   .    hh   .    bd   bd   hh   .    sd   .    hh   .
+drums:  bd   .    hh   .    sd   .    hh   .    bd   bd   hh   .    sd   .    hh   .
+drums:  bd   .    hh   .    sd   .    hh   .    bd   bd   hh   .    sd   .    hh   .
+drums:  bd   .    hh   .    sd   .    hh   .    bd   bd   hh   .    sd   .    hh   .
+drums:  bd   .    hh   .    sd   .    hh   .    bd   bd   hh   .    sd   sd   hh   .
+

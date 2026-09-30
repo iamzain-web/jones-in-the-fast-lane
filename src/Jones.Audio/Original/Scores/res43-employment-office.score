@@ -1,0 +1,72 @@
+﻿# ---------------------------------------------------------------------------
+# RESOURCE 43 - THE EMPLOYMENT OFFICE
+#
+# `employment.sc:322`, `playBed:`.
+#
+# Original: 457 ticks = 7.62 s, loop point at tick 13.
+# Here:     4 bars at 126 bpm = 7.62 s, loop at the top.
+#
+# On the loop point: tick 13 of 457 is 2.8% in - a fifth of a second, which is
+# the setup events and not a musical section. Treated as the top. The cues
+# that loop somewhere structural (46 at 14%, 10 and 38 at 29%) get a real
+# intro; this one does not, and saying so is the point.
+#
+# ORIGINAL MUSIC. Written to the ROLE the cue plays, never to its notes.
+#
+# ---------------------------------------------------------------------------
+# VERSION 2. v1 measured 7.4 dB under the demo in the low mid and 7.2 dB under
+# it in the 2-6 kHz band: a sub-heavy bass, a clav stabbing on the back-beat
+# and nothing at all joining them.
+#
+# What changed: the bass holds through the bar instead of hitting it four
+# times, the pad is voiced with the 7th and 9th, and a KEYS part has been
+# added to sustain underneath the clav. The keys are the midrange fill and
+# they play the chord and nothing else - four bars is far too short a loop to
+# put a tune over, and a memorable line here would be the other failure mode.
+#
+# WHAT DID NOT CHANGE: the clav still stabs the back-beat and nothing else,
+# there is still nothing above the stave, and the tempo is still brisk. The
+# player reads a nine-row job list over this and it is meant to be ignored.
+# ---------------------------------------------------------------------------
+
+tempo 126
+steps 16
+swing 0.14
+loop 1
+loop-from 0
+space room
+
+part pad    patch=pad   gain=0.72  pan=-0.18
+part keys   patch=keys  gain=0.88  pan=-0.05
+part clav   patch=clav  gain=1.00  pan=0.28
+part bass   patch=bass  gain=0.82  pan=0.00
+part drums  kit         gain=0.80  pan=0.00
+
+#          1    2    3    4    5    6    7    8    9   10   11   12   13   14   15   16
+
+pad:    G3+Bb3+D4+F4    -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+pad:    G3+Bb3+D4+F4    -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+pad:    C3+Eb3+G3+Bb3   -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+pad:    D3+F3+A3+C4     -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+
+keys:   Bb3+D4+F4+G4    -    -    -    -    -    -    -    -    -    -    -    -    -    .    .
+keys:   Bb3+D4+F4+G4    -    -    -    -    -    -    -    -    A3+C4+F4  -    -    -    -    .    .
+keys:   Eb4+G4+Bb4      -    -    -    -    -    -    -    -    -    -    -    -    -    .    .
+keys:   D4+F4+A4        -    -    -    -    -    -    -    -    C4+F4+A4  -    -    -    -    .    .
+
+clav:   .    .    .    .    Bb4+D5   .    .    .    .    .    .    .    Bb4+D5   .    .    .
+clav:   .    .    .    .    Bb4+D5   .    .    .    .    .    A4+C5   .    Bb4+D5   .    .    .
+clav:   .    .    .    .    Eb4+G4   .    .    .    .    .    .    .    Eb4+G4   .    .    .
+clav:   .    .    .    .    F4+A4    .    .    .    .    .    .    .    A4+C5    .    D5   .
+
+bass:   G1   -    -    -    -    .    D2   -    -    -    .    Bb1  -    -    -    -
+bass:   G1   -    -    -    -    .    D2   -    -    -    .    F2   -    -    Eb2  -
+bass:   C2   -    -    -    -    .    G2   -    -    -    .    Eb2  -    -    -    -
+bass:   D2   -    -    -    -    .    A2   -    -    -    .    F2   -    -    C2   -
+
+drums:  bd   .    hh   .    sd   .    hh   .    bd   .    hh   .    sd   .    hh   .
+drums:  bd   .    hh   .    sd   .    hh   .    bd   .    hh   .    sd   .    hh   .
+drums:  bd   .    hh   .    sd   .    hh   .    bd   .    hh   .    sd   .    hh   .
+drums:  bd   .    hh   .    sd   .    hh   .    bd   .    hh   .    sd   .    hh   oh
+
+

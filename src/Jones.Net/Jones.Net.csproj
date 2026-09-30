@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!--
+      net8.0 so BOTH Jones.App (net10.0) and Jones.Tests (net8.0) can reference it, the same
+      reason Jones.Audio is net8.0. Plain System.Net.Sockets and System.Text.Json: nothing
+      here needs Avalonia or a platform head, which is what lets the protocol, the seat
+      table and the host/join plumbing be tested without a window.
+    -->
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+</Project>

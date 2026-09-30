@@ -1,0 +1,40 @@
+# ---------------------------------------------------------------------------
+# RESOURCE 27 - THE EVICTION NOTICE
+#
+# `startTrn.sc:485`, played as the notice appears.
+#
+# Original: 145 ticks = 2.42 s.
+# Here:     1 bar at 99 bpm = 2.42 s exactly.
+#
+# ORIGINAL MUSIC. Written to the ROLE the cue plays, never to its notes.
+#
+# Brief: THREE KNOCKS AND A VERDICT. The only sting in the game that starts
+# with a noise rather than a chord - three dry clav strikes, evenly spaced,
+# high enough to cut - and then one low minor chord underneath them that
+# arrives late and stays.
+#
+# It is somebody at the door, and then the news. Nothing else in the set opens
+# on percussion, which is what makes this one recognisable in two seconds.
+#
+# The clav is pitched at C6 rather than down where a knock "ought" to sit: the
+# patch key-tracks its filter, so a low knock is a dull thud and a high one is
+# a rap on wood. That is the same finding that cost three beds a mix pass.
+# ---------------------------------------------------------------------------
+
+tempo 99
+steps 16
+swing 0.0
+loop 0
+space room
+
+part clav   patch=clav  gain=1.00  pan=0.14
+part pad    patch=pad   gain=0.90  pan=-0.14
+part brass  patch=brass gain=0.72  pan=0.00
+part bass   patch=bass  gain=0.86  pan=0.00
+
+#          1    2    3    4    5    6    7    8    9   10   11   12   13   14   15   16
+
+clav:   C6+G6   .    .    C6+G6   .    .    C6+G6   .    .    .    .    .    .    .    .    .
+pad:    .    .    .    .    .    .    .    .    .    E3+G3+B3    -    -    -    -    -    -
+brass:  .    .    .    .    .    .    .    .    .    E4+G4+B4    -    -    -    -    -    -
+bass:   .    .    .    .    .    .    .    .    .    E2   -    -    -    -    -    -

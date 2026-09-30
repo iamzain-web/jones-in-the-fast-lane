@@ -200,6 +200,15 @@ public static class Employment
         //
         // The port only wrote them inside the refusal branch, so a successful application
         // left the last refusal's missing degrees showing.
+        //
+        // NOTHING READS THEM BACK, in this port or in either script tree, and that is not
+        // an omission here. A whole-word search of both trees finds exactly four hits:
+        // the two `(properties)` declarations (`room1.sc:637-638`, floppy `:625-626`) and
+        // these two writes (`employment.sc:95-96`, floppy `:137-138`). No `needEd1:` or
+        // `needEd2:` READ exists anywhere, so the player-facing "you still need X and Y"
+        // they were evidently meant to feed was never written. The port stores them, saves
+        // them and shows them nowhere — which is the original's behaviour exactly.
+        // Recorded so this is not re-found; PROPERTIES.md §1.14 has the same conclusion.
         p.NeedEd1 = hasEducation ? 0 : job.ReqDegree1;
         p.NeedEd2 = hasEducation ? 0 : job.ReqDegree2;
 

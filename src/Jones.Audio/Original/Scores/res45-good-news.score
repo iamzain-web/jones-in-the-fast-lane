@@ -1,0 +1,39 @@
+# ---------------------------------------------------------------------------
+# RESOURCE 45 - GOOD NEWS
+#
+# `employment.sc:53` (you got the job) and `rentOffice.sc:259` (you got the
+# apartment). One of the two most frequent stings in the game.
+#
+# Original: 80 ticks = 1.33 s.
+# Here:     1 bar at 180 bpm = 1.33 s exactly.
+#
+# ORIGINAL MUSIC. Written to the ROLE the cue plays, never to its notes.
+#
+# Brief: one and a third seconds to say yes. A major triad climbing through
+# three inversions and landing an octave up, brass underneath and a bell
+# doubling the top so it speaks the instant it starts - a sting has no time to
+# establish itself, and anything that begins quietly has already finished.
+#
+# PITCHED HIGH ON PURPOSE. The clav and bell patches key-track their filters,
+# so the same figure an octave down comes out dark; that cost three of the
+# beds a mix pass and it is designed out here rather than measured out later.
+#
+# The bed is PAUSED under this one - `(gASong pause: 1)` precedes it at both
+# call sites - so it does not have to avoid clashing with a room's key.
+# ---------------------------------------------------------------------------
+
+tempo 180
+steps 16
+swing 0.0
+loop 0
+space room
+
+part brass  patch=brass gain=0.92  pan=-0.10
+part bell   patch=bell  gain=0.88  pan=0.20
+part drums  kit         gain=0.70  pan=0.00
+
+#          1    2    3    4    5    6    7    8    9   10   11   12   13   14   15   16
+
+brass:  C4+E4+G4   .    .    .    E4+G4+C5   .    .    .    G4+C5+E5   .    .    .    C5+E5+G5   -    -    -
+bell:   G5   .    .    .    C6   .    .    .    E6   .    .    .    G6   -    -    -
+drums:  bd   .    .    .    .    .    .    .    .    .    .    .    cr   .    .    .

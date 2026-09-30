@@ -1,0 +1,337 @@
+# ---------------------------------------------------------------------------
+# RESOURCE 6 - THE TITLE THEME
+#
+# The default `number` of all three Sound instances (`Main.sc:1263`, `:1282`,
+# `:1299`), played over the opening and unloaded once the game proper starts
+# (`Main.sc:1273`, `room1.sc:1335`). It is the first thing anyone hears.
+#
+# RESOURCE 100 IS ALIASED TO THIS. 100 is the fallback the game swaps in when
+# `(DoSound sndGET_POLYPHONY)` reports three voices or fewer - a cue written
+# for hardware that could not manage four notes at once. This synthesiser has
+# no such limit, so composing 120 seconds that only a constraint we do not
+# have would ever select is wasted work. Both resources point here.
+#
+# Original: 7506 ticks = 125.10 s - by some margin the longest in the game.
+# Here:     40 bars at 77 bpm = 124.68 s.
+#
+# ORIGINAL MUSIC. Written to the ROLE the cue plays, never to its notes.
+#
+# ---------------------------------------------------------------------------
+# THE ONLY CUE IN THE SET WITH A STRUCTURE RATHER THAN A LOOP.
+#
+#   bars  1-4    intro    pad and bell alone, no drums
+#   bars  5-12   A        the theme, brass carrying it
+#   bars 13-20   A'       same harmony, bell takes the top, brass answers
+#   bars 21-28   B        moves to the flat side, keys lead, everything down
+#   bars 29-36   A''      the return, brass and bell together, biggest
+#   bars 37-40   outro    resolves and thins back to the pad it began on
+#
+# Everything else here is written to be ignored after the ninth pass. This one
+# is heard once a session with the player's full attention and nothing else on
+# screen, so it is the one place in the game where the music is allowed to be
+# the thing you are listening to. It develops, it goes somewhere, and it ends.
+#
+# Ab major, which nothing else in the set uses, and the brass patch written
+# for the winner's fanfare earns its keep a second time here.
+#
+# The bass sits on Ab1 at 51.9 Hz and never goes under G1 at 49 Hz - a piece
+# this long in a flat key invites a low tonic, and Ab0 would be 25.9 Hz, which
+# is under what any speaker a player owns will reproduce.
+# ---------------------------------------------------------------------------
+
+tempo 77
+steps 16
+swing 0.09
+loop 0
+space room
+
+part pad    patch=pad   gain=0.80  pan=-0.24
+part keys   patch=keys  gain=0.86  pan=0.12
+part brass  patch=brass gain=0.82  pan=-0.06
+part bell   patch=bell  gain=0.84  pan=0.32
+part bass   patch=bass  gain=0.86  pan=0.00
+part drums  kit         gain=0.70  pan=0.00
+
+#          1    2    3    4    5    6    7    8    9   10   11   12   13   14   15   16
+
+# ============================ bars 1-4: INTRO ============================
+pad:    Ab2+C3+Eb3+G3   -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+pad:    Ab2+C3+Eb3+G3   -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+pad:    Db3+F3+Ab3+C4   -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+pad:    Eb3+Ab3+Bb3+Db4 -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+
+keys:   .    .    .    .    .    .    .    .    .    .    .    .    .    .    .    .
+keys:   .    .    .    .    .    .    .    .    .    .    .    .    .    .    .    .
+keys:   .    .    .    .    .    .    .    .    .    .    .    .    .    .    .    .
+keys:   .    .    .    .    .    .    .    .    Eb4+Ab4+Bb4   -    -    -    -    -    -    -
+
+brass:  .    .    .    .    .    .    .    .    .    .    .    .    .    .    .    .
+brass:  .    .    .    .    .    .    .    .    .    .    .    .    .    .    .    .
+brass:  .    .    .    .    .    .    .    .    .    .    .    .    .    .    .    .
+brass:  .    .    .    .    .    .    .    .    .    .    .    .    .    .    .    .
+
+bell:   Eb5  .    .    .    .    .    C5   .    .    .    .    .    Ab4  .    .    .
+bell:   Eb5  .    .    .    .    .    G5   .    .    .    .    .    Ab5  .    .    .
+bell:   F5   .    .    .    .    .    Ab5  .    .    .    .    .    C6   .    .    .
+bell:   Bb5  .    .    .    .    .    Ab5  .    .    .    .    .    Eb5  .    .    .
+
+bass:   .    .    .    .    .    .    .    .    .    .    .    .    .    .    .    .
+bass:   Ab1  -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+bass:   Db2  -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+bass:   Eb2  -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+
+drums:  .    .    .    .    .    .    .    .    .    .    .    .    .    .    .    .
+drums:  .    .    .    .    .    .    .    .    .    .    .    .    .    .    .    .
+drums:  .    .    .    .    .    .    .    .    .    .    .    .    .    .    .    .
+drums:  .    .    .    .    .    .    .    .    .    .    .    .    sd   sd   hh   cr
+
+# ============================ bars 5-12: A ============================
+pad:    Ab2+C3+Eb3+G3   -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+pad:    F2+Ab2+C3+Eb3   -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+pad:    Db3+F3+Ab3+C4   -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+pad:    Eb3+Ab3+Bb3+Db4 -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+pad:    Ab2+C3+Eb3+G3   -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+pad:    F2+Ab2+C3+Eb3   -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+pad:    Db3+F3+Ab3+C4   -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+pad:    Eb3+G3+Bb3+Db4  -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+
+keys:   .    .    C4+Eb4+G4+Bb4  -    -    -    -    -    .    .    C4+Eb4+G4+Bb4  -    -    -    -    -
+keys:   .    .    Ab3+C4+Eb4+G4  -    -    -    -    -    .    .    Ab3+C4+Eb4+G4  -    -    -    -    -
+keys:   .    .    F4+Ab4+C5+Eb5  -    -    -    -    -    .    .    F4+Ab4+C5+Eb5  -    -    -    -    -
+keys:   .    .    Eb4+Ab4+Bb4+Db5 -   -    -    -    -    .    .    Eb4+Ab4+Bb4+Db5 -   -    -    -    -
+keys:   .    .    C4+Eb4+G4+Bb4  -    -    -    -    -    .    .    C4+Eb4+G4+Bb4  -    -    -    -    -
+keys:   .    .    Ab3+C4+Eb4+G4  -    -    -    -    -    .    .    Ab3+C4+Eb4+G4  -    -    -    -    -
+keys:   .    .    F4+Ab4+C5+Eb5  -    -    -    -    -    .    .    F4+Ab4+C5+Eb5  -    -    -    -    -
+keys:   .    .    Eb4+G4+Bb4+Db5 -    -    -    -    -    .    .    Eb4+G4+Bb4+Db5 -    -    -    -    -
+
+brass:  Eb4+Ab4  -    -    -    -    -    -    -    C4+Eb4+Ab4  -    -    -    -    -    -    -
+brass:  C4+F4+Ab4  -    -    -    -    -    -    -    Ab3+C4+F4  -    -    -    -    -    -    -
+brass:  F4+Ab4+Db5 -    -    -    -    -    -    -    Ab4+C5+F5  -    -    -    -    -    -    -
+brass:  Bb4+Db5+Eb5 -   -    -    -    -    -    -    Ab4+Bb4+Eb5 -   -    -    -    -    -    -
+brass:  Eb4+G4+C5  -    -    -    -    -    -    -    C4+Eb4+Ab4  -    -    -    -    -    -    -
+brass:  C4+F4+Ab4  -    -    -    -    -    -    -    Ab3+C4+Eb4  -    -    -    -    -    -    -
+brass:  F4+Ab4+Db5 -    -    -    -    -    -    -    Db5+F5+Ab5  -    -    -    -    -    -    -
+brass:  Bb4+Db5+Eb5 -   -    -    -    -    -    -    G4+Bb4+Db5  -    -    -    -    -    -    -
+
+bell:   .    .    .    .    .    .    .    .    .    .    .    .    .    .    .    .
+bell:   .    .    .    .    .    .    .    .    .    .    .    .    .    .    .    .
+bell:   .    .    .    .    .    .    .    .    .    .    .    .    .    .    .    .
+bell:   .    .    .    .    .    .    .    .    .    .    .    .    Eb6  .    .    .
+bell:   .    .    .    .    .    .    .    .    .    .    .    .    .    .    .    .
+bell:   .    .    .    .    .    .    .    .    .    .    .    .    .    .    .    .
+bell:   .    .    .    .    .    .    .    .    .    .    .    .    .    .    .    .
+bell:   .    .    .    .    .    .    .    .    Db6  .    .    .    Bb5  .    .    .
+
+bass:   Ab1  -    -    -    -    -    .    Eb2  -    -    -    .    C2   -    -    -
+bass:   F2   -    -    -    -    -    .    C2   -    -    -    .    Ab1  -    -    -
+bass:   Db2  -    -    -    -    -    .    Ab1  -    -    -    .    F2   -    -    -
+bass:   Eb2  -    -    -    -    -    .    Bb1  -    -    -    .    Db2  -    -    -
+bass:   Ab1  -    -    -    -    -    .    Eb2  -    -    -    .    C2   -    -    -
+bass:   F2   -    -    -    -    -    .    C2   -    -    -    .    Ab1  -    -    -
+bass:   Db2  -    -    -    -    -    .    Ab1  -    -    -    .    F2   -    -    -
+bass:   Eb2  -    -    -    -    -    .    Bb1  -    -    -    .    G1   -    -    -
+
+drums:  bd   .    hh   .    sd   .    hh   .    bd   .    hh   .    sd   .    hh   .
+drums:  bd   .    hh   .    sd   .    hh   .    bd   .    hh   .    sd   .    hh   .
+drums:  bd   .    hh   .    sd   .    hh   .    bd   .    hh   .    sd   .    hh   .
+drums:  bd   .    hh   .    sd   .    hh   .    bd   .    hh   .    sd   .    hh   oh
+drums:  bd   .    hh   .    sd   .    hh   .    bd   .    hh   .    sd   .    hh   .
+drums:  bd   .    hh   .    sd   .    hh   .    bd   .    hh   .    sd   .    hh   .
+drums:  bd   .    hh   .    sd   .    hh   .    bd   .    hh   .    sd   .    hh   .
+drums:  bd   .    hh   .    sd   .    hh   .    bd   bd   hh   .    sd   sd   hh   cr
+
+# ============================ bars 13-20: A' ============================
+pad:    Ab2+C3+Eb3+G3   -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+pad:    F2+Ab2+C3+Eb3   -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+pad:    Db3+F3+Ab3+C4   -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+pad:    Eb3+Ab3+Bb3+Db4 -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+pad:    Ab2+C3+Eb3+G3   -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+pad:    F2+Ab2+C3+Eb3   -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+pad:    Db3+F3+Ab3+C4   -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+pad:    Eb3+G3+Bb3+Db4  -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+
+keys:   .    .    C4+Eb4+G4+Bb4  -    -    -    -    -    .    .    C4+Eb4+G4+Bb4  -    -    -    -    -
+keys:   .    .    Ab3+C4+Eb4+G4  -    -    -    -    -    .    .    Ab3+C4+Eb4+G4  -    -    -    -    -
+keys:   .    .    F4+Ab4+C5+Eb5  -    -    -    -    -    .    .    F4+Ab4+C5+Eb5  -    -    -    -    -
+keys:   .    .    Eb4+Ab4+Bb4+Db5 -   -    -    -    -    .    .    Eb4+Ab4+Bb4+Db5 -   -    -    -    -
+keys:   .    .    C4+Eb4+G4+Bb4  -    -    -    -    -    .    .    C4+Eb4+G4+Bb4  -    -    -    -    -
+keys:   .    .    Ab3+C4+Eb4+G4  -    -    -    -    -    .    .    Ab3+C4+Eb4+G4  -    -    -    -    -
+keys:   .    .    F4+Ab4+C5+Eb5  -    -    -    -    -    .    .    F4+Ab4+C5+Eb5  -    -    -    -    -
+keys:   .    .    Eb4+G4+Bb4+Db5 -    -    -    -    -    .    .    Eb4+G4+Bb4+Db5 -    -    -    -    -
+
+brass:  .    .    .    .    .    .    .    .    Ab3+C4+Eb4  -    -    -    -    -    -    -
+brass:  .    .    .    .    .    .    .    .    Ab3+C4+F4   -    -    -    -    -    -    -
+brass:  .    .    .    .    .    .    .    .    Ab3+Db4+F4  -    -    -    -    -    -    -
+brass:  .    .    .    .    .    .    .    .    Ab3+Bb3+Eb4 -    -    -    -    -    -    -
+brass:  .    .    .    .    .    .    .    .    Ab3+C4+Eb4  -    -    -    -    -    -    -
+brass:  .    .    .    .    .    .    .    .    Ab3+C4+F4   -    -    -    -    -    -    -
+brass:  .    .    .    .    .    .    .    .    Ab3+Db4+F4  -    -    -    -    -    -    -
+brass:  .    .    .    .    .    .    .    .    G3+Bb3+Db4  -    -    -    -    -    -    -
+
+bell:   Eb5  .    .    .    C5   .    .    .    Ab5  .    .    .    .    .    G5   .
+bell:   C5   .    .    .    Ab4  .    .    .    F5   .    .    .    .    .    Eb5  .
+bell:   F5   .    .    .    Db5  .    .    .    Ab5  .    .    .    .    .    C6   .
+bell:   Bb5  .    .    .    Ab5  .    .    .    Eb5  .    .    .    .    .    Db5  .
+bell:   Eb5  .    .    .    C5   .    .    .    Ab5  .    .    .    .    .    Bb5  .
+bell:   C5   .    .    .    Ab4  .    .    .    F5   .    .    .    .    .    C5   .
+bell:   F5   .    .    .    Ab5  .    .    .    C6   .    .    .    .    .    Db6  .
+bell:   Bb5  .    .    .    G5   .    .    .    Eb5  .    .    .    .    .    Db5  .
+
+bass:   Ab1  -    -    -    -    -    .    Eb2  -    -    -    .    C2   -    -    -
+bass:   F2   -    -    -    -    -    .    C2   -    -    -    .    Ab1  -    -    -
+bass:   Db2  -    -    -    -    -    .    Ab1  -    -    -    .    F2   -    -    -
+bass:   Eb2  -    -    -    -    -    .    Bb1  -    -    -    .    Db2  -    -    -
+bass:   Ab1  -    -    -    -    -    .    Eb2  -    -    -    .    C2   -    -    -
+bass:   F2   -    -    -    -    -    .    C2   -    -    -    .    Ab1  -    -    -
+bass:   Db2  -    -    -    -    -    .    Ab1  -    -    -    .    F2   -    -    -
+bass:   Eb2  -    -    -    -    -    .    Bb1  -    -    -    .    G1   -    -    -
+
+drums:  bd   .    hh   .    sd   .    hh   .    bd   .    hh   .    sd   .    hh   .
+drums:  bd   .    hh   .    sd   .    hh   .    bd   .    hh   .    sd   .    hh   .
+drums:  bd   .    hh   .    sd   .    hh   .    bd   .    hh   .    sd   .    hh   .
+drums:  bd   .    hh   .    sd   .    hh   .    bd   .    hh   .    sd   .    hh   oh
+drums:  bd   .    hh   .    sd   .    hh   .    bd   .    hh   .    sd   .    hh   .
+drums:  bd   .    hh   .    sd   .    hh   .    bd   .    hh   .    sd   .    hh   .
+drums:  bd   .    hh   .    sd   .    hh   .    bd   .    hh   .    sd   .    hh   .
+drums:  bd   .    hh   .    sd   .    hh   .    bd   bd   hh   .    sd   sd   hh   cr
+
+# ============================ bars 21-28: B ============================
+pad:    Bb2+Db3+F3+Ab3   -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+pad:    Bb2+Db3+F3+Ab3   -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+pad:    Eb3+Ab3+Bb3+Db4  -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+pad:    Eb3+G3+Bb3+Db4   -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+pad:    F2+Ab2+C3+Eb3    -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+pad:    F2+Ab2+C3+Eb3    -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+pad:    Db3+F3+Ab3+Bb3   -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+pad:    Eb3+Ab3+Bb3+Db4  -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+
+keys:   Db4+F4+Ab4+C5    -    -    -    -    -    -    -    -    -    -    -    -    .    .    .
+keys:   Db4+F4+Ab4+C5    -    -    -    -    -    -    -    -    -    -    -    C4+F4+Ab4    -    -    -
+keys:   Db4+Eb4+G4+Bb4   -    -    -    -    -    -    -    -    -    -    -    -    .    .    .
+keys:   Db4+Eb4+G4+Bb4   -    -    -    -    -    -    -    -    -    -    -    Bb3+Db4+G4   -    -    -
+keys:   C4+Eb4+Ab4+C5    -    -    -    -    -    -    -    -    -    -    -    -    .    .    .
+keys:   C4+Eb4+Ab4+C5    -    -    -    -    -    -    -    -    -    -    -    Ab3+C4+Eb4   -    -    -
+keys:   Bb3+Db4+F4+Ab4   -    -    -    -    -    -    -    -    -    -    -    -    .    .    .
+keys:   Bb3+Eb4+Ab4+C5   -    -    -    -    -    -    -    -    -    -    -    -    .    .    .
+
+brass:  .    .    .    .    .    .    .    .    .    .    .    .    .    .    .    .
+brass:  .    .    .    .    .    .    .    .    .    .    .    .    .    .    .    .
+brass:  .    .    .    .    .    .    .    .    .    .    .    .    .    .    .    .
+brass:  .    .    .    .    .    .    .    .    .    .    .    .    .    .    .    .
+brass:  .    .    .    .    .    .    .    .    .    .    .    .    .    .    .    .
+brass:  .    .    .    .    .    .    .    .    .    .    .    .    .    .    .    .
+brass:  .    .    .    .    .    .    .    .    Db4+F4+Ab4  -    -    -    -    -    -    -
+brass:  .    .    .    .    .    .    .    .    Eb4+G4+Bb4  -    -    -    -    -    -    -
+
+bell:   .    .    .    .    Ab5  .    .    .    .    .    F5   .    .    .    .    .
+bell:   .    .    .    .    Ab5  .    .    .    .    .    Db6  .    .    .    .    .
+bell:   .    .    .    .    Bb5  .    .    .    .    .    G5   .    .    .    .    .
+bell:   .    .    .    .    Bb5  .    .    .    .    .    Eb6  .    .    .    .    .
+bell:   .    .    .    .    C6   .    .    .    .    .    Ab5  .    .    .    .    .
+bell:   .    .    .    .    C6   .    .    .    .    .    Eb6  .    .    .    .    .
+bell:   .    .    .    .    Db6  .    .    .    .    .    Ab5  .    .    .    .    .
+bell:   .    .    .    .    Eb6  .    .    .    .    .    Bb5  .    .    .    .    .
+
+bass:   Bb1  -    -    -    -    -    .    F2   -    -    -    .    Db2  -    -    -
+bass:   Bb1  -    -    -    -    -    .    F2   -    -    -    .    Ab1  -    -    -
+bass:   Eb2  -    -    -    -    -    .    Bb1  -    -    -    .    Ab1  -    -    -
+bass:   Eb2  -    -    -    -    -    .    Bb1  -    -    -    .    Db2  -    -    -
+bass:   F2   -    -    -    -    -    .    C2   -    -    -    .    Ab1  -    -    -
+bass:   F2   -    -    -    -    -    .    C2   -    -    -    .    Eb2  -    -    -
+bass:   Db2  -    -    -    -    -    .    Ab1  -    -    -    .    F2   -    -    -
+bass:   Eb2  -    -    -    -    -    .    Bb1  -    -    -    .    Db2  -    -    -
+
+drums:  bd   .    .    hh   .    .    .    hh   sd   .    .    hh   .    .    .    hh
+drums:  bd   .    .    hh   .    .    .    hh   sd   .    .    hh   .    .    .    hh
+drums:  bd   .    .    hh   .    .    .    hh   sd   .    .    hh   .    .    .    hh
+drums:  bd   .    .    hh   .    .    .    hh   sd   .    .    hh   .    .    .    hh
+drums:  bd   .    .    hh   .    .    .    hh   sd   .    .    hh   .    .    .    hh
+drums:  bd   .    .    hh   .    .    .    hh   sd   .    .    hh   .    .    .    hh
+drums:  bd   .    hh   hh   sd   .    hh   .    bd   .    hh   hh   sd   .    hh   .
+drums:  bd   .    hh   hh   sd   .    hh   .    bd   bd   hh   hh   sd   sd   hh   cr
+
+# ============================ bars 29-36: A'' ============================
+pad:    Ab2+C3+Eb3+G3   -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+pad:    F2+Ab2+C3+Eb3   -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+pad:    Db3+F3+Ab3+C4   -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+pad:    Eb3+Ab3+Bb3+Db4 -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+pad:    Ab2+C3+Eb3+G3   -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+pad:    F2+Ab2+C3+Eb3   -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+pad:    Db3+F3+Ab3+C4   -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+pad:    Eb3+G3+Bb3+Db4  -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+
+keys:   .    .    C4+Eb4+G4+Bb4  -    -    -    -    -    .    .    C4+Eb4+G4+Bb4  -    -    -    -    -
+keys:   .    .    Ab3+C4+Eb4+G4  -    -    -    -    -    .    .    Ab3+C4+Eb4+G4  -    -    -    -    -
+keys:   .    .    F4+Ab4+C5+Eb5  -    -    -    -    -    .    .    F4+Ab4+C5+Eb5  -    -    -    -    -
+keys:   .    .    Eb4+Ab4+Bb4+Db5 -   -    -    -    -    .    .    Eb4+Ab4+Bb4+Db5 -   -    -    -    -
+keys:   .    .    C4+Eb4+G4+Bb4  -    -    -    -    -    .    .    C4+Eb4+G4+Bb4  -    -    -    -    -
+keys:   .    .    Ab3+C4+Eb4+G4  -    -    -    -    -    .    .    Ab3+C4+Eb4+G4  -    -    -    -    -
+keys:   .    .    F4+Ab4+C5+Eb5  -    -    -    -    -    .    .    F4+Ab4+C5+Eb5  -    -    -    -    -
+keys:   .    .    Eb4+G4+Bb4+Db5 -    -    -    -    -    .    .    Eb4+G4+Bb4+Db5 -    -    -    -    -
+
+brass:  Eb4+Ab4+C5  -    -    -    -    -    -    -    C4+Eb4+Ab4  -    -    -    -    -    -    -
+brass:  C4+F4+Ab4   -    -    -    -    -    -    -    Ab3+C4+F4   -    -    -    -    -    -    -
+brass:  F4+Ab4+Db5  -    -    -    -    -    -    -    Ab4+C5+F5   -    -    -    -    -    -    -
+brass:  Bb4+Db5+Eb5 -    -    -    -    -    -    -    Ab4+Bb4+Eb5 -    -    -    -    -    -    -
+brass:  Eb4+G4+C5   -    -    -    -    -    -    -    C4+Eb4+Ab4  -    -    -    -    -    -    -
+brass:  C4+F4+Ab4   -    -    -    -    -    -    -    Ab3+C4+Eb4  -    -    -    -    -    -    -
+brass:  F4+Ab4+Db5  -    -    -    -    -    -    -    Db5+F5+Ab5  -    -    -    -    -    -    -
+brass:  Bb4+Db5+Eb5 -    -    -    -    -    -    -    G4+Bb4+Db5  -    -    -    -    -    -    -
+
+bell:   Eb5  .    .    .    C5   .    .    .    Ab5  .    .    .    .    .    G5   .
+bell:   C5   .    .    .    Ab4  .    .    .    F5   .    .    .    .    .    Eb5  .
+bell:   F5   .    .    .    Db5  .    .    .    Ab5  .    .    .    .    .    C6   .
+bell:   Bb5  .    .    .    Ab5  .    .    .    Eb6  .    .    .    .    .    Db6  .
+bell:   Eb5  .    .    .    C5   .    .    .    Ab5  .    .    .    .    .    Bb5  .
+bell:   C5   .    .    .    Ab4  .    .    .    F5   .    .    .    .    .    C5   .
+bell:   F5   .    .    .    Ab5  .    .    .    C6   .    .    .    .    .    Db6  .
+bell:   Bb5  .    .    .    G5   .    .    .    Eb6  .    .    .    .    .    Db6  .
+
+bass:   Ab1  -    -    -    -    -    .    Eb2  -    -    -    .    C2   -    -    -
+bass:   F2   -    -    -    -    -    .    C2   -    -    -    .    Ab1  -    -    -
+bass:   Db2  -    -    -    -    -    .    Ab1  -    -    -    .    F2   -    -    -
+bass:   Eb2  -    -    -    -    -    .    Bb1  -    -    -    .    Db2  -    -    -
+bass:   Ab1  -    -    -    -    -    .    Eb2  -    -    -    .    C2   -    -    -
+bass:   F2   -    -    -    -    -    .    C2   -    -    -    .    Ab1  -    -    -
+bass:   Db2  -    -    -    -    -    .    Ab1  -    -    -    .    F2   -    -    -
+bass:   Eb2  -    -    -    -    -    .    Bb1  -    -    -    .    G1   -    -    -
+
+drums:  bd   .    hh   hh   sd   .    hh   .    bd   .    hh   hh   sd   .    hh   .
+drums:  bd   .    hh   hh   sd   .    hh   .    bd   .    hh   hh   sd   .    hh   .
+drums:  bd   .    hh   hh   sd   .    hh   .    bd   .    hh   hh   sd   .    hh   .
+drums:  bd   .    hh   hh   sd   .    hh   .    bd   .    hh   hh   sd   .    hh   oh
+drums:  bd   .    hh   hh   sd   .    hh   .    bd   .    hh   hh   sd   .    hh   .
+drums:  bd   .    hh   hh   sd   .    hh   .    bd   .    hh   hh   sd   .    hh   .
+drums:  bd   .    hh   hh   sd   .    hh   .    bd   .    hh   hh   sd   .    hh   .
+drums:  bd   .    hh   hh   sd   .    hh   .    bd   bd   hh   hh   sd   sd   hh   cr
+
+# ============================ bars 37-40: OUTRO ============================
+pad:    Ab2+C3+Eb3+G3   -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+pad:    Db3+F3+Ab3+C4   -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+pad:    Eb3+Ab3+Bb3+Db4 -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+pad:    Ab2+C3+Eb3+G3   -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+
+keys:   .    .    C4+Eb4+G4+Bb4  -    -    -    -    -    .    .    C4+Eb4+G4+Bb4  -    -    -    -    -
+keys:   .    .    F4+Ab4+C5+Eb5  -    -    -    -    -    .    .    F4+Ab4+C5+Eb5  -    -    -    -    -
+keys:   .    .    Eb4+Ab4+Bb4+Db5 -   -    -    -    -    .    .    Eb4+G4+Bb4+Db5 -    -    -    -    -
+keys:   Ab3+C4+Eb4+G4  -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+
+brass:  Eb4+Ab4+C5  -    -    -    -    -    -    -    .    .    .    .    .    .    .    .
+brass:  F4+Ab4+Db5  -    -    -    -    -    -    -    .    .    .    .    .    .    .    .
+brass:  Bb4+Db5+Eb5 -    -    -    -    -    -    -    Ab4+Bb4+Eb5 -    -    -    -    -    -    -
+brass:  Ab4+C5+Eb5  -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+
+bell:   Eb5  .    .    .    C5   .    .    .    Ab5  .    .    .    .    .    G5   .
+bell:   F5   .    .    .    Ab5  .    .    .    C6   .    .    .    .    .    Db6  .
+bell:   Bb5  .    .    .    Ab5  .    .    .    G5   .    .    .    .    .    F5   .
+bell:   Ab5  -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+
+bass:   Ab1  -    -    -    -    -    .    Eb2  -    -    -    .    C2   -    -    -
+bass:   Db2  -    -    -    -    -    .    Ab1  -    -    -    .    F2   -    -    -
+bass:   Eb2  -    -    -    -    -    .    Bb1  -    -    -    .    G1   -    -    -
+bass:   Ab1  -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+
+drums:  bd   .    hh   .    sd   .    hh   .    bd   .    hh   .    sd   .    hh   .
+drums:  bd   .    hh   .    sd   .    hh   .    bd   .    hh   .    sd   .    hh   .
+drums:  bd   .    hh   .    sd   .    hh   .    bd   bd   hh   .    sd   sd   hh   .
+drums:  cr   .    .    .    .    .    .    .    .    .    .    .    .    .    .    .

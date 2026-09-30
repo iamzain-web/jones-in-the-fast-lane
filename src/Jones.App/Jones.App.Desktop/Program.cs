@@ -70,6 +70,44 @@ sealed class Program
         // Jones.Core.Save.SettingsStore for why `Main.sc:1198-1200` is not what it looks like.
         ViewModels.MainViewModel.LoadSoundSettings();
 
+        // Network play: `--host [port]` or `--join address[:port]`. See Jones.Net/Protocol.cs.
+        Net.NetLaunch.Parse(args);
+
+        // The network reports only to the log (it has no screens of its own — CLAUDE.md §1),
+        // and this head otherwise has no log at all. So a networked copy writes one, named
+        // for its role so a host and a joiner on the same machine do not share it:
+        // %TEMP%\jones-host.log or %TEMP%\jones-join.log.
+        if (Net.NetLaunch.Host || Net.NetLaunch.JoinAddress is not null)
+        {
+            var log = System.IO.Path.Combine(System.IO.Path.GetTempPath(),
+                Net.NetLaunch.Host ? "jones-host.log" : "jones-join.log");
+            StartupLog.Info = m => System.IO.File.AppendAllText(log, $"{DateTime.Now:HH:mm:ss.fff} {m}\n");
+            StartupLog.Error = (m, e) => System.IO.File.AppendAllText(log, $"{DateTime.Now:HH:mm:ss.fff} {m}: {e}\n");
+        }
+
+        // THE INTERFACE-FONT PROOF SHEET, and it is not a screenshot tool. `JONES_FONT_SHEET`
+        // names a directory; the process sets Avalonia up WITHOUT opening a window, draws a
+        // handful of real screens through `UiFont` — the same class, the same metrics and the
+        // same rasteriser the game uses — writes them as PNGs and exits.
+        //
+        // That is the difference between a sample and a proof: `tools/make_font_sheets.py`
+        // draws candidate faces with Pillow, which is a preview of a design, while this draws
+        // what the running game will actually put on screen. If the two ever disagree, this
+        // one is right.
+        if (Environment.GetEnvironmentVariable("JONES_FONT_SHEET") is { Length: > 0 } sheetDir)
+        {
+            // A BARE Application, not this project's App: the sheet needs the rendering and
+            // font platforms and nothing else, and going through `App` drags in its compiled
+            // XAML, its Fluent theme and its lifetime for no benefit.
+            AppBuilder.Configure<Avalonia.Application>()
+                .UsePlatformDetect()
+                .LogToTrace()
+                .SetupWithoutStarting();
+
+            FontSheet.Write(sheetDir);
+            return;
+        }
+
         BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
 
         // Hand the waveOut device and the MCI alias back on the way out. The synth's pump

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Text;
@@ -22,7 +22,7 @@ namespace Jones.App.Desktop;
 /// position stays at 0 and the mouth simply waits. Whatever the latency turns out to be
 /// on a given machine, the two stay in step.
 ///
-/// MCI also handles the extracted format directly — those WAVs are 8-bit unsigned mono
+/// MCI also handles the extracted format directly â€” those WAVs are 8-bit unsigned mono
 /// PCM at 11025 Hz.
 ///
 /// MUSIC AND EFFECTS take a different route, and not the obvious one. The 34 sound
@@ -31,7 +31,7 @@ namespace Jones.App.Desktop;
 /// wrong instruments. The way out was not to invent a patch map: every one of those
 /// resources ALSO holds an AdLib arrangement, and the game ships the matching AdLib
 /// instrument definitions in <c>patch.003</c>. So the sound is synthesised here the way an
-/// AdLib card did it — see <see cref="Jones.Audio.SciSoundEngine"/> — and pushed at the
+/// AdLib card did it â€” see <see cref="Jones.Audio.SciSoundEngine"/> â€” and pushed at the
 /// device as PCM through <see cref="WaveOutStream"/>. Nothing about the timbres is a
 /// guess; they are read out of the game's own bank.
 ///
@@ -53,9 +53,30 @@ public sealed class WindowsAudioPlayer : IAudioPlayer, IDisposable
 
     // Built on a background thread, then read from the UI thread. A reference assignment
     // is atomic, and a caller that gets here a moment early simply finds null and does
-    // nothing — which is the right answer, because there is no device to hear it on yet.
-    private volatile Jones.Audio.SciSoundEngine? _engine;
+    // nothing â€” which is the right answer, because there is no device to hear it on yet.
+    private volatile Jones.Audio.JonesAudioMixer? _engine;
     private volatile WaveOutStream? _stream;
+
+    // Set before the mixer exists, so the switch can be restored from settings during
+    // start-up without having to wait for the audio device.
+    private bool _useOriginal = true;
+
+    /// <summary>
+    /// The A/B switch. TRUE - the original set - is now the default; false is the AdLib path,
+    /// See <see cref="IAudioPlayer.UseOriginalAudio"/>.
+    /// </summary>
+    public bool UseOriginalAudio
+    {
+        get => _useOriginal;
+        set
+        {
+            _useOriginal = value;
+            var engine = _engine;
+            if (engine is not null)
+                engine.Source = value ? Jones.Audio.AudioSource.Original
+                                      : Jones.Audio.AudioSource.AdLib;
+        }
+    }
     private readonly Thread? _startingAudio;
 
     private bool _enabled = true;
@@ -75,7 +96,7 @@ public sealed class WindowsAudioPlayer : IAudioPlayer, IDisposable
             {
                 // Silence comes from stopping, not from turning the volume down:
                 // `sndMASTER_VOLUME` is a 0..15 scale folded into note velocity, and its
-                // bottom is very quiet rather than silent. The original does the same —
+                // bottom is very quiet rather than silent. The original does the same â€”
                 // `soundOn` gates every `play:` in Sound.sc, and the checks in PlayMusic
                 // and PlayEffect below are that gate.
                 StopSpeech();
@@ -118,10 +139,26 @@ public sealed class WindowsAudioPlayer : IAudioPlayer, IDisposable
     {
         try
         {
-            var engine = new Jones.Audio.SciSoundEngine(_sounds!.Bank);
+            // The original set is built here too, on the same off-startup thread: its six
+            // synthesised effects are rendered once so that the first button click of a
+            // session is not also the first time anything has been synthesised.
+            var bank = new Jones.Audio.Original.OriginalSoundBank(Jones.Audio.JonesAudioMixer.SampleRate);
+            bank.PreRenderEffects();
+
+            var engine = new Jones.Audio.JonesAudioMixer(_sounds, bank)
+            {
+                Source = _useOriginal ? Jones.Audio.AudioSource.Original
+                                      : Jones.Audio.AudioSource.AdLib,
+            };
+
+            // STEREO, where this used to be mono. The AdLib path is still a single mono
+            // chip placed up the middle and sounds exactly as it did; the width is there
+            // for the original synthesiser, whose chorus and delay are stereo effects and
+            // are worth almost nothing folded down.
             _stream = new WaveOutStream(
-                Jones.Audio.SciSoundEngine.SampleRate,
-                (buffer, count) => engine.Render(buffer.AsSpan(0, count)));
+                Jones.Audio.JonesAudioMixer.SampleRate,
+                (buffer, count) => engine.RenderStereo(buffer.AsSpan(0, count)),
+                channels: 2);
 
             // Published last: the play methods check this, and there is no point
             // accepting a sound before there is somewhere to put it.
@@ -208,58 +245,41 @@ public sealed class WindowsAudioPlayer : IAudioPlayer, IDisposable
     /// </summary>
     public void PlayMusic(int soundResource, bool loop = true)
     {
-        if (!_enabled || _engine is null || _sounds is null) return;
-        if (soundResource <= 0) { _engine.StopMusic(); return; }
-
-        var res = _sounds.Get(soundResource);
-        if (res is null) return;
-        _engine.PlayMusic(res, loop);
+        if (!_enabled || _engine is null) return;
+        _engine.PlayMusic(soundResource, loop);
     }
 
     /// <summary>
-    /// `gASong fade:`, which is a fade and not a cut — the engine follows the arguments
+    /// `gASong fade:`, which is a fade and not a cut â€” the engine follows the arguments
     /// Sound.sc passes. Starting another bed cancels it, the same way one `gASong` object
     /// does in the original.
     /// </summary>
     public void StopMusic() => _engine?.StopMusic();
 
-    /// <summary>`gASong stop:` — the cut, as distinct from the fade above.</summary>
+    /// <summary>`gASong stop:` â€” the cut, as distinct from the fade above.</summary>
     public void CutMusic() => _engine?.CutMusic();
 
-    /// <summary>`gASong pause: 1` — the duck under a sting.</summary>
+    /// <summary>`gASong pause: 1` â€” the duck under a sting.</summary>
     public void PauseMusic() => _engine?.PauseMusic();
 
     /// <summary>
-    /// `gASoundEffect play: n`. Resource 23 is the universal button click —
+    /// `gASoundEffect play: n`. Resource 23 is the universal button click â€”
     /// `WButton::doit` plays it on every press (WButton.sc:152-153).
     /// </summary>
     public void PlayEffect(int soundResource, bool loop = false, bool resumeMusicWhenDone = false)
     {
-        if (!_enabled || _engine is null || _sounds is null) return;
-
-        var res = _sounds.Get(soundResource);
-        if (res is null)
-        {
-            // The sting is what was going to bring the paused bed back. With no resource
-            // there is nothing to cue it, so release it here rather than leave it silent.
-            if (resumeMusicWhenDone) _engine.ResumeMusic();
-            return;
-        }
-
-        _engine.PlayEffect(res, loop, resumeMusicWhenDone);
+        if (!_enabled || _engine is null) return;
+        _engine.PlayEffect(soundResource, loop, resumeMusicWhenDone);
     }
 
-    /// <summary>`(gASoundEffect loop: 1)` — `lottoScript.sc:232`.</summary>
+    /// <summary>`(gASoundEffect loop: 1)` â€” `lottoScript.sc:232`.</summary>
     public void EndEffectLoop() => _engine?.EndEffectLoop();
 
-    /// <summary>`gASoundEffect2 play: n` — `room1.sc:1500` is its only caller.</summary>
+    /// <summary>`gASoundEffect2 play: n` â€” `room1.sc:1500` is its only caller.</summary>
     public void PlayEffect2(int soundResource)
     {
-        if (!_enabled || _engine is null || _sounds is null) return;
-
-        var res = _sounds.Get(soundResource);
-        if (res is null) return;
-        _engine.PlayEffect2(res);
+        if (!_enabled || _engine is null) return;
+        _engine.PlayEffect2(soundResource);
     }
 
     /// <summary>`winnerScript.sc:67-68` clears both effect slots.</summary>
@@ -277,3 +297,5 @@ public sealed class WindowsAudioPlayer : IAudioPlayer, IDisposable
         _stream?.Dispose();
     }
 }
+
+

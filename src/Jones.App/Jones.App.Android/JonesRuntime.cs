@@ -41,32 +41,60 @@ internal static class JonesRuntime
         // Set this to false to play Sierra's version exactly.
         Jones.Core.Model.TurnStart.SkipWeekOneHardship = true;
 
+        // EVERY STEP BELOW IS SURVIVABLE ON ITS OWN, and the structure says which. This
+        // mirrors Program.Main, where `if (assets is not null)` guards the whole block and a
+        // desktop build that cannot find assets/ runs anyway - silent, printing nothing it
+        // cannot find. The phone deserves the same: a game with no speech is a game; a game
+        // that will not open is not.
+        //
         // The assets. The desktop head walks up the tree looking for assets/audio/speech
         // and gets null if it is not there; here they travel in the APK, so the equivalent
-        // step is unpacking the small ones. GameAssets swallows its own failures, so a
-        // broken unpack leaves the same state a desktop build with no assets/ is in: the
-        // game runs, silent, printing nothing it cannot find.
-        GameAssets.Unpack(context);
-        var assets = GameAssets.Root(context);
+        // step is unpacking the small ones.
+        string? assets = null;
+        StartupLog.Try("GameAssets.Root", () => assets = GameAssets.Root(context));
+        StartupLog.Try("GameAssets.Unpack", () => GameAssets.Unpack(context));
 
-        // The game's own text resources are not audio and not platform-specific: every
-        // head needs the strings the game PRINTS.
-        SciText.Load(assets);
+        if (assets is null)
+        {
+            // No writable root means no unpacked resources at all. Nothing below has
+            // anywhere to read from, and every shared loader already treats a resource it
+            // was never pointed at as "show nothing".
+            AndroidLog.Error("no asset root: the game will run silent and print nothing");
+        }
+        else
+        {
+            // Captured by the lambdas below, and non-null by the branch. A separate local
+            // because the compiler's flow analysis does not follow a captured variable in.
+            var root = assets;
 
-        // NOT CALLED: RenderScale.UseAssetRoot. The 24MB of upscaled art is not in the
-        // APK (see the csproj), and RenderScale falls back to Factor 1 - the original's
-        // own pixels, scaled up by the Viewbox with interpolation None - when it cannot
-        // find a png{N}x directory. Calling it with a root that has no png4x in it would
-        // change nothing; leaving it out says so.
+            // The game's own text resources are not audio and not platform-specific: every
+            // head needs the strings the game PRINTS.
+            StartupLog.Try("SciText.Load", () => SciText.Load(root));
 
-        Audio.LipSync.SetDirectory(System.IO.Path.Combine(assets, "audio", "sync"));
-        Audio.Subtitles.Load(assets);
+            // NOT CALLED: RenderScale.UseAssetRoot. The 24MB of upscaled art is not in the
+            // APK (see the csproj), and RenderScale falls back to Factor 1 - the original's
+            // own pixels, scaled up by the Viewbox with interpolation None - when it cannot
+            // find a png{N}x directory. Calling it with a root that has no png4x in it would
+            // change nothing; leaving it out says so.
+
+            StartupLog.Try("LipSync.SetDirectory",
+                () => Audio.LipSync.SetDirectory(System.IO.Path.Combine(root, "audio", "sync")));
+            StartupLog.Try("Subtitles.Load", () => Audio.Subtitles.Load(root));
+        }
 
         // The touch affordances in MainView. There is no hover on a phone and no right or
         // middle button, so the two mouse chords that reach the Goals and Statistics
         // screens need somewhere to be pressed. Set before the UI is built: MainView reads
         // it once, through x:Static.
         TouchUi.Enabled = true;
+
+        // Reported rather than assumed: Factor 1 with no art directories is the INTENDED
+        // Android result (there is no png{N}x in the APK), and a log line is the only way to
+        // tell that apart from the resolver having quietly failed into the same answer.
+        StartupLog.Try("RenderScale.Resolve",
+            () => AndroidLog.Info(
+                $"RenderScale: factor {RenderScale.Factor}, " +
+                $"{RenderScale.ArtDirectories.Length} art director(ies)"));
     }
 
     /// <summary>
@@ -78,8 +106,22 @@ internal static class JonesRuntime
     {
         if (Sound is not null) return;
 
-        Sound = new AndroidAudioPlayer(context.Assets!, GameAssets.Root(context));
-        ViewModels.MainViewModel.Sound = Sound;
+        // A DEAD AUDIO DEVICE IS NOT A DEAD GAME. The desktop head only installs its player
+        // behind `if (OperatingSystem.IsWindows())` and `if (assets is not null)`, and plays
+        // on in silence otherwise - MainViewModel.Sound defaults to a SilentAudioPlayer and
+        // every call site goes through it. This head now degrades the same way instead of
+        // taking the process with it.
+        StartupLog.Try("AndroidAudioPlayer", () =>
+        {
+            Sound = new AndroidAudioPlayer(context.Assets!, GameAssets.Root(context));
+            ViewModels.MainViewModel.Sound = Sound;
+        });
+
+        if (Sound is null)
+        {
+            AndroidLog.Error("no audio player: the game will run silent");
+            return;
+        }
 
         // Program.Main's last step before Avalonia starts, done in the same place relative to
         // the player: the master switch lives on the player, so the settings can only be
@@ -90,7 +132,11 @@ internal static class JonesRuntime
         // WHERE THE FILE GOES. SaveStore.Directory is ApplicationData, which on Android is
         // the app's own private files directory, so this head needs no override - the same
         // reason the save game needs none.
-        ViewModels.MainViewModel.LoadSoundSettings();
+        //
+        // Guarded because it is the first thing in the whole startup path that TOUCHES THE
+        // FILESYSTEM OUTSIDE THE APK - Environment.GetFolderPath(ApplicationData) - and a
+        // head that cannot read its remembered mute should start unmuted, not not at all.
+        StartupLog.Try("LoadSoundSettings", ViewModels.MainViewModel.LoadSoundSettings);
     }
 
     /// <summary>

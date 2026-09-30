@@ -1,0 +1,84 @@
+# ---------------------------------------------------------------------------
+# RESOURCE 48 - THE BROKER, SECOND BED
+#
+# `broker.sc:142`, `playBed:`. The Broker has TWO beds - 47, which it shares
+# with the Bank, and this one. 47 is the room; this is the trading itself.
+#
+# Original: 1154 ticks = 19.23 s, loop point at the top.
+# Here:     8 bars at 100 bpm = 19.20 s, loop at the top.
+#
+# ORIGINAL MUSIC. Written to the ROLE the cue plays, never to its notes.
+#
+# Brief: 47 is poised and deliberately committed to nothing, because it has to
+# work for a teller window as well. This one has only one room to serve, so it
+# can do what that one cannot - it MOVES. D major, a clav chattering in
+# sixteenths like a ticker, a bass that walks every beat instead of holding,
+# and a kit with a real backbeat.
+#
+# It is the confident cue in the set. Nothing else here is straightforwardly
+# pleased with itself, and a trading floor is the one place in this game where
+# that is the right feeling.
+#
+# Written to the v2 mix standard from the start. NO LEAD LINE.
+# ---------------------------------------------------------------------------
+
+tempo 100
+steps 16
+swing 0.12
+loop 1
+loop-from 0
+space room
+
+part pad    patch=pad   gain=0.76  pan=-0.26
+part keys   patch=keys  gain=0.86  pan=0.12
+part clav   patch=clav  gain=0.90  pan=0.30
+part bass   patch=bass  gain=0.88  pan=0.00
+part drums  kit         gain=0.74  pan=0.00
+
+#          1    2    3    4    5    6    7    8    9   10   11   12   13   14   15   16
+
+pad:    D3+F#3+A3+C#4   -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+pad:    B2+D3+F#3+A3    -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+pad:    G2+B2+D3+F#3    -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+pad:    A2+D3+E3+G3     -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+pad:    D3+F#3+A3+C#4   -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+pad:    B2+D3+F#3+A3    -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+pad:    E3+G3+B3+D4     -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+pad:    A2+C#3+E3+G3    -    -    -    -    -    -    -    -    -    -    -    -    -    -    -
+
+keys:   .    .    F#4+A4+C#5+E5   -    -    -    -    -    .    .    F#4+A4+C#5+E5   -    -    -    -    -
+keys:   .    .    D4+F#4+A4+B4    -    -    -    -    -    .    .    D4+F#4+A4+B4    -    -    -    -    -
+keys:   .    .    B3+D4+F#4+G4    -    -    -    -    -    .    .    B3+D4+F#4+G4    -    -    -    -    -
+keys:   .    .    A4+B4+D5+E5     -    -    -    -    -    .    .    A4+B4+D5+E5     -    -    -    -    -
+keys:   .    .    F#4+A4+C#5+E5   -    -    -    -    -    .    .    F#4+A4+C#5+E5   -    -    -    -    -
+keys:   .    .    D4+F#4+A4+B4    -    -    -    -    -    .    .    D4+F#4+A4+B4    -    -    -    -    -
+keys:   .    .    G4+B4+D5+F#5    -    -    -    -    -    .    .    G4+B4+D5+F#5    -    -    -    -    -
+keys:   .    .    A4+C#5+E5+G5    -    -    -    -    -    .    .    A4+C#5+E5+G5    -    -    -    -    -
+
+# The ticker.
+clav:   A4   .    D5   .    F#5  .    D5   .    A4   .    D5   .    F#5  .    A5   .
+clav:   F#4  .    B4   .    D5   .    B4   .    F#4  .    B4   .    D5   .    F#5  .
+clav:   G4   .    B4   .    D5   .    B4   .    G4   .    B4   .    D5   .    G5   .
+clav:   A4   .    D5   .    E5   .    D5   .    A4   .    D5   .    E5   .    G5   .
+clav:   A4   .    D5   .    F#5  .    D5   .    A4   .    D5   .    F#5  .    A5   .
+clav:   F#4  .    B4   .    D5   .    B4   .    F#4  .    B4   .    D5   .    F#5  .
+clav:   G4   .    B4   .    E5   .    B4   .    G4   .    B4   .    E5   .    G5   .
+clav:   A4   .    C#5  .    E5   .    C#5  .    A4   .    C#5  .    E5   .    G5   .
+
+bass:   D2   -    .    A1   -    .    F#2  -    .    D2   -    .    A1   -    C#2  -
+bass:   B1   -    .    F#2  -    .    D2   -    .    B1   -    .    F#2  -    A1   -
+bass:   G1   -    .    D2   -    .    B1   -    .    G1   -    .    D2   -    F#2  -
+bass:   A1   -    .    E2   -    .    C#2  -    .    A1   -    .    E2   -    G1   -
+bass:   D2   -    .    A1   -    .    F#2  -    .    D2   -    .    A1   -    C#2  -
+bass:   B1   -    .    F#2  -    .    D2   -    .    B1   -    .    F#2  -    A1   -
+bass:   E2   -    .    B1   -    .    G1   -    .    E2   -    .    B1   -    D2   -
+bass:   A1   -    .    E2   -    .    C#2  -    .    A1   -    .    G1   -    E2   -
+
+drums:  bd   .    hh   .    sd   .    hh   hh   bd   .    hh   .    sd   .    hh   .
+drums:  bd   .    hh   .    sd   .    hh   hh   bd   .    hh   .    sd   .    hh   .
+drums:  bd   .    hh   .    sd   .    hh   hh   bd   .    hh   .    sd   .    hh   .
+drums:  bd   .    hh   .    sd   .    hh   hh   bd   .    hh   .    sd   .    hh   oh
+drums:  bd   .    hh   .    sd   .    hh   hh   bd   .    hh   .    sd   .    hh   .
+drums:  bd   .    hh   .    sd   .    hh   hh   bd   .    hh   .    sd   .    hh   .
+drums:  bd   .    hh   .    sd   .    hh   hh   bd   .    hh   .    sd   .    hh   .
+drums:  bd   .    hh   .    sd   .    hh   hh   bd   bd   hh   .    sd   sd   hh   oh

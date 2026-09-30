@@ -23,6 +23,26 @@
   <ItemGroup>
     <ProjectReference Include="..\Jones.Core\Jones.Core.csproj" />
     <ProjectReference Include="..\Jones.Audio\Jones.Audio.csproj" />
+    <ProjectReference Include="..\Jones.Net\Jones.Net.csproj" />
+  </ItemGroup>
+
+  <!--
+    THE TWO LAYOUT TABLES, COMPILED INTO THE TESTS.
+
+    `ItemText` and `StoreLayout` are the port's record of what every interface line says and
+    where it sits, and the column assertions in `ColumnStopTests` have to check THOSE, not a
+    copy of them — a copy would go on passing after someone edited the originals, which is the
+    exact failure the assertions exist to prevent.
+
+    They live in `Jones.App` for historical reasons and cannot be project-referenced from here
+    (that project is net10.0 and pulls Avalonia in), but both files are pure data over
+    `Jones.Core.Model` with no toolkit dependency at all, so they compile here as they stand.
+    If either ever grows a real dependency on Avalonia, move it into `Jones.Core` rather than
+    dropping these links.
+  -->
+  <ItemGroup>
+    <Compile Include="..\Jones.App\Jones.App\ItemText.cs" Link="Ported\ItemText.cs" />
+    <Compile Include="..\Jones.App\Jones.App\StoreLayout.cs" Link="Ported\StoreLayout.cs" />
   </ItemGroup>
 
 </Project>

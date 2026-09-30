@@ -1,0 +1,46 @@
+# ---------------------------------------------------------------------------
+# RESOURCE 30 - SACKED
+#
+# `n108.sc:29` when dependability has fallen too far to keep the job, and
+# `startTrn.sc:705, 737, 770, 803` when a market scandal costs a player theirs.
+#
+# Original: 221 ticks = 3.68 s.
+# Here:     2 bars at 130 bpm = 3.69 s.
+#
+# ORIGINAL MUSIC. Written to the ROLE the cue plays, never to its notes.
+#
+# Brief: worse than Bad News, and built to be heard as worse. Bad News is one
+# bar and sinks a tritone; this is TWO bars and sinks a full octave, with the
+# whole weight arriving on the last chord rather than the first. Losing the
+# job is the single most expensive thing that happens to a player, and the
+# only sting in the game that gets a second bar to say so.
+#
+# The fall is chromatic - Dm, C#dim, Cm, B7b5 - so no step of it resolves.
+# The crash lands on the final chord, not the opening one: this is the sound
+# of something ending, not of something happening.
+# ---------------------------------------------------------------------------
+
+tempo 130
+steps 16
+swing 0.0
+loop 0
+space room
+
+part brass  patch=brass gain=0.88  pan=-0.14
+part pad    patch=pad   gain=0.92  pan=0.10
+part bass   patch=bass  gain=0.90  pan=0.00
+part drums  kit         gain=0.72  pan=0.00
+
+#          1    2    3    4    5    6    7    8    9   10   11   12   13   14   15   16
+
+brass:  D4+F4+A4   -    -    -    -    -    -    -    C#4+E4+G4   -    -    -    -    -    -    -
+brass:  C4+Eb4+G4  -    -    -    -    -    -    -    B3+D4+F4    -    -    -    -    -    -    -
+
+pad:    D3+F3+A3   -    -    -    -    -    -    -    C#3+E3+G3   -    -    -    -    -    -    -
+pad:    C3+Eb3+G3  -    -    -    -    -    -    -    B2+D3+F3    -    -    -    -    -    -    -
+
+bass:   D2   -    -    -    -    -    -    -    C#2  -    -    -    -    -    -    -
+bass:   C2   -    -    -    -    -    -    -    B1   -    -    -    -    -    -    -
+
+drums:  bd   .    .    .    .    .    .    .    bd   .    .    .    .    .    .    .
+drums:  bd   .    .    .    .    .    .    .    bd   .    .    .    cr   .    .    .

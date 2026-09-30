@@ -33,6 +33,41 @@ namespace Jones.App.Android;
     ConfigurationChanges = ConfigChanges.Orientation | ConfigChanges.ScreenSize | ConfigChanges.UiMode)]
 public class MainActivity : AvaloniaMainActivity
 {
+    /// <summary>
+    /// Watched rather than left bare: this is where Avalonia stands the view up, so it is
+    /// where a fault in the view, the view model or the renderer surfaces — and an activity
+    /// that throws here is an app that "installs and does not open". The rethrow is
+    /// deliberate; there is no half-started activity worth keeping. See
+    /// <see cref="AndroidLog"/>.
+    /// </summary>
+    protected override void OnCreate(global::Android.OS.Bundle? savedInstanceState)
+    {
+        AndroidLog.Install();
+        AndroidLog.Info("MainActivity.OnCreate");
+
+        // The menu's Quit. FinishAndRemoveTask rather than Finish, so a game the player
+        // quit does not sit in the recent-apps list looking as if it were still open.
+        // OnDestroy then sees IsFinishing and gives the audio devices back.
+        Views.MainView.QuitWithoutWindow = FinishAndRemoveTask;
+
+        try
+        {
+            base.OnCreate(savedInstanceState);
+            AndroidLog.Info("MainActivity.OnCreate: done");
+        }
+        catch (System.Exception e)
+        {
+            AndroidLog.Error("MainActivity.OnCreate", e);
+            throw;
+        }
+    }
+
+    protected override void OnResume()
+    {
+        AndroidLog.Info("MainActivity.OnResume");
+        base.OnResume();
+    }
+
     protected override void OnPause()
     {
         // Backgrounded: nothing of the game's should keep playing out of the app.

@@ -10,6 +10,34 @@
     <ApplicationDisplayVersion>1.0</ApplicationDisplayVersion>
     <AndroidPackageFormat>apk</AndroidPackageFormat>
     <AndroidEnableProfiledAot>false</AndroidEnableProfiledAot>
+
+    <!-- ==================================================================
+         THE DEBUG APK MUST STAND ALONE. THIS IS WHY IT WOULD NOT OPEN.
+
+         .NET for Android defaults `EmbedAssembliesIntoApk` to FALSE in Debug. That is
+         "fast deployment": the APK ships with the Mono runtime, the native libraries and
+         the assets, and NO MANAGED ASSEMBLIES AT ALL - `dotnet build -t:Install` pushes
+         those separately, over adb, into
+         /data/data/com.jones.fastlane/files/.__override__/, and the build and the push are
+         two halves of one operation.
+
+         Sideload only the APK - copy it to the phone, tap it, or `adb install` it - and
+         the second half never happens. The app installs, the launcher shows its icon, the
+         process starts, the runtime finds no assemblies and dies before a single line of
+         C# runs. There is nothing on screen and nothing to attribute it to: "installs and
+         then does not open", exactly.
+
+         Verified by opening the artefacts: the 43MB Debug APK built on 2026-09-28 had 923
+         entries, 533 speech WAVs, jones-data.zip, 28 native .so files - and zero managed
+         assemblies. The Release APK of the same tree carried
+         `lib/<abi>/libassembly-store.so`, 6.7MB of them, because Release already embeds.
+
+         True unconditionally rather than for Debug alone: an APK that behaves differently
+         depending on how it was reached is the trap this file just fell into. The cost is
+         a slower incremental deploy over USB, which nobody here does - both APKs are
+         carried to the phone by hand.
+         ================================================================== -->
+    <EmbedAssembliesIntoApk>true</EmbedAssembliesIntoApk>
   </PropertyGroup>
 
   <ItemGroup>

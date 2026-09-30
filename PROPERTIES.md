@@ -19,6 +19,19 @@ outright and the port never reads**. It was written without touching any source 
 
 ## Counts
 
+> **Status, after the drawing-and-input pass.** Of the fourteen findings in §1, six are
+> mine and are now: **1.1 CLOSED**, **1.9 CLOSED**, **1.14 CONFIRMED (nothing to do)**,
+> **1.6 PART**, **1.7 PART**, **1.8 PART**, **1.10 not done with the reason recorded**.
+> Each section carries its own note. The CD/floppy record (1.11) is nobody's and is untouched.
+>
+> **Status, after the missing-animations-and-sprites pass.** The six animation findings are
+> now: **1.2 CLOSED** (the door), **1.3 CLOSED** (the piggy bank), **1.4 CLOSED** (the work
+> clock), **1.5 CLOSED** (the lottery), **1.12 CLOSED narrowly** (`setPri:` is modelled where
+> it varies at runtime; the deviations table in PARITY.md states what the general gap costs),
+> **1.13 CLOSED as nothing-to-do**, with all 61 sends accounted for in a table. Each section
+> carries its own note, including the three places where the finding as written was wrong
+> about the mechanism.
+
 | class | count |
 | --- | ---: |
 | **NOT MODELLED, MATTERS — findings** | **14** |
@@ -36,7 +49,16 @@ two rows are exact and each entry is individually evidenced below.
 
 # 1. NOT MODELLED, MATTERS — ranked
 
-## 1.1 Every clickable label in the game has a 1-pixel drop shadow. The port draws none.
+## 1.1 Every clickable label in the game has a 1-pixel drop shadow. The port draws none. — **CLOSED**
+
+> **CLOSED.** All three consequences are ported. `SciFont.Render` gained a shadow pass;
+> `MenuLineVm` takes `textColour`/`shadowColour`/`flashColour` as palette indices and
+> `StoreLayout.ColoursFor` holds the per-screen table with a citation per row;
+> `SciPalette` resolves the indices to RGB from the game's own view palettes, cross-checked
+> three ways against the shipped art (see PARITY.md §4). The shadowed bitmap is one pixel
+> larger in each direction, which is `setTextSize`'s own growth, so the hit rectangle grew
+> with it. **The invented `#0000C0` hover is gone**: the second bitmap is `flashColor` and
+> the view binds `IsPressed`, because the original has no hover state.
 
 **`shadowColor` (109 declarations), `textColor` (43), `flashColor` (4), `backColor`**
 
@@ -98,6 +120,23 @@ Three separate consequences:
 
 ## 1.2 Walking into a building plays a four-cel door animation. The port has no door.
 
+> **CLOSED** (see PARITY.md §2, `MainViewModel.Animation.cs` §1). All thirteen `doorLoop` /
+> `doorX` / `doorY` triples are tabulated from `room1.sc:294-574`, `openDoor:` steps cels 0→3
+> with the `(Wait 6)` between each, and `closeDoor:` runs the `Beg` cycler back down on the
+> board. Two corrections to the finding as written:
+> * **`(Wait 6)` is not a cycler.** It is the interpreter's blocking sleep in 60ths of a
+>   second — this game settles the unit itself at `Main.sc:955-970`, where `proc0_3 n` is
+>   `(/ n 6)` iterations of `(Wait 6)`. So the door is 100ms a cel and the building's dialog
+>   cannot open until it has finished, which is why the port runs it as a continuation.
+>   `cycleSpeed 1` on the `door` Prop governs only the CLOSING, at 2 game cycles a cel.
+> * **`setCel: -1` does not set a cel.** `Actor::setCel` with −1 clears signal $1000
+>   (`Actor.sc:148-150`), unfreezing the cycler and leaving the cel at 3.
+>
+> Also found while closing it: `Game.sc:183` is a SECOND `closeDoor:` site, in `Game::restore`,
+> and `(door init: setPri: 6)` at `room1.sc:1224` means the prop is in room1's cast from the
+> room's own init — so before the first entry it stands at (0,0) on loop 0, a 4x1 sliver of
+> the Low-Cost door in the screen's top-left corner. The port does not draw that.
+
 **`doorLoop` (13 Place instances), `doorX` (14), `doorY` (14)**
 
 `Place::openDoor` (`room1.sc:107-120`):
@@ -129,6 +168,16 @@ building entries in a game, replaced by an instant cut.
 
 ## 1.3 The bank's piggy bank animates on every deposit and withdrawal.
 
+> **CLOSED** (PARITY.md §3, `MainViewModel.Animation.cs` §2). One correction to the finding:
+> it should NOT go into `StoreLayout.ItemsFor(Bank)`. The bank never publishes `gItems` — the
+> six `(= gItems …)` sites are `appliance.sc:85`, `clothing.sc:74`, `discount.sc:137`,
+> `fastFood.sc:73`, `market.sc:90` and `pawnShop.sc:432`, and the bank is not among them — so
+> `ItemsFor` returning null is right and the pig is a prop of its own that happens to occupy
+> the same slot. Both money drivers are inside `(if temp0 …)`, so a press that moves nothing
+> leaves it alone. `doit`'s `loop: 6` is out of range (view 704 has two loops) and is treated
+> as the clamp to loop 1 that the instance declares; that inference is flagged in PARITY.md's
+> queue as the one thing here nobody can check from the scripts alone.
+
 **`bank.sc:510-546` — `piggyBank of DCIcon`, `view 704 loop 1 nsTop 57 priority 14 cycleSpeed 5`**
 
 ```
@@ -148,6 +197,14 @@ Port: `StoreLayout.ItemsFor(LocationId.Bank)` is not in the switch, so it falls 
 `src/`. The bank panel has no picture at all where the original has an animated one.
 
 ## 1.4 The work clock in nine shops.
+
+> **CLOSED** (PARITY.md §3, `MainViewModel.Animation.cs` §3). View 750 is one loop of four
+> 68x55 cels — a punch clock whose handle swings down — drawn at each instance's own
+> `nsLeft`/`nsTop`, added last so it covers the `items` panel at Socket City, and run once per
+> shift on the branch that already played effect 31. Its `cue` restarts the `items` parade the
+> work button stopped, or at the Bank starts the piggy bank. Every `CostDItem` press resets
+> it, plus the four bank `WButton`s that repeat the two lines inline; `moreTime` is the one
+> clickable line in a workplace that does not, and is left alone.
 
 **`WButton.sc:299-311` — `class TimeClock of DCIcon`, `view 750 priority 14 cycleSpeed 10`**
 
@@ -174,6 +231,18 @@ Port: `750` never appears under `src/`. Sound effect 31 **is** modelled
 
 ## 1.5 The lottery-win animation: seven dollar bills and a note.
 
+> **CLOSED** (PARITY.md §3, `MainViewModel.Animation.cs` §4). All twenty-one states are
+> played. Three things the finding did not have:
+> * **The bills fall off the screen.** `(Random 250 300)` added to a start of 20-35 puts every
+>   target below row 190, so `stopUpd:` at state 13 freezes seven sprites nobody can see.
+> * **The flutter is cel DISPLACEMENT**, not motion: `setStep: 0 7` is purely vertical, and
+>   loop 0's eight cels carry `displaceX` −22, −11, 3, 17, 22, 18, 6, −5. The port had no
+>   displacement support at all; it does now, for this one sprite.
+> * **`(proc0_3 240)` is at the END**, state 18, after the note has landed and the text is up.
+>   The port used to start its 240-tick timer at the beginning of the sequence.
+> Also: `startTrn.sc:229-238` hands the chain to script 116 and returns, so the turn-start
+> notices now follow the lottery instead of playing over it.
+
 **`lottoScript.sc` — `lottobuck1..7` and `lottonote`, `view 340 priority 5 cycleSpeed 1 moveSpeed 1`, `setStep: 0 7`**
 
 States 0-16 of `lottoScript` (`:26-176`) drop seven bills one at a time from
@@ -185,7 +254,18 @@ Port: `MainViewModel.StartLottoLoop` (`:2928-2946`) plays the looping sound and 
 240-tick timer, which is the `(proc0_3 240)` at `lottoScript.sc:215`. Nothing is drawn.
 `340` appears in the port only for Wild Willy (`MainViewModel.cs:3633`), who shares the view.
 
-## 1.6 `state` bits: nothing separates enabled, selected and disabled controls.
+## 1.6 `state` bits: nothing separates enabled, selected and disabled controls. — **PART**
+
+> **PART.** Bit 0 is modelled: `MenuLineVm` carries `Enabled` and the view binds
+> `IsHitTestVisible` (not `IsEnabled` — the original greys nothing), so a disabled line is
+> drawn and deaf, which is what `Item::handleEvent` does. The shop lines were checking
+> `Enabled` *inside* the click handler, which swallowed the click instead of never taking
+> it. The eleven `state 0` / `state 288` captions are now non-interactive labels drawn with
+> their own declared shadow: the nine `jobsAvailable` headers, the Pawn Shoppe's three list
+> titles and the broker's six holdings figures. **Still open:** the sixteen `enable:` sends
+> are not wired — nothing in the port yet sets a line disabled — and bit 3 (`select`) is a
+> deviation, because `WButton::select` redraws nothing and the pawnable list's highlight is
+> the interpreter's, not a script's. See PARITY.md's deviations table.
 
 **`state` — 109 declarations, 10 distinct values**
 
@@ -208,7 +288,24 @@ bit 0 is clear. Declared values:
 `ActionVm` carries a single `bool enabled` and `MenuLineVm` carries none, so a shop line that
 the original has greyed out and click-through-proof is, in the port, either absent or live.
 
-## 1.7 Per-control keyboard accelerators: 151 declared, 2 implemented.
+## 1.7 Per-control keyboard accelerators: 151 declared, 2 implemented. — **PART**
+
+> **PART, and the question this section could not answer is now answered.** `key` is the
+> `event message` a keystroke produces, compared raw. The large values are literal ASCII
+> (120 `x`, 119 `w`, 98 `b`, 106 `j`); the 1-24 range is Ctrl-A..Ctrl-X, and the proof is
+> what the scripts REFUSE to use — every list numbers in declaration order and every list
+> steps over **9, 13 and 15**, which are Tab, Return and Shift-Tab, the three keys
+> `Dialog::handleEvent` claims before any control sees them (`Interface.sc:1113`, `:1126`,
+> `:1152`). That is why Socket City's ninth item is `key 10` and Z-Mart bumps its 9th, 13th
+> and 15th to 20, 23, 24. `key` is ALSO a handle rather than only an accelerator, which is
+> why the numbering is ordinal: the Jones AI presses a control by fabricating an event with
+> it, and the broker uses it as a list index (`broker.sc:523`). The reasoning lives in
+> `Jones.App.SciKey`. Wired: the six fixed-layout shops, Employment's nine, all 39 jobs,
+> the broker's Buy/Sell, the Pawn Shoppe's four. **Not wired**: Z-Mart's eighteen and
+> Hi-Tech U's twelve, both because the port's line does not carry the item or degree
+> identity the key belongs to. Ctrl-Q/S/T/V/Y/Z are the menu bar's and it takes them first,
+> so Z-Mart's `eightTrack` (17) and `leisureSuit` (20) are unreachable in the shipped game
+> too.
 
 **`key` — 151 declarations**
 
@@ -222,7 +319,22 @@ Port `MainViewModel.HandleKey` (`:5234-5406`) implements `X` and `W` only, and s
 not confirmed against a running original that they are reachable, so this is ranked below the
 drawing findings.)
 
-## 1.8 `Display` draws on an opaque background band. `TextVm` cannot.
+## 1.8 `Display` draws on an opaque background band. `TextVm` cannot. — **PART**
+
+> **PART, and the count is smaller than it looks.** `TextVm` takes a `background` palette
+> index now. **Nineteen of the twenty are invisible**, measured rather than assumed: the
+> artist filled each panel with the very index the script names, so sampling the shipped art
+> at the coordinates the scripts draw at returns exactly the declared colour — view 696 is a
+> flat #6098C8 (93) under the broker's four headings and every price row, views 501 and 505
+> a flat #7088E0 (99) under all three goals screens, view 0 loop 4 a flat #98A8B0 (101)
+> under the calculator readout. The band exists to blank the previous value in place; this
+> port rebuilds. **Two are drawn**: the board's `Week #%2d` (86), which sits over a dithered
+> strip of pic 11 mixing #8890A0/#7088A0/#708090, and Hi-Tech U's per-row chip
+> (`[local9 4] = [98 75 87 56]`, indexed alongside `[local5 4] = [97 111 125 139]`, so the
+> colour belongs to the ROW and not to the course), which sits in a transparent gap in the
+> course bar over a flat #C8E0F8 panel. `select4`'s two (79) belong to a screen the port
+> does not have. Those three sampled agreements are also the cross-check that `SciPalette`'s
+> index→RGB table is right.
 
 Twenty `Display` calls pass a real `dsBACKGROUND` colour rather than −1:
 
@@ -238,7 +350,15 @@ Twenty `Display` calls pass a real `dsBACKGROUND` colour rather than −1:
 `TextVm` (`SpriteVm.cs:155-199`) takes `colour` and nothing else; it renders glyphs with
 transparent gaps. Every one of those labels is currently drawn onto whatever is behind it.
 
-## 1.9 The calculator readout is the wrong font, position and colour.
+## 1.9 The calculator readout is the wrong font, position and colour. — **CLOSED**
+
+> **CLOSED.** Now font 14, LEFT-aligned from (274,166), colour index 0 on a background of
+> 101, with the string `"%6s "` verbatim. Measured off `font_14.font`: 7px tall, 5px digits,
+> **4px space** — so the readout's right edge really does creep, 303 for one digit through
+> 308 for six, and the port's true right-alignment was hiding it. Font 10's space is 5px
+> like its digits, which is why the old code looked aligned by accident. The
+> `StoreLayout.cs` comment claiming the calculator shows `cash - 1` is corrected at the
+> site.
 
 **`calc` — `room1.sc:1419-1459`, `state 256 nsTop 160 nsLeft 252 loop 4`**
 
@@ -265,7 +385,16 @@ the right edge creeps as digits are added, which the port's true right-alignment
 `value: (- (global302 cash:) 1)` is a **cache invalidation** — `value` is the last-drawn
 amount, and `calc::doit` immediately does `(= value (global302 cash:))` before displaying it.
 
-## 1.10 The Game Speed control changes `ticksToDo`, `moveSpeed` and the travel clock together.
+## 1.10 The Game Speed control changes `ticksToDo`, `moveSpeed` and the travel clock together. — **NOT DONE, reason recorded**
+
+> **Still unported, deliberately.** Two blockers, neither of which this finding removes.
+> `Gauge.sc` is the whole user interface of the feature — a slider dialog with its own art
+> and its own `higher`/`lower` captions — and it is unported; Ctrl-V has the same gap, which
+> is why Change Volume is the two ends of a 0-15 scale. And `MarbleMoveSpeed` /
+> `TicksPerHour` are `const` in `Jones.Core.GameClock`, with the marble stepping in the
+> animation loop. As this section itself says, the effect is **presentation only** — the
+> hours a journey costs are invariant under the setting — so implementing it without the
+> Gauge would be a hidden switch with no way to reach it. Menu item 770 stays greyed.
 
 **`Menu.sc:293-318`, menu id 770 (Ctrl-S)**
 
@@ -310,6 +439,22 @@ job wages and one dependability:
 
 ## 1.12 `setPri:` — 37 sends, 3 port mentions.
 
+> **CLOSED, narrowly** (PARITY.md §2 and its deviations table). `BuildWinner` now emits its
+> cast in ascending `priority` with a stable sort, so `jonesGuy`'s random 2-or-5 against the
+> `priority 4` plinth works, and each `confetti` burst takes the priority of the pass that
+> threw it (`jonesGuy::cue` does `setPri: priority`, `:178`, reading the value `Actor::setPri`
+> has just written). That also fixed something not in the finding: `pedistal` is priority 4
+> and `theWinner` priority 3, so the plinth belongs OVER the winner's feet and the port had
+> the figure standing in front of it.
+>
+> The other two sites need nothing. `room1.sc:1276-1279`'s `setPri: 7 init: addToPic:` bakes
+> the four number props into the background pic (`Actor.sc:167-172` sets signal $8021), so
+> their priority never competes with anything and `proc1_8`'s order is already correct;
+> `lottoScript.sc:249-347` gives all eight actors `priority 5`, so list order IS priority
+> order there. Draw order remains list order everywhere else, which costs nothing on any
+> screen the port currently draws — the deviations table says why, and what making it general
+> would take.
+
 Draw order in the port is list order in `Sprites`. That is right most of the time, but three
 sites choose priority at runtime and one of them is random:
 
@@ -321,6 +466,24 @@ sites choose priority at runtime and one of them is random:
 
 ## 1.13 `stopUpd:` / `startUpd:` / `forceUpd:` / `addToPic:` — 61 sends, 2 port mentions.
 
+> **CLOSED as "nothing to do", with the 61 accounted for.** Every send outside `Actor.sc`
+> was listed and sorted; none of them changes what the port should draw, because the port
+> rebuilds the whole screen from state every frame rather than maintaining an update list.
+>
+> | group | sends | why it does not matter |
+> | --- | ---: | --- |
+> | `introRoom.sc:223-240`, `:274-406` | 14 | `stopUpd:`/`addToPic:` on the credit photographs, each of which the port already draws as a static sprite for its state's duration. |
+> | `lottoScript.sc:153-159`, `:174` | 8 | Freezing seven bills that are already below the bottom of the screen, and a note that has stopped moving and has a one-cel loop. Modelled anyway (the bills stop cycling); invisible either way. |
+> | `room1.sc:41-46`, `:1156-1159`, `:1276-1279`, `:1301`, `winnerScript.sc:38-43` | 15 | `addToPic:` on the board's outline, `picPatch` and the four number props, and on the podium's two backgrounds. These are the pic, and `proc1_8`'s order is the port's `BuildBoard` order. |
+> | `gTheWalker` `forceUpd:`/`stopUpd:` — `room1.sc:194`, `:271`, `:1096`, `:1154`, `:1313`, `marblePath.sc:48`, `startTrn.sc:889`, `Game.sc:179` | 8 | Forcing a redraw of a figure the port redraws unconditionally. `room1.sc:194`'s `setCycle: 0` beside it IS modelled — it is why the walker's cel stops when a journey ends. |
+> | `room1.sc:109`, `:123`, `Game.sc:183` | 3 | The door's `startUpd:`, which is now §1.2. |
+> | `startTrn.sc:940`, `:1116` | 2 | `stopUpd:` on the notice and the ambulance, both of which the port holds still by holding their coordinates still. |
+>
+> The one real consequence the finding names — "where the original bakes a sprite into the pic
+> and then `erase:`s the dialog over it, the port's z-order has to be right by construction" —
+> is now covered by §1.12's entry in the deviations table, which states exactly where list
+> order and priority order agree and where they do not.
+
 `addToPic:` (`Actor.sc:167-172`) bakes an actor into the background:
 `(self signal: (| signal $8021))`. `room1.sc:41-46`, `:1156-1159`, `:1276-1279`, `:1301` and
 `introRoom.sc:225`, `:240` use it, and `winnerScript.sc:38`, `:43`. `stopUpd:` freezes a cel
@@ -330,7 +493,15 @@ frame, so nothing *breaks* — but where the original bakes a sprite into the pi
 Listed here rather than under N/A because `addToPic:`+`erase:` is how the original composes
 the board, and getting it wrong is invisible until it isn't.
 
-## 1.14 `education2` — the second degree requirement.
+## 1.14 `education2` — the second degree requirement. — **CONFIRMED, nothing to do**
+
+> **Confirmed and recorded at the site** (`Jones.Core.Model.Employment`, beside the two
+> writes). A whole-word search of BOTH trees finds exactly four hits for `needEd1`/`needEd2`:
+> the two `(properties)` declarations (`room1.sc:637-638`, floppy `:625-626`) and the two
+> writes (`employment.sc:95-96`, floppy `:137-138`). There is no read anywhere. The port
+> stores them, saves them and shows them nowhere, which is the original's behaviour exactly
+> — so there is nothing to implement, and the comment now says so to stop this being
+> re-found a third time.
 
 **6 declarations: `applianceJobs.manager 11`, `bankJobs.broker 16`, `factoryJobs.departmentManager 13`,
 `engineer 14`, `generalManager 13`, class default 0 (`employment.sc:82`)**
