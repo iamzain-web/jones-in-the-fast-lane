@@ -184,6 +184,44 @@ def shoe_mask(rgb, alpha, src_ankles, fig, tol=52.0, grow=7):
     return masks
 
 
+def shirt_mask(rgb, alpha, kps, fig, tol=60.0, grow=5):
+    """The SHIRT's own pixels in the source, by colour, restricted to the ribcage's width.
+
+    Same instrument as shoe_mask and for the same reason: geometry cannot tell a shirt from
+    an arm, and the nearest-bone test hands 23.6% of the ribcage to the RIGHT arm's bones
+    against 12.6% to the left - which is exactly the asymmetric skew a player reported.
+
+    The horizontal limit matters as much as the colour. A short sleeve is the same cloth as
+    the body of the shirt, but it sits on an arm that legitimately swings, so the mask is
+    clipped to the ribcage's own width and the sleeves are left to the arm bones.
+    """
+    op = alpha > 100
+    neck = np.asarray(kps[1], np.float64)
+    hipm = (np.asarray(kps[8], np.float64) + np.asarray(kps[11], np.float64)) / 2.0
+    y0 = int(max(0, neck[1] - 0.02 * fig))
+    y1 = int(min(op.shape[0], hipm[1] + 0.02 * fig))
+    cx = 0.5 * (neck[0] + hipm[0])
+    x0 = int(max(0, cx - 0.115 * fig))
+    x1 = int(min(op.shape[1], cx + 0.115 * fig))
+    out = np.zeros(op.shape, bool)
+    if y1 - y0 < 8 or x1 - x0 < 8:
+        return out
+    # Reference colour from the chest: central, just below the shoulder line.
+    ry0 = int(neck[1] + 0.05 * fig)
+    ry1 = int(neck[1] + 0.14 * fig)
+    rx0, rx1 = int(cx - 0.04 * fig), int(cx + 0.04 * fig)
+    ref_px = rgb[ry0:ry1, rx0:rx1][op[ry0:ry1, rx0:rx1]]
+    if len(ref_px) < 50:
+        return out
+    ref = np.median(ref_px, axis=0)
+    sub = rgb[y0:y1, x0:x1]
+    d = np.sqrt(((sub - ref) ** 2).sum(axis=2))
+    out[y0:y1, x0:x1] = (d < tol) & op[y0:y1, x0:x1]
+    if grow:
+        out = np.asarray(Image.fromarray((out * 255).astype(np.uint8))
+                         .filter(ImageFilter.MaxFilter(grow))) > 127
+    return out
+
 def skin_field(src_kps, dst_kps, size, alpha=2.0, step=2, reach=0.26, fig=None,
                across=1.0, foot_w=1.0, alpha_src=None, rgb_src=None, props=(), hard_foot=0.160):
     """A backward displacement field by LINEAR BLEND SKINNING - one transform per BONE.

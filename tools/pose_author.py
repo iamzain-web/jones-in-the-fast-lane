@@ -288,32 +288,68 @@ def _leg(ank_x, ank_dy, knee_x, knee_dy):
 # figure's height, NEGATIVE MEANING UP. The shin's projected length is therefore
 # (ankle + ank_dy) - (knee + knee_dy), and that projection IS the knee bend.
 CYCLE = [
-    # ---- cel 0: DOWN. Left leg has just taken the weight; right leg is in early swing. ----
+    # DEPTH. THE FEET DO NOT ONLY MOVE SIDEWAYS - ONE IS NEARER THE CAMERA THAN THE OTHER.
+# A stride in a front view is almost entirely depth, and depth cannot be drawn directly. The
+# response for six rounds was to draw the motion SIDEWAYS instead, and then to narrow it when
+# Muybridge said it was too wide. Narrowing a lateral motion makes a smaller lateral motion;
+# it does not make a forward one. A player described the result exactly: "he just looks like
+# he is stepping left and right".
+#
+# A front view DOES carry depth, and the strongest cue costs nothing. With the camera above
+# the ground plane, a foot NEARER the camera appears LOWER in the frame. Measured on Plate 5's
+# front row, the two feet's ground contacts differ by 10-15 source px on a 598 px figure:
+#
+#     0.0251  0.0167  0.0167  0.0251  0.0251  0.0167  0.0251  0.0167   of figure height
+#     mean 0.0209, range 0.017-0.025
+#
+# Ours was 0.0000 - both planted feet sat on exactly the same ground line, which is what a
+# figure stepping sideways looks like. So the forward foot now sits 0.010 LOWER and the rear
+# foot 0.010 HIGHER, alternating with the step, for a 0.020 difference against the measured
+# 0.021. (The plate also shows a steady downward drift across all eight frames; that is the
+# subject walking toward the camera, not the per-step cue, and it is correctly not copied.)
+#
+# STANCE WIDTH, MEASURED OFF MUYBRIDGE PLATE 5 AND SLID INWARD BY 0.010 PER FOOT.
+# The front row of Plate 5 (Animal Locomotion, 1887, public domain) gives a foot-centre
+# separation of 0.047, 0.053, 0.064 and 0.045 of figure height across the stride, read off a
+# labelled grid at 3x with an uncertainty of about +-0.013. The table below had 0.064 / 0.084
+# / 0.064 / 0.084.
+#
+# THE ERROR WAS A CONSTANT OFFSET, NOT A WRONG AMPLITUDE, and that distinction is the whole
+# correction. The RANGE the feet travel through is 0.019 in the photographs against 0.020
+# here - they match. Only the baseline was wrong, by about 0.02. So both extremes move inward
+# by 0.010 each and the amplitude is left alone; compressing the range would have been the
+# intuitive fix and would have made it worse.
+#
+# A constant offset is a WIDE STANCE, and a permanently wide stance is a gait abnormality in
+# its own right - it reads as a swagger or a brace rather than a walk, and it is wrong in
+# every frame rather than only at the extremes.
+#
+# ---- cel 0: DOWN. Left leg has just taken the weight; right leg is in early swing. ----
     {"phase": DOWN, "rise": -0.016, "sway": +0.020, "arm": +0.034, "twist": +0.004,
      # Supporting: planted, knee bent about 22 degrees to absorb the landing. The bend shows
      # as the BODY dropping (rise, above), not as a visible angle - with the ankle fixed and
      # the hip lowered, the leg's projected length falls from 0.450 to 0.434.
-     "l": _leg(+0.024, 0.000, +0.040, +0.002),
+     "l": _leg(+0.014, +0.010, +0.034, +0.006),
      # Swing: toe just off the ground and behind, knee folding up. This is where the flexion
      # lives - the shin projects about 0.63 of its length.
-     "r": _leg(-0.040, -0.085, -0.044, -0.006)},
+     "r": _leg(-0.030, -0.095, -0.038, -0.012)},
 
     # ---- cel 1: UP. Left leg extended on the ball of the foot; right leg reaching forward. -
     {"phase": UP, "rise": +0.014, "sway": +0.008, "arm": -0.010, "twist": -0.002,
      # Supporting: straight and vertical, heel off the ground - which is what allows the body
      # to be higher here than a straight leg on a flat foot could put it.
-     "l": _leg(+0.018, -0.014, +0.030, -0.014),
+     "l": _leg(+0.008, -0.024, +0.024, -0.019),
      # Swing: forward and all but straight, about to contact. Shin projects 0.995.
-     "r": _leg(-0.066, -0.017, -0.052, -0.016)},
+     "r": _leg(-0.056, -0.007, -0.046, -0.011)},
 
     # ---- cels 2 and 3: the same two keys with the legs and the lateral terms mirrored. -----
     {"phase": DOWN, "rise": -0.016, "sway": -0.020, "arm": -0.034, "twist": -0.004,
-     "r": _leg(-0.024, 0.000, -0.040, +0.002),
-     "l": _leg(+0.040, -0.085, +0.044, -0.006)},
+     "r": _leg(-0.014, +0.010, -0.034, +0.006),
+     "l": _leg(+0.030, -0.095, +0.038, -0.012)},
 
     {"phase": UP, "rise": +0.014, "sway": -0.008, "arm": +0.010, "twist": +0.002,
-     "r": _leg(-0.018, -0.014, -0.030, -0.014),
-     "l": _leg(+0.066, -0.017, +0.052, -0.016)},
+     "r": _leg(-0.008, -0.024, -0.024, -0.019),
+     "l": _leg(+0.056, -0.007, +0.046, -0.011)},
 ]
 
 STILL = {"phase": None, "rise": 0.0, "sway": 0.0, "arm": 0.0, "twist": 0.0,
