@@ -226,7 +226,7 @@ def _components(mask):
 
 
 def shirt_mask(rgb, alpha, kps, fig, tol=60.0, grow=5, arm_r=0.0, fill=True,
-               val_tol=60.0, sat_tol=24.0):
+               val_tol=60.0, sat_tol=24.0, narrow=0.160):
     """The SHIRT's own pixels in the source, by colour, restricted to the ribcage's width.
 
     Same instrument as shoe_mask and for the same reason: geometry cannot tell a shirt from
@@ -317,23 +317,72 @@ def shirt_mask(rgb, alpha, kps, fig, tol=60.0, grow=5, arm_r=0.0, fill=True,
     ref = np.median(ref_px, axis=0)
     ref_sat = float(ref.max() - ref.min())
     ref_val = float(ref.max())
+    # THE SKIN REFERENCE IS THE FOREHEAD, and it is the one patch of skin that is skin on
+    # every character: the hands end up in pockets or behind backs (7e), the forearms may be
+    # inside a sleeve, and the throat is beard on 282. The block sits above the eye line, so
+    # it clears both sunglasses and beard.
+    nose = np.asarray(kps[0], np.float64)
+    fy0, fy1 = int(nose[1] - 0.055 * fig), int(nose[1] - 0.025 * fig)
+    fx0, fx1 = int(nose[0] - 0.025 * fig), int(nose[0] + 0.025 * fig)
+    skin_ref = None
+    if fy1 > fy0 >= 0 and fx1 > fx0 >= 0:
+        sk_px = rgb[fy0:fy1, fx0:fx1][op[fy0:fy1, fx0:fx1]]
+        if len(sk_px) >= 40:
+            skin_ref = np.median(sk_px, axis=0)
+            # and only if the two references are actually distinguishable - a character in a
+            # skin-coloured garment has no separation to exploit and the test would carve the
+            # shirt at random.
+            if np.sqrt(((skin_ref - ref) ** 2).sum()) < 25.0:
+                skin_ref = None
     sub = rgb[y0:y1, x0:x1]
     sat = sub.max(axis=2) - sub.min(axis=2)
     val = sub.max(axis=2)
     out[y0:y1, x0:x1] = ((sat < ref_sat + sat_tol) & (val > ref_val - val_tol)
                          & op[y0:y1, x0:x1])
+    # A TOLERANCE AROUND ONE REFERENCE CANNOT WORK ACROSS THIS CAST, AND `--shirt-check`
+    # SAID SO ON FIVE CHARACTERS. `ref_sat + 24` was measured in the gap between cloth and
+    # skin on 282, where the shirt is white and `ref_sat` is 6. On 285 and 286 the garment is
+    # the SATURATED material - cloth 156 and 203 against a forehead of 36 and 69 - so the
+    # same rule puts the gate at 180 and 227 and admits everything. The dump showed 285 with
+    # both bare forearms and both hands welded into the plate: the exact fault this section
+    # was written to remove, reappearing on a different character because the instrument was
+    # tuned on one figure and shipped to nine.
+    #
+    # NEAREST OF TWO REFERENCES instead, both taken from the figure's own pixels: the chest
+    # block above, and the FOREHEAD, which is skin on every character and is never cloth. A
+    # pixel is garment if it is closer to the chest colour than to the forehead colour. That
+    # is symmetric, so it cannot inverts when the garment is the saturated one, and it has no
+    # tolerance to tune. The sat/val gate is kept as well and the two are intersected: the
+    # nearest test alone will claim the jeans on a figure whose trousers are nearer the shirt
+    # than the face, and the sat/val gate already rejects those.
+    if skin_ref is not None:
+        d_cloth = np.sqrt(((rgb - ref) ** 2).sum(axis=2))
+        d_skin = np.sqrt(((rgb - skin_ref) ** 2).sum(axis=2))
+        out &= d_cloth < d_skin
     # AND THE SLEEVE HEM, MEASURED OFF THE PHOTOGRAPH RATHER THAN CHOSEN. Walking down each
     # upper arm from shoulder to elbow and finding where the low-saturation run ends puts the
     # hem at 54% and 62% of that span - 0.076 and 0.087 of figure height below the neck. Past
     # it there is no cloth, so nothing out there can be shirt whatever its colour, and the
     # lit forearm's specular highlights (which still slipped the sat/val test, 45.8% of it)
     # are excluded by geometry that was measured rather than guessed.
+    #
+    # THE HALF-WIDTH IS 0.160 AND WAS 0.115, WHICH IS THE RIBCAGE'S WIDTH AND NOT THE
+    # GARMENT'S. A t-shirt at the waist is wider than the ribs. Measured here, walking outward
+    # from the centre on every row from the sleeve hem to the waistband to the first run of
+    # four saturated pixels, the garment's own edge sits at 0.063 to 0.118 of figure height
+    # from the centre, so 0.115 clips it on the widest rows.
+    #
+    # Worth recording that this was SUSPECTED of causing the flank crease and did not: the
+    # sweep from 0.115 to 0.300 moves the mask by 30 px in 69,326 and leaves the plate a
+    # median 3 px short of the garment's edge either way, because colour is what binds. It is
+    # widened anyway - it costs nothing and a geometric rule sized to the wrong body part is a
+    # trap waiting for the next character - but the crease was the smear below, not this.
     hem = neck[1] + 0.090 * fig
-    narrow = np.zeros(op.shape, bool)
-    narrow[:, int(max(0, cx - 0.115 * fig)):int(min(op.shape[1], cx + 0.115 * fig))] = True
+    band = np.zeros(op.shape, bool)
+    band[:, int(max(0, cx - narrow * fig)):int(min(op.shape[1], cx + narrow * fig))] = True
     below = np.zeros(op.shape, bool)
     below[int(hem):] = True
-    out &= ~(below & ~narrow)
+    out &= ~(below & ~band)
     # AND A FOREARM CYLINDER, WHICH IS NOW OFF BY DEFAULT AND SHOULD STAY OFF. It was added
     # on the belief that colour could not finish the separation, and on one sentence that is
     # simply false for this figure: "it cannot take shirt with it because no shirt lies along
@@ -398,7 +447,7 @@ def shirt_mask(rgb, alpha, kps, fig, tol=60.0, grow=5, arm_r=0.0, fill=True,
 
 def skin_field(src_kps, dst_kps, size, alpha=2.0, step=2, reach=0.26, fig=None,
                across=1.0, foot_w=1.0, alpha_src=None, rgb_src=None, props=(),
-               hard_foot=0.160, rigid_torso=True):
+               hard_foot=0.160, rigid_torso=True, torso_feather=0.050):
     """A backward displacement field by LINEAR BLEND SKINNING - one transform per BONE.
 
     WHY THIS REPLACED MOVING LEAST SQUARES. MLS drives the image from scattered point
@@ -707,8 +756,60 @@ def skin_field(src_kps, dst_kps, size, alpha=2.0, step=2, reach=0.26, fig=None,
                 gy = s_neck[1] + sa * dxt + ca * dyt
                 own = shirt[np.clip(gy.astype(int), 0, shirt.shape[0] - 1),
                             np.clip(gx.astype(int), 0, shirt.shape[1] - 1)]
-                fx = np.where(own, gx, fx)
-                fy = np.where(own, gy, fy)
+                # AND HAND OVER TO THE SKINNED FIELD GRADUALLY, OUTSIDE THE GARMENT.
+                #
+                # Switching hard between two fields that disagree tears wherever they
+                # disagree. Measured at the plate's edge, as the distance between where the
+                # rigid map and the skinned field each send the same pixel:
+                #
+                #     cel 0   median  5.3   p90  8.6   p99 11.9 px
+                #     cel 1   median 12.6   p90 47.2   p99 60.5
+                #     cel 2   median 17.0   p90 58.3   p99 80.4
+                #     cel 3   median  9.9   p90 31.3   p99 39.7
+                #
+                # which is the player's report as a number: cels 1 and 2 are the two they
+                # called ragged, and the ranking is exact. The shoe gets away with a hard
+                # boundary (7ab) because its transform is a pure TRANSLATION and the step at
+                # the ankle is a real edge. The ribcage's transform is a rotation about the
+                # neck, so its disagreement with the arm bones grows with distance and is
+                # largest at the flank, which is the one place it abuts a swinging limb.
+                #
+                # THE RAMP GOES INWARD, AND THE OUTWARD VERSION WAS TRIED AND IS WORSE.
+                # Ramping outward keeps every pixel of the garment perfectly rigid and spends
+                # the blend on the arm beside it, which sounds like the right trade and is
+                # not: the band outside the plate is the ARM, so part of the arm's dark pixels
+                # get the torso's transform and are dragged into the cloth. It produced a hard
+                # dark staircase down the flank, plainly worse than the light crease it was
+                # meant to cure. Dumped at 3x and discarded.
+                #
+                # Ramping inward spends the blend on cloth, so the cost is a slight loss of
+                # rigidity in the outer band. 0.010 of figure height is too narrow to absorb a
+                # 58 px disagreement and creases; 0.050 is wide enough that the handover reads
+                # as drapery.
+                #
+                # Successive erosions averaged together are a distance ramp without scipy, for
+                # the same reason `largest()` is hand-rolled.
+                #
+                # Rejected, with the picture to show for it: the shoe's SMEAR rule, sending
+                # anything outside the plate that reads shirt pixels off-frame. For a shoe the
+                # vacated ground really is background; for a flank it is not - the arm hangs
+                # against the cloth - so it bit a jagged chunk out of the shirt's side and
+                # showed green between the shirt and the arm. The right instrument for one
+                # part is not the right instrument for its neighbour.
+                if torso_feather > 0:
+                    n = max(1, int(round(torso_feather * figv / step)))
+                    w = own.astype(np.float64)
+                    cur = own
+                    for _ in range(n):
+                        cur = np.asarray(
+                            Image.fromarray((cur * 255).astype(np.uint8))
+                            .filter(ImageFilter.MinFilter(3))) > 127
+                        w += cur
+                    w /= (n + 1.0)
+                else:
+                    w = own.astype(np.float64)
+                fx = fx * (1.0 - w) + gx * w
+                fy = fy * (1.0 - w) + gy * w
 
     yy = np.arange(H, dtype=np.float64) / step
     xx = np.arange(W, dtype=np.float64) / step
@@ -859,14 +960,14 @@ def exaggerate(src_kps, dst_kps, k, joints=LEGS):
 
 def warp(src_rgba, src_kps, dst_kps, size, alpha=1.6, step=4, anchors=5, margin=0.0,
          method="skin", fig=None, across=1.0, foot_w=1.0, props=(), rigid_torso=True,
-         hard_foot=0.160):
+         hard_foot=0.160, torso_feather=0.050):
     """One deformed frame. Alpha is warped with the colour, so the silhouette moves too."""
     if method == "skin":
         mx, my = skin_field(src_kps, dst_kps, size, alpha=alpha, step=step, fig=fig,
                             across=across, foot_w=foot_w,
                             alpha_src=src_rgba[:, :, 3], props=props,
                             rgb_src=src_rgba[:, :, :3], hard_foot=hard_foot,
-                            rigid_torso=rigid_torso)
+                            rigid_torso=rigid_torso, torso_feather=torso_feather)
     else:
         P = handles(dst_kps, size, anchors, margin)
         Q = handles(src_kps, size, anchors, margin)
@@ -932,6 +1033,180 @@ def seam_deviation(path, f0=0.62, f1=0.93):
     return max(out)
 
 
+def shirt_probes(rgb, alpha, kps, fig):
+    """The regions a shirt mask must COVER and the regions it must NOT, found from the
+    picture rather than from the skeleton.
+
+    This exists because every mask check in this project has been written to confirm the
+    thing it was built for, and has then passed while swallowing something it was never
+    asked about. The shoe's check asked "does it cover both shoes"; the shirt's asked "does
+    it cover the chest" and passed at 49.9% garment coverage with a comb bitten out of both
+    flanks; and the forearm probe was a box centred on the elbow-wrist SEGMENT, which lies
+    on the cloth/skin boundary, so it was half cloth and could not answer either way.
+
+    So the probes here are all found from the silhouette and from the figure's own two
+    materials, and `must_be_out` is as long as `must_be_in`.
+
+    SKIN IS IDENTIFIED BY BEING NEARER THE FOREHEAD THAN THE CHEST in RGB, not by being more
+    saturated. On views 285 and 286 the garment is hot pink and MORE saturated than skin
+    (cloth 156 and 203 against a forehead of 36 and 69), so a "skin is the saturated one"
+    test is backwards on two of nine characters. Nearest-of-two-references is symmetric and
+    cannot invert.
+
+    THE HANDS ARE GATED ON ACTUALLY CONTAINING FLESH, for the reason 7e records: the model
+    puts hands in pockets, behind backs and under jackets, so a block at the authored wrist
+    frequently holds no skin at all. Measured here, the 75th-percentile saturation in that
+    block is 25 on view 280 and 4.5 on view 290 - both of which are jacket. Reporting a hand
+    coverage figure off those blocks would be measuring cloth and calling it a hand, so a
+    block under the flesh floor is reported as 'no flesh' rather than as a pass.
+    """
+    op = alpha > 100
+    H, W = op.shape
+    neck = np.asarray(kps[1], np.float64)
+    hipm = (np.asarray(kps[8], np.float64) + np.asarray(kps[11], np.float64)) / 2.0
+    cx = 0.5 * (neck[0] + hipm[0])
+    sat = rgb.max(axis=2) - rgb.min(axis=2)
+
+    def block(cy, cx_, ry, rx):
+        m = np.zeros((H, W), bool)
+        m[int(max(0, cy - ry)):int(cy + ry), int(max(0, cx_ - rx)):int(cx_ + rx)] = True
+        return m & op
+
+    chest = block(neck[1] + 0.100 * fig, cx, 0.045 * fig, 0.045 * fig)
+    nose = np.asarray(kps[0], np.float64)
+    fore = block(nose[1] - 0.040 * fig, nose[0], 0.015 * fig, 0.025 * fig)
+    if chest.sum() < 50 or fore.sum() < 20:
+        return None
+    c_ref = np.median(rgb[chest], axis=0)
+    s_ref = np.median(rgb[fore], axis=0)
+    dc = np.sqrt(((rgb - c_ref) ** 2).sum(axis=2))
+    ds = np.sqrt(((rgb - s_ref) ** 2).sum(axis=2))
+    skin = op & (ds < dc)
+
+    hem = neck[1] + 0.090 * fig
+    garment = np.zeros((H, W), bool)
+    for y in range(int(hem), int(hipm[1]) - int(0.02 * fig)):
+        xs = np.nonzero(op[y])[0]
+        if len(xs) < 20:
+            continue
+        sk = skin[y]
+        lo = hi = int(cx)
+        while lo > xs.min() and not sk[lo - 4:lo].all():
+            lo -= 1
+        while hi < xs.max() and not sk[hi:hi + 4].all():
+            hi += 1
+        garment[y, lo:hi] = True
+    garment &= op
+
+    sleeve = np.zeros((H, W), bool)
+    for sho, elb in ((2, 3), (5, 6)):
+        a_, b_ = np.asarray(kps[sho], np.float64), np.asarray(kps[elb], np.float64)
+        for t in np.linspace(0.15, 0.70, 24):
+            px = a_ + (b_ - a_) * t
+            sleeve |= block(px[1], px[0], 2, 0.018 * fig)
+    sleeve &= op
+
+    # THE FOREARM PROBE IS SKIN, NOT A BAND AT FOREARM HEIGHT. The first version of this
+    # check took the outermost 0.030 of figure height between elbow and wrist and called it
+    # the arm, and it reported the mask "swallowing the forearm" on views 280, 285, 286, 290
+    # and 292 - every character in a LONG SLEEVE, where that band is jacket and the mask is
+    # right to cover it. A check that fails on five of nine characters for being correct is
+    # the same fault as a check that passes while swallowing an arm, pointed the other way.
+    #
+    # Intersecting with skin asks the question that was meant: is there BARE ARM inside the
+    # rigid plate. On a long sleeve the probe correctly becomes empty and prints '-'.
+    arms = []
+    for side in (0, 1):
+        m = np.zeros((H, W), bool)
+        for y in range(int(kps[3][1]) + 10, int(kps[4][1]) - 5, 3):
+            xs = np.nonzero(op[y])[0]
+            if len(xs) < 20:
+                continue
+            w = int(0.030 * fig)
+            if side:
+                m[y, xs.max() - w:xs.max() - 2] = True
+            else:
+                m[y, xs.min() + 2:xs.min() + w] = True
+        m &= skin
+        arms.append(m if m.sum() >= 120 else None)
+
+    hands = []
+    for wr in (4, 7):
+        b = block(np.asarray(kps[wr], np.float64)[1] + 0.020 * fig,
+                  np.asarray(kps[wr], np.float64)[0], 0.040 * fig, 0.050 * fig)
+        flesh = b & skin
+        hands.append(flesh if flesh.sum() >= 0.08 * max(1, b.sum()) else None)
+
+    return {"in": [("chest", chest), ("GARMENT", garment), ("sleeve", sleeve)],
+            "out": [("R forearm", arms[0]), ("L forearm", arms[1]),
+                    ("R hand", hands[0]), ("L hand", hands[1])],
+            "skin": skin}
+
+
+def report_shirt(a):
+    """`--shirt-check <dir>`: run the both-halves mask test over every view in a cel
+    directory and dump the mask over each figure at 1:1."""
+    import glob
+    with open(os.path.join(a.poses, "poses.json")) as f:
+        poses = json.load(f)
+    print("%-6s %8s | %6s %8s %7s | %6s %6s %6s %6s"
+          % ("view", "mask px", "chest", "GARMENT", "sleeve",
+             "Rarm", "Larm", "Rhand", "Lhand"))
+    bad = []
+    for p in sorted(glob.glob(os.path.join(a.shirt_check, "cut_*_l0_c0.png"))):
+        v = int(os.path.basename(p).split("_")[1])
+        key = "%d/0/0" % v
+        if key not in poses["cels"]:
+            continue
+        im = np.asarray(Image.open(p).convert("RGBA"))
+        rgb, alp = im[:, :, :3].astype(np.float64), im[:, :, 3]
+        kps = np.asarray(poses["cels"][key]["keypoints"], np.float64)
+        fig = poses["cels"][key].get("fig_h") or im.shape[0]
+        pr = shirt_probes(rgb, alp, kps, fig)
+        if pr is None:
+            print("%-6d  probes unavailable" % v)
+            continue
+        m = shirt_mask(rgb, alp, kps, fig)
+        cells = []
+        for _, r in pr["in"]:
+            cells.append("%5.1f%%" % (100 * m[r].mean()) if r.sum() else "    -")
+        for _, r in pr["out"]:
+            cells.append("    -" if r is None
+                         else "%5.1f%%" % (100 * m[r].mean()) if r.sum() else "    -")
+        print("%-6d %8d | %6s %8s %7s | %6s %6s %6s %6s"
+              % (v, m.sum(), cells[0], cells[1], cells[2],
+                 cells[3], cells[4], cells[5], cells[6]))
+        for nm, r in pr["in"]:
+            if r.sum() and m[r].mean() < 0.90:
+                bad.append("%d %s only %.1f%% covered" % (v, nm, 100 * m[r].mean()))
+        for nm, r in pr["out"]:
+            if r is not None and r.sum() and m[r].mean() > 0.15:
+                bad.append("%d %s %.1f%% SWALLOWED" % (v, nm, 100 * m[r].mean()))
+        if a.out:
+            os.makedirs(a.out, exist_ok=True)
+            ov = im.copy()
+            ov[m] = (0.45 * ov[m] + 0.55 * np.array([255, 40, 40, 255])).astype(np.uint8)
+            for _, r in pr["out"]:
+                if r is not None:
+                    ov[r] = [60, 160, 255, 255]
+            ys, xs = np.nonzero(alp > 100)
+            o = Image.fromarray(ov, "RGBA").crop((int(xs.min()) - 8, int(ys.min()) - 8,
+                                                  int(xs.max()) + 8, int(ys.max()) + 8))
+            bg = Image.new("RGBA", o.size, (92, 132, 92, 255))
+            Image.alpha_composite(bg, o).convert("RGB").save(
+                os.path.join(a.out, "shirtcheck_%d.png" % v))
+    print()
+    if bad:
+        print("%d problem(s):" % len(bad))
+        for b in bad:
+            print("   " + b)
+    else:
+        print("every view: garment covered, arms and hands excluded")
+    print("\nA hand printed as '-' means the block at that wrist holds no flesh (7e), not "
+          "that it passed.")
+    return 1 if bad else 0
+
+
 def report_seams(a):
     import glob
     print(f"{'frame':<26} {'seam RMS (px)':>14}")
@@ -958,6 +1233,13 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--seams", help="report trouser-seam straightness for every png in "
                                     "this directory and exit")
+    ap.add_argument("--shirt-check", dest="shirt_check",
+                    help="run the both-halves shirt-mask test over every cut_*_c0.png in "
+                         "this directory and exit. Needs --poses; --out dumps the mask over "
+                         "each figure at 1:1. Reports what the mask must COVER (chest, the "
+                         "whole garment, the sleeves) and what it must NOT (both forearms, "
+                         "both hands) - a mask that covers the chest perfectly while "
+                         "swallowing an arm passes a shirt-shaped test")
     ap.add_argument("--seam-tol", type=float, default=3.0)
     ap.add_argument("--poses", help="pose set the TARGET cels come from")
     ap.add_argument("--src-poses",
@@ -990,6 +1272,11 @@ def main():
                          "moved as a PURE TRANSLATION with a hard boundary at the ankle "
                          "instead of being blended with the shin. 0 restores the blend, "
                          "which puts the spike back")
+    ap.add_argument("--torso-feather", type=float, default=0.050, dest="torso_feather",
+                    help="width, as a fraction of figure height, over which the rigid "
+                         "ribcage hands back to the skinned field at its own edge. 0 "
+                         "restores the hard switch, which tears down the flank where the "
+                         "cloth meets the swinging arm")
     ap.add_argument("--props", help="override the rigid-prop joints for this view: a "
                                     "comma-separated list of COCO-18 indices, or 'none'")
     ap.add_argument("--exaggerate", type=float, default=1.0,
@@ -1006,6 +1293,8 @@ def main():
 
     if a.seams:
         return report_seams(a)
+    if a.shirt_check:
+        return report_shirt(a)
     with open(os.path.join(a.poses, "poses.json")) as f:
         poses = json.load(f)
     W, H = poses["size"]
@@ -1045,7 +1334,8 @@ def main():
             out = warp(src, src_k, tgt, (W, H), a.alpha, a.step, a.anchors, a.margin,
                        a.method, cel.get("fig_h"),
                        across=(None if a.across < 0 else a.across), foot_w=a.foot_w,
-                       props=props, hard_foot=a.hard_foot)
+                       props=props, hard_foot=a.hard_foot,
+                       torso_feather=a.torso_feather)
             note = "warped"
         p = os.path.join(a.out, f"cut_{a.view}_l{a.loop}_c{c}.png")
         Image.fromarray(out, "RGBA").save(p)

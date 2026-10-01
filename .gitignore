@@ -26,7 +26,19 @@ __pycache__/
 /original/
 
 # Generated output, not source: frame strips and composed comparison images.
-/tools/samples/
+#
+# The pattern is `/*` and not `/`, because git cannot re-include a file whose PARENT
+# DIRECTORY is excluded - a negation under `/tools/samples/` is silently ignored. Excluding
+# the directory's CONTENTS instead leaves the directory itself tracked, so the negation
+# below works.
+/tools/samples/*
+
+# CAST.md is the exception and it is not generated: it is the written record of what was
+# measured while building the photoreal cast - every closed door, every instrument that
+# failed and why, every number that argued against a change that was right. It was sitting
+# in an ignored directory, so ~50 KB of two days' findings existed only on one disk and one
+# `git clean` from gone.
+!/tools/samples/CAST.md
 
 # Candidate faces fetched for tools/make_font_sheets.py's comparison sheets. They are
 # SAMPLES: no .csproj glob reaches tools/, nothing in src/ loads them, and the game's own
