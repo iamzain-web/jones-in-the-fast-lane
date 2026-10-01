@@ -457,7 +457,7 @@ def shirt_mask(rgb, alpha, kps, fig, tol=60.0, grow=5, arm_r=0.0, fill=True,
 
 def skin_field(src_kps, dst_kps, size, alpha=2.0, step=2, reach=0.26, fig=None,
                across=1.0, foot_w=1.0, alpha_src=None, rgb_src=None, props=(),
-               hard_foot=0.160, rigid_torso=True, torso_feather=0.050, foot_flex=1.0):
+               hard_foot=0.160, rigid_torso=True, torso_feather=0.050, foot_flex=1.0, arm_reach=0.0):
     """A backward displacement field by LINEAR BLEND SKINNING - one transform per BONE.
 
     WHY THIS REPLACED MOVING LEAST SQUARES. MLS drives the image from scattered point
@@ -575,7 +575,31 @@ def skin_field(src_kps, dst_kps, size, alpha=2.0, step=2, reach=0.26, fig=None,
         v = rigid_span(alpha_src, sj, size, fig if fig else H, reach=0.16, floor=0.05)
         bones.append((sj, sj + v, dj, dj + v, foot_w, False))
 
-    for s0, s1, t0, t1, bw, capped in bones:
+    # A FOREARM HAS NO CLOTH ON IT, SO ITS BONE MUST NOT REACH ANY.
+    #
+    # Dumped rather than reasoned: painting every destination pixel of cel 2 by the bone with
+    # the largest weight shows the LEFT FOREARM owning a rounded lobe that spreads across the
+    # hip and the shirt's lower flank - 45% of the band below the plate and outboard of
+    # centre, against 41% for the thigh and 14% for the pelvis. That lobe is the hem that
+    # swings down over the jeans. The hips were the obvious suspect and the dump says they are
+    # not it.
+    #
+    # Weight falls as 1/(d^2+1)^alpha, so a bone keeps a say over everything nearer to it than
+    # any other bone - and a hanging forearm is simply closer to the hip than the thigh or the
+    # pelvis is. §7h already measured the same thing one storey up, the arm bones reaching
+    # into the ribcage with 23.6% against 12.6%, and the rigid plate was built to answer it
+    # THERE. Below the plate nothing answered it at all.
+    #
+    # The sleeve hem is measured at 54-62% of shoulder-to-elbow (§7h), so below the elbow
+    # there is no cloth on the arm whatever: a forearm bone that is influencing cloth is
+    # influencing something that is not attached to it. Its reach is therefore capped at a
+    # forearm's own half-width plus a margin - 0.050 of figure height against the 0.0166
+    # measured half-width - with a smooth falloff so there is no edge where the cap bites.
+    # The upper arms are left alone; they carry the sleeve and legitimately move it.
+    fore_idx = {i for i, (ia, ib) in enumerate(BONES) if (ia, ib) in ((3, 4), (6, 7))}
+    arm_r2 = (arm_reach * (fig if fig else H)) ** 2
+
+    for bi, (s0, s1, t0, t1, bw, capped) in enumerate(bones):
         vt = t1 - t0
         vs = s1 - s0
         lt = float(np.hypot(*vt))
@@ -619,6 +643,9 @@ def skin_field(src_kps, dst_kps, size, alpha=2.0, step=2, reach=0.26, fig=None,
         d2 = (VX - cx) ** 2 + (VY - cy) ** 2
 
         w = bw / (d2 + 1.0) ** alpha
+        if arm_reach > 0 and bi in fore_idx:
+            # OFF BY DEFAULT: this did not fix what it was built for. See the note above.
+            w = w / (1.0 + (d2 / arm_r2) ** 3)
         if capped:
             # How far past the far endpoint this pixel lies, along the bone.
             past = np.maximum(0.0, (dx * vt[0] + dy * vt[1]) / lt - lt)
@@ -1021,7 +1048,8 @@ def exaggerate(src_kps, dst_kps, k, joints=LEGS):
 
 def warp(src_rgba, src_kps, dst_kps, size, alpha=1.6, step=4, anchors=5, margin=0.0,
          method="skin", fig=None, across=1.0, foot_w=1.0, props=(), rigid_torso=True,
-         hard_foot=0.160, torso_feather=0.050, foot_flex=1.0, occlude=True):
+         hard_foot=0.160, torso_feather=0.050, foot_flex=1.0, occlude=True,
+         arm_reach=0.0):
     """One deformed frame. Alpha is warped with the colour, so the silhouette moves too."""
     if method == "skin":
         dst_kps = clamp_limbs(src_kps, dst_kps)
@@ -1029,14 +1057,14 @@ def warp(src_rgba, src_kps, dst_kps, size, alpha=1.6, step=4, anchors=5, margin=
         return warp_occluded(src_rgba, src_kps, dst_kps, size, fig,
                              alpha=alpha, step=step, across=across, foot_w=foot_w,
                              props=props, hard_foot=hard_foot, rigid_torso=rigid_torso,
-                             torso_feather=torso_feather, foot_flex=foot_flex)
+                             torso_feather=torso_feather, foot_flex=foot_flex, arm_reach=arm_reach)
     if method == "skin":
         mx, my = skin_field(src_kps, dst_kps, size, alpha=alpha, step=step, fig=fig,
                             across=across, foot_w=foot_w,
                             alpha_src=src_rgba[:, :, 3], props=props,
                             rgb_src=src_rgba[:, :, :3], hard_foot=hard_foot,
                             rigid_torso=rigid_torso, torso_feather=torso_feather,
-                            foot_flex=foot_flex)
+                            foot_flex=foot_flex, arm_reach=arm_reach)
     else:
         P = handles(dst_kps, size, anchors, margin)
         Q = handles(src_kps, size, anchors, margin)

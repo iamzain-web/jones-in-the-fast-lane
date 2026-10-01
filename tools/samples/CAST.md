@@ -1562,6 +1562,65 @@ L forearm   1.02x 1.18x 1.36x 1.08x      constant in every cel
 moved are the elbows (8.9 px) and the wrists (23 px). Nose, neck, shoulders, hips, knees and
 ankles are bit-identical, so every leg, bob, sway and depth decision in this file still stands.
 
+### And the hip lobe was the forearm too — but its WEIGHT, not its length
+
+The arc fix made the arm bones constant length in every cel and **the hip lobe did not move**:
+cel 2's plate area stayed at +7%. So the arm's length was never what caused it, and the
+obvious next suspect was the hip bones, which diverge below the plate as the cycle requires.
+
+**Dumped before theorising, and the dump replaced the hypothesis.** Painting every destination
+pixel of cel 2 by the bone with the largest weight in the skinned field — the instrument that
+found the 23.6%/12.6% ribcage asymmetry in §7f — shows the **LEFT FOREARM** owning a rounded
+lobe spreading across the hip and the shirt's lower flank:
+
+```
+band below the plate and outboard of centre, cel 2
+   L forearm   45.2%
+   L thigh     41.0%
+   L pelvis    13.7%
+```
+
+That lobe *is* the hem swinging down over the jeans. The hips are 14%.
+
+The mechanism is the same one §7h solved one storey up. Weight falls as `1/(d²+1)^alpha`, so a
+bone keeps a say over everything nearer to it than any other bone — and a hanging forearm is
+simply closer to the hip than the thigh or the pelvis is. The rigid plate answered it for the
+ribcage; **below the plate nothing answered it at all.**
+
+And the forearm is not only the nearest bone there, it is by far the largest *motion*. How far
+each candidate's own endpoints travel between source and destination:
+
+```
+            cel 0   cel 1   cel 2   cel 3
+L forearm    43.8    60.6    67.3    26.8 px
+hips         21.1    17.0    21.1    16.9
+```
+
+Three times the hips on cel 2. So capping its reach — at 0.050 of figure height, three times
+the forearm's own measured half-width of 0.0166 and still far short of the hip, with a smooth
+falloff — looked like the answer twice over.
+
+### IT WAS NOT. The cap changed nothing, and that is the finding
+
+Built, run, measured: **cel 2's plate area stayed at 1.07 and the 1:1 crop is unchanged.** The
+hem still swings down over the hip.
+
+So **dominance is not responsibility.** The dominant-bone dump correctly says the forearm owns
+45% of that band, and the displacement table correctly says it moves three times as far as
+anything else there — and removing its influence entirely moves the result by nothing, because
+the bones that take over move that cloth the same way. Both numbers were true and neither was
+the cause. It is §0a's rule turned on a diagnostic instead of a defect: *a metric answers the
+question it was written for*, and "which bone is nearest" and "which bone moves furthest" are
+both different questions from "which bone put the cloth there".
+
+`arm_reach` is left in and **defaults to 0**, because a mechanism that was built, measured and
+found not to work is worth more as a closed door than as a deleted one.
+
+**Three mechanisms have now failed on this lobe** — the arc fix (correct on its own terms, no
+effect here), the smear rule (three variants, three carved shirts) and the forearm reach cap.
+The honest state is that the mechanism is not understood, and the next move belongs in the
+authored hip swing rather than downstream of it.
+
 ### And one defect the occlusion work introduced
 
 A thin green streak up the fly on cels 1 and 3: the two leg masks abut along the crotch and
