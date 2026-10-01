@@ -184,7 +184,49 @@ def shoe_mask(rgb, alpha, src_ankles, fig, tol=52.0, grow=7):
     return masks
 
 
-def shirt_mask(rgb, alpha, kps, fig, tol=60.0, grow=5):
+def _components(mask):
+    """Connected components by run-length union-find; returns a label image."""
+    lab = np.zeros(mask.shape, np.int32)
+    par = {}
+    nxt = 1
+
+    def find(a):
+        while par[a] != a:
+            par[a] = par[par[a]]
+            a = par[a]
+        return a
+
+    for y in range(mask.shape[0]):
+        idx = np.nonzero(mask[y])[0]
+        if not len(idx):
+            continue
+        brk = np.nonzero(np.diff(idx) > 1)[0]
+        st = np.concatenate(([0], brk + 1))
+        en = np.concatenate((brk, [len(idx) - 1]))
+        for s, e in zip(st, en):
+            x0, x1 = idx[s], idx[e]
+            above = lab[y - 1, x0:x1 + 1] if y else np.zeros(0, np.int32)
+            hit = np.unique(above[above > 0])
+            if not len(hit):
+                lab[y, x0:x1 + 1] = nxt
+                par[nxt] = nxt
+                nxt += 1
+            else:
+                lab[y, x0:x1 + 1] = hit[0]
+                for h in hit[1:]:
+                    a, b = find(hit[0]), find(h)
+                    if a != b:
+                        par[b] = a
+    if nxt == 1:
+        return lab
+    flat = np.zeros(nxt, np.int32)
+    for k in range(1, nxt):
+        flat[k] = find(k)
+    return flat[lab]
+
+
+def shirt_mask(rgb, alpha, kps, fig, tol=60.0, grow=5, arm_r=0.0, fill=True,
+               val_tol=60.0, sat_tol=24.0):
     """The SHIRT's own pixels in the source, by colour, restricted to the ribcage's width.
 
     Same instrument as shoe_mask and for the same reason: geometry cannot tell a shirt from
@@ -201,8 +243,14 @@ def shirt_mask(rgb, alpha, kps, fig, tol=60.0, grow=5):
     y0 = int(max(0, neck[1] - 0.02 * fig))
     y1 = int(min(op.shape[0], hipm[1] + 0.02 * fig))
     cx = 0.5 * (neck[0] + hipm[0])
-    x0 = int(max(0, cx - 0.115 * fig))
-    x1 = int(min(op.shape[1], cx + 0.115 * fig))
+    # WIDE ENOUGH TO CONTAIN THE WHOLE GARMENT, SLEEVES INCLUDED, and let COLOUR stop it at
+    # the skin. Clipped to the ribcage's own width (0.115) the rigid region ended in the
+    # middle of the fabric and the step to the blended field showed as a ragged vertical
+    # seam. The boundary has to fall where the garment itself ends - the sleeve hem, where
+    # cloth stops and skin begins - because the eye expects an edge there and does not
+    # expect one down the middle of a continuous surface.
+    x0 = int(max(0, cx - 0.30 * fig))
+    x1 = int(min(op.shape[1], cx + 0.30 * fig))
     out = np.zeros(op.shape, bool)
     if y1 - y0 < 8 or x1 - x0 < 8:
         return out
@@ -213,17 +261,144 @@ def shirt_mask(rgb, alpha, kps, fig, tol=60.0, grow=5):
     ref_px = rgb[ry0:ry1, rx0:rx1][op[ry0:ry1, rx0:rx1]]
     if len(ref_px) < 50:
         return out
+    # SATURATION, NOT COLOUR DISTANCE. A distance test against the LIT chest excluded the
+    # SHADED parts of the same garment - both side panels and both sleeves - and the mask's
+    # ragged edge down the shirt's sides is exactly the tear that appeared in the warp. The
+    # dump showed it in one look, as it did for the shoe.
+    #
+    # Shading changes a colour's VALUE greatly and its SATURATION barely, so saturation is
+    # the property that actually separates these two materials: a white shirt is achromatic
+    # in light or in shadow, and skin is orange in both. Same instrument as the shoe, aimed
+    # at the right axis.
+    # SATURATION ALONE IS NOT ENOUGH: LIT SKIN IS ALSO UNSATURATED.
+    # Measured on this character, with the mask checked against the ARM by name rather than
+    # only against the shirt:
+    #
+    #     chest (shirt)            sat   7   val 232
+    #     right forearm (shaded)   sat  78   val 113    correctly excluded
+    #     LEFT forearm (LIT)       sat  15   val 201    78% CAPTURED
+    #
+    # A brightly lit forearm washes out to saturation 15 against a threshold of 26, so the
+    # arm was welded to the rigid ribcage and carried with it - a shirt and an arm moving as
+    # one solid piece, which is what a player described. The previous check passed because it
+    # only asked whether the mask covered the shirt. A mask that covers the garment
+    # beautifully AND takes the arm passes a shirt-shaped test; the check needs both halves.
+    #
+    # The shirt is BOTH very unsaturated AND very bright. Lit skin is neither - it is less
+    # bright and more saturated - so both tests together separate them where either alone
+    # does not. Both thresholds come from the chest's own reference, so a dark or coloured
+    # shirt on another character sets its own.
+    #
+    # AND BOTH TOLERANCES WERE SET AGAINST A SINGLE REFERENCE PIXEL BLOCK AND WERE FAR TOO
+    # TIGHT. `ref_sat` on this figure is 6, so `ref_sat + 5` is a gate at saturation 11 -
+    # tighter than the garment's own variation. Classifying every pixel of the torso box by
+    # WHICH GATE REJECTED IT, which is one picture rather than another sweep:
+    #
+    #     kept                           40225 px   44.3%
+    #     rejected, too SATURATED        48166 px   53.0%     <- the whole of one flank
+    #     rejected, too DARK              1297 px    1.4%
+    #     rejected, hem/narrow                0 px    0.0%
+    #
+    # The saturation gate was doing all of the work and throwing away over half the garment
+    # with it; the value gate, which the comment above credits, rejects 1.4%. Row profiles
+    # across the waist settle where the line belongs - sampling saturation every 16 px on
+    # every row from the sleeve hem to the waistband, the cloth never exceeds 25 and the arms
+    # never fall below 36, on any row. `ref_sat + 24` = 30 sits in that gap, and it is a
+    # measured gap rather than a chosen number.
+    #
+    #     tolerance        mask px   chest   garment   R forearm   L forearm
+    #     sat+5  val-20      44372   89.4%     49.9%        0%          0%
+    #     sat+24 val-60      69326  100.0%     97.6%        0%       12.9%
+    #
+    # "garment" there is the second half the old check never had: the whole t-shirt, bounded
+    # on each row by the first run of four saturated pixels outboard of the centre - the
+    # arm's own edge. A mask can cover the chest perfectly while a comb is bitten out of its
+    # sides, and chest coverage alone reports that as a pass.
     ref = np.median(ref_px, axis=0)
+    ref_sat = float(ref.max() - ref.min())
+    ref_val = float(ref.max())
     sub = rgb[y0:y1, x0:x1]
-    d = np.sqrt(((sub - ref) ** 2).sum(axis=2))
-    out[y0:y1, x0:x1] = (d < tol) & op[y0:y1, x0:x1]
+    sat = sub.max(axis=2) - sub.min(axis=2)
+    val = sub.max(axis=2)
+    out[y0:y1, x0:x1] = ((sat < ref_sat + sat_tol) & (val > ref_val - val_tol)
+                         & op[y0:y1, x0:x1])
+    # AND THE SLEEVE HEM, MEASURED OFF THE PHOTOGRAPH RATHER THAN CHOSEN. Walking down each
+    # upper arm from shoulder to elbow and finding where the low-saturation run ends puts the
+    # hem at 54% and 62% of that span - 0.076 and 0.087 of figure height below the neck. Past
+    # it there is no cloth, so nothing out there can be shirt whatever its colour, and the
+    # lit forearm's specular highlights (which still slipped the sat/val test, 45.8% of it)
+    # are excluded by geometry that was measured rather than guessed.
+    hem = neck[1] + 0.090 * fig
+    narrow = np.zeros(op.shape, bool)
+    narrow[:, int(max(0, cx - 0.115 * fig)):int(min(op.shape[1], cx + 0.115 * fig))] = True
+    below = np.zeros(op.shape, bool)
+    below[int(hem):] = True
+    out &= ~(below & ~narrow)
+    # AND A FOREARM CYLINDER, WHICH IS NOW OFF BY DEFAULT AND SHOULD STAY OFF. It was added
+    # on the belief that colour could not finish the separation, and on one sentence that is
+    # simply false for this figure: "it cannot take shirt with it because no shirt lies along
+    # a forearm". Drawing the segments on the photograph shows that the generator put each
+    # arm slightly OUTBOARD of the pose it was given, so the elbow-wrist segment runs down the
+    # arm's inner edge, which is shirt. A cylinder on it is a cylinder on the garment.
+    #
+    # It was also twice a forearm wide. 0.055 of figure height is 56 px; the forearm's own
+    # half-width, measured at five heights between elbow and wrist, is 17 px = 0.0166. So it
+    # reached 40 px into the cloth and took a vertical swath out of both flanks - 18.5% of the
+    # garment and 8% of the chest - which is exactly the ragged white fringe that appeared
+    # down the shirt's left side on the two cels where the arms swing furthest.
+    #
+    #     setting                      mask px   chest   garment   R forearm   L forearm
+    #     r 0.055, sat+5,  val-20        44372   89.4%     49.9%       0%          0%
+    #     r 0.025, sat+24, val-60        63934  100.0%     84.1%       0%          0%
+    #     r 0,     sat+24, val-60        69326  100.0%     97.6%       0%        12.9%
+    #
+    # The 12.9% is the two-pixel dilation below touching the arm's antialiased edge, not the
+    # arm; at grow 0 it is 8.4% and the mask gains a pale ragged sliver along the whole flank,
+    # which is worse. Once the saturation gate is at the measured gap the cylinder costs 13.5%
+    # of the garment to buy nothing.
+    #
+    # And the check that passed it was measuring nothing. Its forearm probe is a box centred
+    # on the elbow-wrist SEGMENT, which lies on the cloth/skin boundary rather than on the
+    # arm, so the box is half shirt; and ANY cylinder wider than the box reads 0% whatever it
+    # does to the garment, which is why 0.055 scored perfectly. The probes used now are found
+    # from the SILHOUETTE - the outermost 0.030 of figure height on each side at forearm
+    # heights, measuring sat 77 / val 118 and sat 71 / val 104, unambiguously skin.
+    #
+    # Left in, and parameterised, because it is still the right fallback for a character whose
+    # garment genuinely overlaps their skin in colour. It is not that character.
+    for elb, wri in ((3, 4), (6, 7)) if arm_r > 0 else ():
+        e = np.asarray(kps[elb], np.float64)
+        w = np.asarray(kps[wri], np.float64)
+        v = w - e
+        L = float(np.hypot(*v))
+        if L < 1e-6:
+            continue
+        yy, xx = np.mgrid[0:op.shape[0], 0:op.shape[1]]
+        t_ = np.clip(((xx - e[0]) * v[0] + (yy - e[1]) * v[1]) / (L * L), 0.0, 1.0)
+        d2 = (xx - (e[0] + t_ * v[0])) ** 2 + (yy - (e[1] + t_ * v[1])) ** 2
+        out &= d2 > (arm_r * fig) ** 2
+    # A RIBCAGE HAS NO HOLES IN IT. Where the colour gates drop the garment's own folds the
+    # mask comes out with islands of non-rigid pixels sitting in the middle of a rigid plate,
+    # and every one of those islands is a tear across a continuous surface - the one thing
+    # this whole section exists to avoid.
+    #
+    # Filling them changes nothing about where the mask's OUTER boundary falls, so it cannot
+    # take arm: a hole is by definition already enclosed by shirt on every side. Cheap
+    # insurance rather than the main fix - with the gates at the measured gap it recovers only
+    # 138 px here, because the ragged notches opened onto the edge and were never holes.
+    if fill:
+        lab = _components(~out)
+        bord = np.unique(np.concatenate((lab[0], lab[-1], lab[:, 0], lab[:, -1])))
+        holes = ~out & ~np.isin(lab, bord)
+        out = out | holes
     if grow:
         out = np.asarray(Image.fromarray((out * 255).astype(np.uint8))
                          .filter(ImageFilter.MaxFilter(grow))) > 127
     return out
 
 def skin_field(src_kps, dst_kps, size, alpha=2.0, step=2, reach=0.26, fig=None,
-               across=1.0, foot_w=1.0, alpha_src=None, rgb_src=None, props=(), hard_foot=0.160):
+               across=1.0, foot_w=1.0, alpha_src=None, rgb_src=None, props=(),
+               hard_foot=0.160, rigid_torso=True):
     """A backward displacement field by LINEAR BLEND SKINNING - one transform per BONE.
 
     WHY THIS REPLACED MOVING LEAST SQUARES. MLS drives the image from scattered point
@@ -490,6 +665,51 @@ def skin_field(src_kps, dst_kps, size, alpha=2.0, step=2, reach=0.26, fig=None,
         fx = np.where(smear, -1e4, fx)
         fy = np.where(smear, -1e4, fy)
 
+    # ===================================================================================
+    # THE RIBCAGE IS ONE RIGID BODY
+    # ===================================================================================
+    # A player: "the whole right side shirt skews when he walks, thats not how clothing
+    # works". They were right, and the weight map said why. The ribcage was spanned by TWO
+    # bones - neck to RIGHT hip and neck to LEFT hip - and those two hips move independently
+    # in every cel. Blending two transforms that disagree IS shear; no parameter avoids it.
+    # Measured field shear over the torso band: mean 0.096, p95 0.441, where a rigid body
+    # reads 0.
+    #
+    # The asymmetry they reported was in the same dump. Dominant bone over the ribcage:
+    #     neck-Rhip 27.3%   neck-Lhip 21.2%   RIGHT arm 23.6%   left arm 12.6%
+    # The right arm's bones reach into the shirt with nearly twice the left's influence, so
+    # one side skews and the other does not.
+    #
+    # THE TRANSFORM IS DERIVED FROM SOMETHING THAT CANNOT DISAGREE WITH ITSELF: the neck and
+    # the hip MIDPOINT. Rotation and translation only - the scale is forced to 1, so the
+    # shirt cannot stretch or parallelogram. Below the waist the hips diverge as they must,
+    # and the blend zone sits at the waist, where a real body actually articulates.
+    #
+    # WHICH PIXELS ARE THE SHIRT IS DECIDED BY COLOUR, not by which bone is nearest, for the
+    # same reason the shoe was: geometry cannot tell a shirt from an arm. Third time colour
+    # has settled a separation that geometry could not.
+    if rigid_torso and rgb_src is not None and alpha_src is not None:
+        figv = fig if fig else H
+        shirt = shirt_mask(rgb_src, alpha_src, src_kps, figv)
+        if shirt.any():
+            s_neck = np.asarray(src_kps[1], np.float64)
+            d_neck = np.asarray(dst_kps[1], np.float64)
+            s_hip = (np.asarray(src_kps[8], np.float64)
+                     + np.asarray(src_kps[11], np.float64)) / 2.0
+            d_hip = (np.asarray(dst_kps[8], np.float64)
+                     + np.asarray(dst_kps[11], np.float64)) / 2.0
+            vs, vd = s_hip - s_neck, d_hip - d_neck
+            if np.hypot(*vs) > 1e-6 and np.hypot(*vd) > 1e-6:
+                ang = np.arctan2(vs[1], vs[0]) - np.arctan2(vd[1], vd[0])
+                ca, sa = np.cos(ang), np.sin(ang)   # NO scale term: rigid by construction
+                dxt, dyt = VX - d_neck[0], VY - d_neck[1]
+                gx = s_neck[0] + ca * dxt - sa * dyt
+                gy = s_neck[1] + sa * dxt + ca * dyt
+                own = shirt[np.clip(gy.astype(int), 0, shirt.shape[0] - 1),
+                            np.clip(gx.astype(int), 0, shirt.shape[1] - 1)]
+                fx = np.where(own, gx, fx)
+                fy = np.where(own, gy, fy)
+
     yy = np.arange(H, dtype=np.float64) / step
     xx = np.arange(W, dtype=np.float64) / step
     y0 = np.clip(yy.astype(int), 0, fx.shape[0] - 2)
@@ -638,14 +858,15 @@ def exaggerate(src_kps, dst_kps, k, joints=LEGS):
 
 
 def warp(src_rgba, src_kps, dst_kps, size, alpha=1.6, step=4, anchors=5, margin=0.0,
-         method="skin", fig=None, across=1.0, foot_w=1.0, props=(),
+         method="skin", fig=None, across=1.0, foot_w=1.0, props=(), rigid_torso=True,
          hard_foot=0.160):
     """One deformed frame. Alpha is warped with the colour, so the silhouette moves too."""
     if method == "skin":
         mx, my = skin_field(src_kps, dst_kps, size, alpha=alpha, step=step, fig=fig,
                             across=across, foot_w=foot_w,
                             alpha_src=src_rgba[:, :, 3], props=props,
-                            rgb_src=src_rgba[:, :, :3], hard_foot=hard_foot)
+                            rgb_src=src_rgba[:, :, :3], hard_foot=hard_foot,
+                            rigid_torso=rigid_torso)
     else:
         P = handles(dst_kps, size, anchors, margin)
         Q = handles(src_kps, size, anchors, margin)
