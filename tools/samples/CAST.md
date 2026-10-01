@@ -1864,11 +1864,31 @@ the arm. **The experiment could not have produced a different answer whatever th
 That is §0a's rule applied to one's own test rather than to a metric: ask what the result would
 have looked like if the arm *were* responsible, and it would have looked exactly like that.
 
-**And the exclusion must be ramped.** Switched hard with `~cloth` it removed the hem lobe on
-all four cels — the thing it was built for — and tore every arm into a doubled, ghosted limb
-trailing a smear past the hip. A sharp boundary between two fields that disagree is a tear
-wherever they disagree; same lesson as the rigid plate's own edge, reached from the other side.
-Ramped over a sleeve's width, 0.016 of figure height.
+**And the exclusion must be ramped — required, not merely nicer.** Switched hard with `~cloth`
+it removed the hem lobe on all four cels — the thing it was built for — and tore every arm into
+a doubled, ghosted limb trailing a smear past the hip. A sharp boundary between two fields that
+disagree is a tear wherever they disagree; same lesson as the rigid plate's own edge, reached
+from the other side. Ramped over a sleeve's width, 0.016 of figure height.
+
+### And a sagittal cycle CANNOT be rendered from an extreme-pose source
+
+This settles the order of work, and it is why the tear that survives the ramp is not something
+to carve away downstream. The warp deforms the SOURCE, so what each cel asks for is its
+projected arm length **over the source's**:
+
+```
+source at a swing EXTREME (282 as shot)   1.000  1.200  1.000  1.200   max STRETCH 20%
+source at MID-SWING                       0.819  0.983  0.819  0.983   every cel a squeeze
+```
+
+A ratio above 1.000 is a stretch the renderer must refuse, because a projection cannot exceed
+the true length (`clamp_limbs`). The arm then lands short of where the pose asks and tears
+against the cloth beside it. **Two of four cels currently demand a 20% stretch, so the
+remaining tear is the refusal showing** — the renderer is behaving correctly and the fault is
+upstream in the source pose.
+
+From a mid-swing source every cel is a squeeze, which the warp handles natively. **§0b's
+generation rule is therefore not an optimisation for a sagittal cycle; it is a precondition.**
 
 ## 8. Two bugs that looked like hardware faults
 
