@@ -163,9 +163,29 @@ def shoe_mask(rgb, alpha, src_ankles, fig, tol=52.0, grow=7):
     if not len(ys):
         return [np.zeros(op.shape, bool) for _ in src_ankles]
     bot = int(ys[-1])
+    # AND EACH FOOT'S WINDOW STOPS AT THE MIDLINE BETWEEN THE TWO ANKLES.
+    #
+    # The window is +-0.09 of figure height, which is 92 px here, and that was safe only
+    # because every pose it had been run on had the feet far apart. A source generated at a
+    # NEUTRAL stance (§0b) puts the ankles 62 px apart, so both windows contain BOTH shoes:
+    # measured on the mid-swing frame, the two masks came out 150 and 132 px wide against 64
+    # and 67 on the old source, overlapping almost completely. Each foot's rigid translation
+    # was then applied to a region holding the other foot's shoe as well, and the pair shredded
+    # into fragments - which looked like the foot machinery failing and was the mask.
+    #
+    # A foot cannot extend past the midline between the two ankles, so that is where the
+    # window ends. Geometry that was always true and was never enforced because no pose had
+    # tested it.
+    mid = 0.5 * (float(src_ankles[0][0]) + float(src_ankles[1][0])) \
+        if len(src_ankles) == 2 else None
     masks = []
     for ax, ay in src_ankles:
         x0, x1 = int(max(0, ax - 0.09 * fig)), int(min(op.shape[1], ax + 0.09 * fig))
+        if mid is not None:
+            if ax < mid:
+                x1 = int(min(x1, mid))
+            else:
+                x0 = int(max(x0, mid))
         band = op[bot - int(0.020 * fig):bot - int(0.004 * fig), x0:x1]
         cols = rgb[bot - int(0.020 * fig):bot - int(0.004 * fig), x0:x1][band]
         if len(cols) < 30:
