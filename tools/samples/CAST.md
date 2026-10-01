@@ -39,6 +39,26 @@ The transferable form, which applies well outside this project:
 > transform did to it. Before trusting any number, ask what the picture would look like if
 > something *else* were wrong — and if you cannot answer, dump it and look.
 
+### Two corollaries, each earned twice
+
+**If the probe is positioned by the thing you are varying, the experiment measures the probe.**
+Sweeping the init's hand-capsule length put the probe at a fixed fraction *of that length*, so
+a longer capsule always moved the sample point further from the body and always scored lower —
+the sweep could not have produced any other answer whatever the truth was. The tell was that
+`HAND_LEN 0` scored the highest number in the table. §7k is the first instance: the bones
+blamed for the hip lobe were arm bones, and the experiment that "confirmed" it could only ever
+have confirmed it. **Before running a sweep, ask whether the instrument moves with the
+variable. If it does, fix the instrument first.**
+
+**If the numbers did not move, check the HASH before concluding the change did not land.**
+Reordering the init's draw calls produced a frame whose screen checks were identical in every
+field — coverage 22.0%, crown 57, head width 0.087, shoulders 0.265, the same single failure.
+On "byte-identical output means a change that did not land" that fix was one step from being
+reverted as ineffective. **It had landed**; the thigh capsule was painting over the hand, and
+the file hashes differed. The screen's numbers are coarse and a real change can leave all of
+them unmoved. This is the same family as the stale-`testhost` trap, where identical bytes meant
+a build that never happened — in both cases the cheap check is the hash, not the metric.
+
 Two corollaries that have each cost a round here:
 
 1. **Look at it at 100% or magnified, never scaled to fit a sheet.** Four rounds went past
@@ -1981,6 +2001,7 @@ generation rule is therefore not an optimisation for a sagittal cycle; it is a p
 | **in `tools/samples` now** | 0.97–0.98 | 68.2% | L only, 17.6% | 0.0257 | **0.0660 — in band** |
 | regenerated (`warp_mid4`) | 0.99–1.02 | 65.6% | both, 21.6/24.3 | 0.0227 | 0.0535 — below |
 | + init hand, draw order (`warp_mid6`) | 0.99–1.02 | 65.1% | both, 20.8/22.5 | **0.0208** | 0.0526 — below |
+| + forced hand refinement (`warp_mid7`) | 0.99–1.02 | 64.8% | L only, 26.0% | 0.0320 | 0.0513 — below |
 
 Better on the shirt plate and better on lateral sway. **Worse on the sleeve, worse on the
 hands, and the projected arm drops out of the reference band** where the current build sits
@@ -2081,6 +2102,67 @@ One sweep had to be thrown away: varying the capsule length moved the probe poin
 longer always measured lower and the experiment could not have produced any other answer. Same
 error as §7k, caught by noticing that `HAND_LEN 0` scored 100 — the highest in the table.
 
+### Abduction, measured off the footage — and it is not enough. Do not author it.
+
+The next lever was to abduct the arms so the hands clear the hips. That was measured off
+`walkref.mp4` rather than chosen, because whether it changes the silhouette *correctly* is a
+fact about human walking and not a matter of judgement.
+
+**The raw mask could not be run-counted, and the first version of this measurement was wrong.**
+Background subtraction leaves the figure riddled with interior holes wherever the subject
+matches the backdrop — the hip band came back as **7–12 runs on a single row**. The first run
+of the instrument duly reported a gap of `0.0034` on nearly every frame, which is **one pixel**:
+it was measuring the width of a noise speck. A genuine arm-to-torso gap is background that
+reaches the border and an interior hole is not, so the fix is to flood the inverse from the
+border and fill whatever it does not reach. (That flood was then itself wrong in the first
+cut — padding the ring with the *figure* value sent it through the figure and filled the whole
+frame, one run spanning all 640 columns. Both errors were caught by dumping the mask.)
+
+With holes filled the silhouette through the hand band is **arm | gap | torso | gap | arm**,
+read directly. What the clip can and cannot show:
+
+| | |
+|---|---|
+| does a gap exist | **yes** — three runs or one, a fact about the silhouette |
+| the gap's width | **yes**, where it exists |
+| the gap where the arm crosses the hip | **no** — arm and torso merge into one run and the clearance is behind the body. Reported as merged, never as zero |
+| the true 3-D abduction angle | **no** — this is the projected gap in the image plane |
+
+```
+set    frames   rows merged        LEFT gap (median)   RIGHT gap (median)
+cyc_     16      93%                   0.0337              0.0035
+md_      34      58%                   0.0202              0.0168
+lg_      34      46%                   0.0426              0.0164
+sv_      31      87%                   0.0202              0.0135
+
+ALL, both sides, 1434 samples:  min 0.0033   MEDIAN 0.0201   max 0.1155
+                                10th-90th percentile: 0.0067 .. 0.0471
+```
+
+**The merged fraction is the headline, not a footnote.** Between 46% and 93% of sampled rows
+have the arm and torso as one run — for most of the stride, in a front view, a real walker's
+hand is *not* laterally clear of his hip. The gap is real but intermittent and small.
+
+**And it is nowhere near enough.** To free the hand from the init's trouser column the hand
+must move **0.0587 of figure height** (hand centre 238, thigh outer edge 221, hand radius
+0.042 → 60 px of overlap on a 1025 px figure). Against that:
+
+```
+required to clear the thigh column      0.0587
+footage, median                         0.0201     2.9x too small
+footage, 90th percentile                0.0471     still short
+```
+
+Only a single outlier row in the whole clip (0.1155) exceeds the requirement.
+
+**So the measured abduction is not applied.** It is about a third of what is needed, and the
+init sweep already showed that moving the hand outboard *reduces* its contrast (60 → 35 at an
+offset of 0.030), so authoring the honest number would be strictly harmful: too small to clear
+the column, and in the direction that weakens the hint. Inventing a larger angle would be
+inventing a walk the reference does not contain. **The footage closed this lever rather than
+opening it, which is still worth the measurement — the alternative was authoring it, waiting
+for a generation, and finding out afterwards.**
+
 ### What this bounds about §0
 
 §0 says the init beats the prompt, and the shoe row proves it at its strongest. **This is the
@@ -2094,7 +2176,68 @@ survive the blur, and below that size neither lever has been shown to work.** Wh
 is smaller than 62 px, the levers left are the pose (place the limb where the ambiguity does
 not arise), the blur itself, or a refinement pass — not a better adjective.
 
-### The test that was asked for could not be run
+### The refinement pass DOES get the hands out — and the gate was right all along
+
+The init has no authority below its blur, so the hand has to be resolved at a stage that works
+at the hand's own scale. That stage already exists: §7e's hand refinement, a 512×512 masked
+pass at the wrist. **It was being skipped.** Its gate gives up when the crop holds under 8%
+flesh, and on this source `hand_r` measured 0.082 (passes) and `hand_l` **0.065 (skips)** — so
+the one hand most buried in a pocket was precisely the one the refiner refused to touch.
+
+The gate's premise had quietly expired. It was written when the model's hand placement was
+accepted, so an empty crop meant no hand to improve; now the hand is *supposed* to be at the
+authored wrist and a crop full of trouser is the defect itself. `--force-hands` defeats it,
+off by default.
+
+**It works, and it fails, and both halves matter.**
+
+```
+                             hands out of pockets   fingers       watches
+init alone (7n above)               no              n/a           both present
+--force-hands, strength 0.72        YES             FUSED         both gone
+```
+
+Both hands come out and hang at the sides, and the two wristwatches went with them — the first
+thing all session to move that defect, and consistent with the §0 bound, because the refiner
+works at a scale where a watch exists. But **both hands came back as fused mittens**: a thumb
+and a single undivided mass, no separate fingers. That is exactly the failure §7e was built to
+prevent, reproduced on demand. **The gate is vindicated, not obsolete** — it should stay on by
+default, and this flag should only ever be used on a frame someone is about to look at.
+
+**At which rung does the mangling matter?** The shadow lesson applies again. Downsampled so the
+figure is the 1990 cel's own 94 rows, the hand is **2–3 pixels**: the fused fingers are below
+resolution, and what *is* visible is a skin-coloured blob where a hand belongs — present in the
+refined version, absent in the pocket version. So at the rung the game draws, this is a gain.
+At the 1:1 deliverable rung, where these frames are actually inspected, the hand is visibly
+wrong. **Those two facts point opposite ways and the choice between them is not a measurement.**
+
+### The test that was asked for: run at last, and it REFUTES the hypothesis
+
+With the hands finally out of the pockets the precondition exists, so the question could be
+asked properly — does the projected arm range return to the reference band?
+
+```
+                                 lateral range      projected range
+sagittal, mid-swing source           0.0257             0.0660   in band
+regenerated source                   0.0227             0.0535
+  + hand in init, draw order         0.0208             0.0526
+  + forced hand refinement           0.0320             0.0513   STILL BELOW
+REFERENCE (walkref.mp4)          0.0139-0.0160      0.0588-0.0660
+```
+
+**It did not return. 0.0513 against a floor of 0.0588.** My reading was that buried hands were
+shortening the measured arm; the hands are no longer buried and the number did not move
+(0.0526 → 0.0513). **The hypothesis is refuted, and there is a second problem.** It is not the
+source: three different sources with three different hand treatments all land at 0.051–0.054,
+which points upstream at the authored cycle's swing amplitude rather than at anything the
+generator produces.
+
+**And the two numbers moved in opposite directions, which is why they are reported apart.**
+Getting the hands out made the *offset* right and made the *amplitude* worse — lateral went
+0.0208 → 0.0320, now **twice** the reference's 0.0139–0.0160, because hands that stick out
+contribute lateral extent that hands in pockets did not. A single combined "arm fidelity"
+figure would have averaged a win against a loss and reported neither. That is the metric that
+cannot fail, and this is what it would have hidden.
 
 The question was whether the projected arm range returns to the reference band once the hands
 come out of the pockets. **The hands did not come out, so the test has no precondition and is
@@ -2188,6 +2331,13 @@ So: **no alpha clip, and the sole check stays exactly as it is.** The check is h
 measuring a stage at which the shadow is genuinely present. It is just measuring a stage the
 shadow does not survive. Loosening it to make the number go away would have removed a working
 instrument to hide an artefact that was already being handled one step later.
+
+**This is luck, not design, and nothing should be built on it.** The shadow is removed because
+it happens to be `(0,0,1)` against a `(0,0,0)` backdrop — indistinguishable, so it keys out.
+**A shadow one shade lighter would survive the matte and land on the sprite**, and it would do
+so silently, because the only check that currently notices a shadow at all is the sole check,
+which fires at the generation rung for a different reason. Nothing downstream is looking for
+this. If a cast shadow ever does reach a finished cel, this paragraph is where to start.
 
 The general point, which is the same one as §0c and the `±0.09` window from the other side:
 **a defect's size is meaningless until you say which rung you measured it at.** This one is
@@ -2324,6 +2474,14 @@ is four cels of a prop rather than any part of a character.
 * **Views 284, 286, 291, 292 fail `--shirt-check`** and are not to be rebuilt in this pass.
 * **28 cels have never been generated** (283, 287, 293–297, and all of body3). All of them
   must be shot mid-swing per §0b — that is now a precondition, not a preference (§7l).
+* **The projected arm range is short and the source is not the cause — §7n.** Three sources
+  with three different hand treatments all land at 0.051–0.054 against a reference band of
+  0.0588–0.0660, including one with the hands fully out of the pockets. That points at the
+  authored cycle's swing amplitude, not at the generator. **Lateral is simultaneously 2× too
+  high (0.0320 against 0.0139–0.0160), so these must not be chased with one number.**
+* **Hand refinement produces fused fingers when forced past its gate (§7n).** `--force-hands`
+  places the hands correctly and mangles them. Below resolution at 94 rows, visibly wrong at
+  1:1. Needs a better hand pass, not a looser gate.
 * **`boil 12.12` on the mid-swing smoothing run** was observed and not investigated.
 * **`generate()`'s `best` variable is not the best, it is the LAST.** It is reassigned every
   attempt and only the `break` on a clean screen stops the loop, so when no attempt passes,

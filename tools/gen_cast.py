@@ -1,4 +1,4 @@
-﻿"""Generates a PHOTO-REAL original cast for the twenty walker views, and screens it.
+"""Generates a PHOTO-REAL original cast for the twenty walker views, and screens it.
 
 WHAT THIS IS
 ------------
@@ -1640,10 +1640,22 @@ def refine(img_pipe, torch, base, cel, who, device, args):
             # blob on the hip that a player asked about - not a badly drawn hand, but a hand
             # HALLUCINATED ONTO A JACKET by the pass meant to improve it. Refining nothing
             # is strictly better than inventing something.
-            if skin_fraction(base, kp[0], kp[1] + fig * 0.012, fig * 0.085) < 0.08:
+            # `--force-hands` DELIBERATELY DEFEATS THIS GATE, and the gate is right to exist.
+            #
+            # The gate's premise was that the model's hand placement is accepted, so a crop
+            # with no flesh in it means there is no hand there to improve. That premise has
+            # changed: the hand is supposed to be AT the authored wrist, and a crop full of
+            # trouser is now the defect rather than evidence of its absence. But refining a
+            # garment crop with "one relaxed human hand" is exactly what put a mangled
+            # hand-shaped blob on a hip, so this stays off by default and is only ever
+            # turned on for a frame someone is going to look at.
+            sf = skin_fraction(base, kp[0], kp[1] + fig * 0.012, fig * 0.085)
+            if sf < 0.08 and not getattr(args, "force_hands", False):
                 print(f"      skipped {nm}: no hand at the authored wrist "
-                      f"(the model put it elsewhere)", flush=True)
+                      f"(the model put it elsewhere, skin {sf:.3f})", flush=True)
                 continue
+            if sf < 0.08:
+                print(f"      {nm}: skin {sf:.3f} is below the gate, forced", flush=True)
             jobs.append((nm, kp[0], kp[1] + fig * 0.012, fig * 0.085,
                          "close up photograph of one relaxed human hand hanging at the "
                          "side, five fingers, natural anatomy, sharp focus",
@@ -2012,6 +2024,12 @@ def main():
                          "fails the screen")
     ap.add_argument("--head-strength", type=float, default=0.42)
     ap.add_argument("--hand-strength", type=float, default=0.50)
+    ap.add_argument("--force-hands", action="store_true",
+                    help="refine the hand crop even when there is no flesh at the authored "
+                         "wrist. OFF by default: see the gate in refine(). This is how a "
+                         "hand that the model put in a pocket gets redrawn at the hand's "
+                         "own scale, which is the only rung that works for a feature "
+                         "smaller than the init's 62px blur.")
     ap.add_argument("--foot-strength", type=float, default=0.45)
     ap.add_argument("--no-refine-head", dest="refine_head", action="store_false")
     ap.add_argument("--no-refine-hands", dest="refine_hands", action="store_false")
