@@ -1271,6 +1271,58 @@ disagreed with the knee; then because the measurement itself turned out to be of
 phase. §7b, §7aa and §7ab are the same shape, and the tell has been identical in all four: the
 number disagreed with something else that was also measured.
 
+### And the shoe now flexes, because the conditions that made it fail had changed
+
+§7ab closed rotation as a failure. **It was closed under conditions that no longer hold, and
+re-testing it took one run.** When rotation produced the black horn the shoe was not an
+identified object at all — it was whatever pixels hung past the shin bone's far endpoint,
+where distance-to-segment clamps, compressed 1.6:1 along the axis they lay on. Rotation was
+failing on a region that was never the shoe. Since then it has a dedicated rigid foot bone and
+a per-foot colour mask that isolates it, verified by dumping it.
+
+Re-tested with both in place: **it does not horn.** The shoe stays shoe-shaped at every
+setting tried, and reads as a trainer seen at a steeper angle rather than a flat slab hanging
+level in the air.
+
+**The transform is derived from the shin and introduces no new constant.** A foot is rigidly
+attached to its shin, so the flex is driven by that shin's own projected-length ratio:
+
+```
+swing shin   0.610 of its source length      in-plane rotation   6 deg
+planted      0.975 - 1.021                                      14 deg
+```
+
+so the weight `(1 - ratio) / 0.39` is 1 on the swing foot and 0 on a planted one, and both the
+stretch and the in-plane term carry it. **Inheriting the shin's rotation unweighted would tilt
+the planted shoe by 14 degrees**, which is wrong for the obvious reason: a foot flat on the
+ground does not rotate because the leg above it leans. That is the whole reason the weight
+exists, and it is the same shape as every other failure in this file — an instrument that is
+right for one case applied to its neighbour.
+
+**One thing broke, and only the picture found it.** A stretched shoe showed a GREEN HOLE
+punched through the middle of the trainer. The shoe mask's colour test drops the laces, the
+logo and the dark eyelets, leaving small islands enclosed by shoe; while the shoe was carried
+as a pure translation a two-pixel hole was invisible, but stretched — and then caught by the
+smear rule, which sends anything outside the rigid region that reads shoe pixels off-frame —
+it became a hole in the silhouette. Filled, the same way the ribcage's holes are filled.
+
+The fragment count moved from 21 px to 48 across four cels and **never looked like a hole**.
+The 1797 px fragment §7ab fixed does not return; what is left is thin edge slivers. Seam
+deviation in the shoe-excluded band is 0.66 px, unchanged.
+
+**What it does NOT fix, stated plainly because it was the reason for building it.** The
+ankle-height silhouette extent — ours swinging 47→118 px against Sierra's 215→228 — **does not
+move**: 71 px of swing before, 72 after. The arithmetic says why. The raised shoe's bottom sits
+at about row 1022 with the ankle lifted 97 px, and 0.95 of the figure is row 1068; even a 1.6
+gain only reaches 1075, which is why the extent moved by one pixel. To close that gap the shoe
+would have to stretch into a clown shoe.
+
+**That metric is not about the shoe. It is about occlusion.** Sierra's two feet merge into a
+single blob in every cel because the near one covers the far one; ours never overlap because
+the warp has no depth ordering (§7d's honest limit, and the leg-occlusion work is still open).
+The flex is a real improvement in how the raised shoe reads and it is worth having; it is not
+what closes the distance to 215-228.
+
 ## 8. Two bugs that looked like hardware faults
 
 **`largest()` was O(components × pixels)** with a Python flood fill. Fine on a clean matte;

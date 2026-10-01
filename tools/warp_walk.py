@@ -177,6 +177,16 @@ def shoe_mask(rgb, alpha, src_ankles, fig, tol=52.0, grow=7):
         d = np.sqrt(((sub - ref) ** 2).sum(axis=2))
         one = np.zeros(op.shape, bool)
         one[y0:y1, x0:x1] = (d < tol) & op[y0:y1, x0:x1]
+        # A SHOE HAS NO HOLES IN IT EITHER. The colour test drops the laces, the logo and the
+        # dark eyelets, leaving small islands enclosed by shoe. While the shoe was carried as
+        # a pure translation a two-pixel hole was invisible; once `foot_flex` stretches the
+        # region, the hole stretches with it AND the smear rule below sends it off-frame,
+        # which punched a green blob through the middle of the raised trainer. Found by
+        # dumping the warped shoe at 4x, not by any number - the fragment count moved from
+        # 21 px to 48 and never looked like a hole.
+        lab = _components(~one)
+        bord = np.unique(np.concatenate((lab[0], lab[-1], lab[:, 0], lab[:, -1])))
+        one |= ~one & ~np.isin(lab, bord)
         masks.append(one)
     if grow:
         masks = [np.asarray(Image.fromarray((mm * 255).astype(np.uint8))
@@ -447,7 +457,7 @@ def shirt_mask(rgb, alpha, kps, fig, tol=60.0, grow=5, arm_r=0.0, fill=True,
 
 def skin_field(src_kps, dst_kps, size, alpha=2.0, step=2, reach=0.26, fig=None,
                across=1.0, foot_w=1.0, alpha_src=None, rgb_src=None, props=(),
-               hard_foot=0.160, rigid_torso=True, torso_feather=0.050):
+               hard_foot=0.160, rigid_torso=True, torso_feather=0.050, foot_flex=1.0):
     """A backward displacement field by LINEAR BLEND SKINNING - one transform per BONE.
 
     WHY THIS REPLACED MOVING LEAST SQUARES. MLS drives the image from scattered point
@@ -690,14 +700,42 @@ def skin_field(src_kps, dst_kps, size, alpha=2.0, step=2, reach=0.26, fig=None,
         # Cost, accepted deliberately: a shoe that should be angled lands flat. The 1990 art
         # has one merged foot blob and no ankle articulation at all, so a flat carried shoe
         # is CLOSER to the original than a spike is.
+        # AND THE SHOE IS NO LONGER CARRIED PERFECTLY FLAT. `foot_flex` drives it from the
+        # shin's own projected-length ratio, so there is no new constant: a shin that has not
+        # foreshortened belongs to a planted foot and its shoe is left exactly as it was,
+        # while the swing foot's shoe takes the flex in proportion.
+        #
+        # Measured on this cycle, shin projected length as a fraction of its source length:
+        #     swing  0.610  (the Muybridge reading is 0.615)      in-plane rotation  6 deg
+        #     planted 0.975 - 1.021                                                14 deg
+        # so the weight below is 1 on the swing foot and 0 on the planted one, and the
+        # in-plane term is weighted with it. Inheriting the shin's rotation UNWEIGHTED would
+        # tilt the planted shoe by 14 degrees - a foot that is flat on the ground does not
+        # rotate because the leg above it leans.
         figv = fig if fig else H
         shoes = shoe_mask(rgb_src, alpha_src, [src_kps[10], src_kps[13]], figv)
         m = np.zeros(VX.shape, bool)
-        for ank, sh in zip((10, 13), shoes):
+        for ank, kne, sh in zip((10, 13), (9, 12), shoes):
             t0f = np.asarray(dst_kps[ank], np.float64)
             s0f = np.asarray(src_kps[ank], np.float64)
-            gx = s0f[0] + (VX - t0f[0])
-            gy = s0f[1] + (VY - t0f[1])
+            dx, dy = VX - t0f[0], VY - t0f[1]
+            if foot_flex:
+                sv = np.asarray(src_kps[ank], np.float64) - np.asarray(src_kps[kne],
+                                                                       np.float64)
+                dv = np.asarray(dst_kps[ank], np.float64) - np.asarray(dst_kps[kne],
+                                                                       np.float64)
+                sl, dl = float(np.hypot(*sv)), float(np.hypot(*dv))
+                ratio = dl / sl if sl > 1e-6 else 1.0
+                w = float(np.clip((1.0 - ratio) / 0.39, 0.0, 1.0))
+                ky = 1.0 + foot_flex * w * (1.0 - ratio)
+                th = foot_flex * w * (np.arctan2(dv[0], dv[1]) - np.arctan2(sv[0], sv[1]))
+                ca, sa = np.cos(-th), np.sin(-th)
+                rx, ry = ca * dx - sa * dy, sa * dx + ca * dy
+                gx = s0f[0] + rx
+                gy = s0f[1] + ry / max(ky, 1e-3)
+            else:
+                gx = s0f[0] + dx
+                gy = s0f[1] + dy
             own = sh[np.clip(gy.astype(int), 0, sh.shape[0] - 1),
                      np.clip(gx.astype(int), 0, sh.shape[1] - 1)]
             take = own & ~m
@@ -960,14 +998,15 @@ def exaggerate(src_kps, dst_kps, k, joints=LEGS):
 
 def warp(src_rgba, src_kps, dst_kps, size, alpha=1.6, step=4, anchors=5, margin=0.0,
          method="skin", fig=None, across=1.0, foot_w=1.0, props=(), rigid_torso=True,
-         hard_foot=0.160, torso_feather=0.050):
+         hard_foot=0.160, torso_feather=0.050, foot_flex=1.0):
     """One deformed frame. Alpha is warped with the colour, so the silhouette moves too."""
     if method == "skin":
         mx, my = skin_field(src_kps, dst_kps, size, alpha=alpha, step=step, fig=fig,
                             across=across, foot_w=foot_w,
                             alpha_src=src_rgba[:, :, 3], props=props,
                             rgb_src=src_rgba[:, :, :3], hard_foot=hard_foot,
-                            rigid_torso=rigid_torso, torso_feather=torso_feather)
+                            rigid_torso=rigid_torso, torso_feather=torso_feather,
+                            foot_flex=foot_flex)
     else:
         P = handles(dst_kps, size, anchors, margin)
         Q = handles(src_kps, size, anchors, margin)
@@ -1277,6 +1316,11 @@ def main():
                          "ribcage hands back to the skinned field at its own edge. 0 "
                          "restores the hard switch, which tears down the flank where the "
                          "cloth meets the swinging arm")
+    ap.add_argument("--foot-flex", type=float, default=1.0, dest="foot_flex",
+                    help="let the SWING foot's shoe stretch and rotate about its ankle "
+                         "instead of being carried perfectly flat, driven by that shin's "
+                         "own foreshortening so a planted foot is untouched. 0 is off and "
+                         "reproduces the flat carried shoe exactly")
     ap.add_argument("--props", help="override the rigid-prop joints for this view: a "
                                     "comma-separated list of COCO-18 indices, or 'none'")
     ap.add_argument("--exaggerate", type=float, default=1.0,
@@ -1335,7 +1379,7 @@ def main():
                        a.method, cel.get("fig_h"),
                        across=(None if a.across < 0 else a.across), foot_w=a.foot_w,
                        props=props, hard_foot=a.hard_foot,
-                       torso_feather=a.torso_feather)
+                       torso_feather=a.torso_feather, foot_flex=a.foot_flex)
             note = "warped"
         p = os.path.join(a.out, f"cut_{a.view}_l{a.loop}_c{c}.png")
         Image.fromarray(out, "RGBA").save(p)
