@@ -1776,6 +1776,100 @@ is interior and narrower than the inter-leg gap surrounding it. The masks now ov
 0.006 of figure height so the layers share a strip instead of abutting, and the near leg is
 drawn last so the strip shows what it should.
 
+## 7l. Arms swing FORE AND AFT, and this cycle swung them sideways
+
+A player, after four rounds of us chasing the shirt: **"THE SHIRT IS NOT ATTACHED TO THE ARM!,
+and arms don't sway left and right when a human walks, how can you not know how a human
+walks!???"**
+
+He is right, and it explains the entire thread. Human arm swing is **sagittal** — forward and
+backward. `pose_author.skeleton` placed the elbow and wrist by x and y amplitudes in the image
+plane, which is a **lateral** swing. That is not a tuning error, it is the wrong motion, and it
+accounts for every symptom chased since: 67 px of lateral travel, cloth dragged sideways into a
+lobe, a hand ending up where no walking hand goes, and the "wriggling" of §7b.
+
+In a front view a sagittal swing is almost entirely DEPTH, so it shows as the limb
+**foreshortening** and as the arm separating from or tucking behind the hip. It does not show
+as the hand moving sideways.
+
+### Measured off the reference footage
+
+`walkref.mp4`, a man walking toward a fixed camera — the same view we author. Over one stride,
+as fractions of figure height (`walkref/armmeas.py`; measurements only, nothing copied in):
+
+```
+                                        REFERENCE          OURS (authored)
+hand's LATERAL half-width at the wrist   0.0139 - 0.0160    0.068 peak-to-peak
+PROJECTED arm length, shoulder to hand   0.0588 - 0.0660    0.000
+```
+
+**Almost exactly inverted.** Four times too much of the motion that barely happens, and none
+at all of the motion that carries the swing.
+
+What the clip cannot show, stated rather than estimated (§0a): the **elbow** is not a landmark
+in a silhouette and this subject is shirtless, so no colour boundary marks it and the FOREARM's
+projected length is not recoverable. Shoulder-to-hand is reported instead, which is the
+quantity the chain actually needs.
+
+### And the arc fix had cemented it
+
+§7k pulled each joint onto an arc of the canonical radius about its parent, to stop the forearm
+stretching. It worked — 128.0 px in every cel — and that was the error. **A limb swinging
+toward or away from the camera MUST foreshorten**; its projected length is the true length
+times the cosine of the swing angle, equal to the true length only at mid-swing. Holding the
+projection constant removes the one degree of freedom a front-facing sagittal swing uses and
+leaves the arm nowhere to go but sideways.
+
+`warp_walk.clamp_limbs` stays, because a projection can never *exceed* the true length. The
+fixed-radius arc goes, because the pose must now actively shorten it.
+
+### What is authored now
+
+`arm` in `CYCLE` is a PHASE in [-1, 1], not a displacement, driving three measured constants:
+
+```
+ARM_SWING_DEG  35.0    cos(theta) = 0.329/0.388 and 0.294/0.360 in the footage -> 32 and 35
+ARM_LATERAL    0.008   half the measured peak-to-peak lateral range of 0.016
+ARM_DEPTH      0.003   the feet's depth cue (§7ac) scaled by the hand's height off the ground
+```
+
+Realised against the reference:
+
+```
+                      before    after    reference
+lateral range         0.0666    0.0130   0.0160
+projected arm range   0.0038    0.0444   0.0660
+```
+
+The foreshortening is still short of the footage because our four cels sample phases ±1.0 and
+∓0.30, so the "mid" key is at 10.5° rather than at true mid-swing; the relative range realised
+is 0.16 against the footage's 0.152–0.183, inside the measured band.
+
+### And the garment comes off the arm entirely
+
+Zain's first clause is a rig statement, and §7h had already proved it without anyone noticing:
+**the sleeve hem is at 54–62% of shoulder-to-elbow, so below the elbow there is no cloth on the
+arm in any pose.** A garment pixel weighted to a forearm or a wrist is weighted to a bone it is
+not attached to, including in the cels that look fine.
+
+The whole chain — clavicle, upper arm, forearm — is now excluded from garment pixels, which are
+driven by the torso and hip bones alone. Identifying the garment needs the field and the field
+is what is being computed, so it is done in two passes: accumulate with every bone, ask which
+destination pixels landed on shirt, accumulate again with the arm chain switched off there.
+
+**The earlier test of this was invalid and the reason matters more than the fix.** §7k capped
+only the FOREARM, measured no change, and concluded *dominance is not responsibility*. The
+bones that took over were the upper arm and the clavicle — also arm bones, also swinging with
+the arm. **The experiment could not have produced a different answer whatever the truth was.**
+That is §0a's rule applied to one's own test rather than to a metric: ask what the result would
+have looked like if the arm *were* responsible, and it would have looked exactly like that.
+
+**And the exclusion must be ramped.** Switched hard with `~cloth` it removed the hem lobe on
+all four cels — the thing it was built for — and tore every arm into a doubled, ghosted limb
+trailing a smear past the hip. A sharp boundary between two fields that disagree is a tear
+wherever they disagree; same lesson as the rigid plate's own edge, reached from the other side.
+Ramped over a sleeve's width, 0.016 of figure height.
+
 ## 8. Two bugs that looked like hardware faults
 
 **`largest()` was O(components × pixels)** with a Python flood fill. Fine on a clean matte;

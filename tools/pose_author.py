@@ -285,6 +285,45 @@ DOWN, UP = "down", "up"
 # a cycle against a still photograph will need to do the same walk.
 ARM_SCALE = 1.0
 
+# AN ARM SWINGS FORWARD AND BACK, NOT SIDE TO SIDE, AND THIS TABLE HAD IT BACKWARDS.
+#
+# A player: "arms don't sway left and right when a human walks". He is right, and it is not a
+# tuning error, it is the wrong motion. Human arm swing is SAGITTAL - fore and aft - which in a
+# front view is almost entirely DEPTH. Depth cannot be drawn directly, so it shows as the limb
+# FORESHORTENING and as the arm separating from or tucking behind the hip. It does not show as
+# the hand moving sideways.
+#
+# Measured off the user's own reference footage, a man walking toward a fixed camera, over one
+# stride, as fractions of figure height (`walkref/armmeas.py`):
+#
+#     hand's LATERAL half-width at the wrist line      range 0.0139 - 0.0160
+#     PROJECTED arm length, shoulder to hand           range 0.0588 - 0.0660
+#
+# against what this table authored:
+#
+#     lateral, peak to peak                            0.068     4.3x too much
+#     foreshortening                                   0.000     the whole motion, missing
+#
+# Almost exactly inverted. And the fixed-radius arc added to stop the forearm STRETCHING made
+# it worse by pinning the projected length constant - 128.0 px in every cel - which removes the
+# one degree of freedom a front-facing sagittal swing uses and leaves the arm nowhere to go but
+# sideways. `warp_walk.clamp_limbs` stays, because a projection can never EXCEED the true
+# length; the arc does not, because the pose must now actively shorten it.
+#
+# `arm` in the table below is therefore a PHASE in [-1, 1], not a displacement. The two
+# constants it drives are both measured:
+#
+#   the swing angle comes from the foreshortening. cos(theta) = 0.329/0.388 on the left and
+#   0.294/0.360 on the right, i.e. 32 and 35 degrees, so 33.
+ARM_SWING_DEG = 35.0
+#   the lateral amplitude is half the measured peak-to-peak range of 0.016.
+ARM_LATERAL = 0.008
+#   and the hand carries the same depth cue as the feet (§7ac), scaled by its height off the
+#   ground - a hand at 0.545 of figure height above the floor sees (h - Y)/h of the effect a
+#   foot does, and travels a fraction of a step fore and aft. Small, and included because
+#   leaving it out is what made the feet read as stepping sideways.
+ARM_DEPTH = 0.003
+
 
 def _leg(ank_x, ank_dy, knee_x, knee_dy):
     return {"ank_x": ank_x, "ank_dy": ank_dy, "knee_x": knee_x, "knee_dy": knee_dy}
@@ -331,7 +370,7 @@ CYCLE = [
 # every frame rather than only at the extremes.
 #
 # ---- cel 0: DOWN. Left leg has just taken the weight; right leg is in early swing. ----
-    {"phase": DOWN, "rise": -0.016, "sway": +0.020, "arm": +0.034, "twist": +0.004,
+    {"phase": DOWN, "rise": -0.016, "sway": +0.020, "arm": +1.00, "twist": +0.004,
      # Supporting: planted, knee bent about 22 degrees to absorb the landing. The bend shows
      # as the BODY dropping (rise, above), not as a visible angle - with the ankle fixed and
      # the hip lowered, the leg's projected length falls from 0.450 to 0.434.
@@ -341,7 +380,7 @@ CYCLE = [
      "r": _leg(-0.030, -0.095, -0.038, -0.012)},
 
     # ---- cel 1: UP. Left leg extended on the ball of the foot; right leg reaching forward. -
-    {"phase": UP, "rise": +0.014, "sway": +0.008, "arm": -0.010, "twist": -0.002,
+    {"phase": UP, "rise": +0.014, "sway": +0.008, "arm": -0.30, "twist": -0.002,
      # Supporting: straight and vertical, heel off the ground - which is what allows the body
      # to be higher here than a straight leg on a flat foot could put it.
      "l": _leg(+0.008, -0.024, +0.024, -0.019),
@@ -349,11 +388,11 @@ CYCLE = [
      "r": _leg(-0.056, -0.007, -0.046, -0.011)},
 
     # ---- cels 2 and 3: the same two keys with the legs and the lateral terms mirrored. -----
-    {"phase": DOWN, "rise": -0.016, "sway": -0.020, "arm": -0.034, "twist": -0.004,
+    {"phase": DOWN, "rise": -0.016, "sway": -0.020, "arm": -1.00, "twist": -0.004,
      "r": _leg(-0.014, +0.010, -0.034, +0.006),
      "l": _leg(+0.030, -0.095, +0.038, -0.012)},
 
-    {"phase": UP, "rise": +0.014, "sway": -0.008, "arm": +0.010, "twist": +0.002,
+    {"phase": UP, "rise": +0.014, "sway": -0.008, "arm": +0.30, "twist": +0.002,
      "r": _leg(-0.008, -0.024, -0.024, -0.019),
      "l": _leg(+0.056, -0.007, +0.046, -0.011)},
 ]
@@ -482,29 +521,20 @@ def skeleton(build, frame):
     #
     # So the joints are placed as before and then pulled back onto arcs of the canonical
     # radius about their parent. Direction is kept; length is not negotiable.
-    k[3] = (-(sh * 0.90 + arm_r * 0.5) + s(0.95), Y["elbow"] + y_head - abs(arm_r) * 0.25)
-    k[6] = (+(sh * 0.90 + arm_l * 0.5) + s(0.95), Y["elbow"] + y_head - abs(arm_l) * 0.25)
-    k[4] = (-(sh * 0.97 + arm_r) + s(0.90), Y["wrist"] + y_head - arm_r * 0.55)
-    k[7] = (+(sh * 0.97 + arm_l) + s(0.90), Y["wrist"] + y_head + arm_l * 0.55)
-
-    # The canonical radii are the same expressions with no swing in them, so they come from
-    # the build and the proportion table rather than from a number typed here.
-    up_len = float(np.hypot(sh - sh * 0.90, Y["elbow"] - Y["shoulder"]))
-    fo_len = float(np.hypot(sh * 0.97 - sh * 0.90, Y["wrist"] - Y["elbow"]))
-    for sho, elb, wri in ((2, 3, 4), (5, 6, 7)):
-        for a_, b_, L in ((sho, elb, up_len), (elb, wri, fo_len)):
-            vx = k[b_][0] - k[a_][0]
-            vy = k[b_][1] - k[a_][1]
-            n = float(np.hypot(vx, vy))
-            if n < 1e-9:
-                continue
-            f = L / n
-            nx, ny = k[a_][0] + vx * f, k[a_][1] + vy * f
-            # the chain moves with its parent, so a corrected elbow carries its wrist
-            dx, dy = nx - k[b_][0], ny - k[b_][1]
-            k[b_] = (nx, ny)
-            if b_ == elb:
-                k[wri] = (k[wri][0] + dx, k[wri][1] + dy)
+    # SAGITTAL. `arm_r` and `arm_l` are phases in [-1, 1]; the swing is carried by the limb
+    # getting SHORTER in projection, with only a token lateral term, because that is what the
+    # reference footage measures. Positive phase = that arm forward, so it is nearer the
+    # camera and its hand appears slightly LOWER - the same depth cue the feet carry.
+    up_seg = Y["elbow"] - Y["shoulder"]
+    fo_seg = Y["wrist"] - Y["elbow"]
+    for sho, elb, wri, ph, sgn in ((2, 3, 4, arm_r, -1.0), (5, 6, 7, arm_l, +1.0)):
+        cs = float(np.cos(np.radians(ARM_SWING_DEG * ph)))
+        lat = ARM_LATERAL * ph
+        dep = ARM_DEPTH * ph
+        ey = k[sho][1] + up_seg * cs + dep * 0.4
+        wy = ey + fo_seg * cs + dep * 0.6
+        k[elb] = (sgn * (sh * 0.90 + lat * 0.5) + s(0.95), ey)
+        k[wri] = (sgn * (sh * 0.97 + lat) + s(0.90), wy)
     # The hips take the OPPOSITE twist to the shoulders - that counter-rotation is the
     # measured shoulder-to-hip offset of +-1.5% of height, and it is the same rotation the
     # arms are expressing, so it shares their phase.

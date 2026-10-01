@@ -457,7 +457,7 @@ def shirt_mask(rgb, alpha, kps, fig, tol=60.0, grow=5, arm_r=0.0, fill=True,
 
 def skin_field(src_kps, dst_kps, size, alpha=2.0, step=2, reach=0.26, fig=None,
                across=1.0, foot_w=1.0, alpha_src=None, rgb_src=None, props=(),
-               hard_foot=0.160, rigid_torso=True, torso_feather=0.050, foot_flex=1.0, arm_reach=0.0):
+               hard_foot=0.160, rigid_torso=True, torso_feather=0.050, foot_flex=1.0, arm_reach=0.0, arm_free_cloth=True):
     """A backward displacement field by LINEAR BLEND SKINNING - one transform per BONE.
 
     WHY THIS REPLACED MOVING LEAST SQUARES. MLS drives the image from scattered point
@@ -599,13 +599,64 @@ def skin_field(src_kps, dst_kps, size, alpha=2.0, step=2, reach=0.26, fig=None,
     fore_idx = {i for i, (ia, ib) in enumerate(BONES) if (ia, ib) in ((3, 4), (6, 7))}
     arm_r2 = (arm_reach * (fig if fig else H)) ** 2
 
-    for bi, (s0, s1, t0, t1, bw, capped) in enumerate(bones):
+    # THE GARMENT IS NOT ATTACHED TO THE ARM, so no arm bone may move a garment pixel.
+    #
+    # A player, after four rounds of this: "THE SHIRT IS NOT ATTACHED TO THE ARM!". He is
+    # right by construction and §7h had already proved it without anyone noticing: the sleeve
+    # hem is at 54-62% of shoulder-to-elbow, so below the elbow there is no cloth on the arm
+    # IN ANY POSE. A garment pixel weighted to a forearm or a wrist is weighted to a bone it
+    # is not attached to, including in the cels that happen to look fine.
+    #
+    # THE EARLIER TEST OF THIS WAS INVALID AND THE REASON IS WORTH MORE THAN THE FIX. Capping
+    # only the FOREARM's reach changed nothing, and that was read as "dominance is not
+    # responsibility - the bones that take over move the cloth the same way". The bones that
+    # took over were the UPPER ARM and the clavicle, which are also arm bones and also swing
+    # with the arm. The experiment could not have produced a different answer whatever the
+    # truth was - §0a's rule applied to one's own test instead of to a metric.
+    #
+    # So this is an exclusion of the WHOLE CHAIN - clavicle, upper arm, forearm - not a reach
+    # cap with a falloff. Garment pixels are driven by the torso and hip bones alone.
+    #
+    # Identifying the garment needs the field, and the field is what is being computed, so it
+    # is done in two passes: accumulate once with every bone, ask which destination pixels
+    # landed on shirt, then accumulate again with the arm bones switched off there. One extra
+    # field evaluation, which is cheap beside the three the occlusion layers already cost.
+    ARM_CHAIN = {i for i, (ia, ib) in enumerate(BONES)
+                 if (ia, ib) in ((1, 2), (2, 3), (3, 4), (1, 5), (5, 6), (6, 7))}
+
+    def accumulate(block):
+        """`block` is a destination-space WEIGHT in 0..1 multiplying the arm chain: 0 deep
+        inside the garment, 1 off it, ramped across the boundary.
+
+        THE RAMP IS NOT OPTIONAL and the first version proved it. Switching the arm chain off
+        with a hard `~cloth` removed the hem lobe on all four cels - the thing it was built
+        for - and tore every arm into a doubled, ghosted limb trailing a smear past the hip,
+        because a sharp boundary between two fields that disagree is a tear wherever they
+        disagree. That is the same lesson as the rigid plate's own edge (§7h), arrived at
+        from the other side."""
+        ax = np.zeros_like(VX)
+        ay = np.zeros_like(VY)
+        aw = np.zeros_like(VX)
+        for bi, (s0, s1, t0, t1, bw, capped) in enumerate(bones):
+            w, mx, my = bone_field(bi, s0, s1, t0, t1, bw, capped)
+            if w is None:
+                continue
+            if block is not None and bi in ARM_CHAIN:
+                w = w * block
+            ax += w * mx
+            ay += w * my
+            aw += w
+        r_ = (reach * (fig if fig else H)) ** 2
+        wid = 1.0 / (r_ + 1.0) ** alpha
+        return ax + wid * VX, ay + wid * VY, aw + wid
+
+    def bone_field(bi, s0, s1, t0, t1, bw, capped):
         vt = t1 - t0
         vs = s1 - s0
         lt = float(np.hypot(*vt))
         ls = float(np.hypot(*vs))
         if lt < 1e-6 or ls < 1e-6:
-            continue
+            return None, None, None
 
         # The map taking the TARGET bone onto the SOURCE bone, resolved in the bone's own
         # frame so length and width can be scaled independently.
@@ -650,15 +701,27 @@ def skin_field(src_kps, dst_kps, size, alpha=2.0, step=2, reach=0.26, fig=None,
             # How far past the far endpoint this pixel lies, along the bone.
             past = np.maximum(0.0, (dx * vt[0] + dy * vt[1]) / lt - lt)
             w = w / (1.0 + (past / (0.30 * foot)) ** 2)
-        acc_x += w * mx
-        acc_y += w * my
-        acc_w += w
+        return w, mx, my
 
-    r = (reach * (fig if fig else H)) ** 2
-    w_id = 1.0 / (r + 1.0) ** alpha
-    acc_x += w_id * VX
-    acc_y += w_id * VY
-    acc_w += w_id
+    acc_x, acc_y, acc_w = accumulate(None)
+    if arm_free_cloth and rgb_src is not None and alpha_src is not None:
+        figc = fig if fig else H
+        cloth = shirt_mask(rgb_src, alpha_src, src_kps, figc)
+        if cloth.any():
+            px = acc_x / acc_w
+            py = acc_y / acc_w
+            on_cloth = cloth[np.clip(py.astype(int), 0, cloth.shape[0] - 1),
+                             np.clip(px.astype(int), 0, cloth.shape[1] - 1)]
+            # Ramped over roughly a sleeve's width, by successive dilations averaged, which is
+            # a distance ramp without scipy for the same reason `largest()` is hand-rolled.
+            n = max(1, int(round(0.016 * figc / step)))
+            keep = (~on_cloth).astype(np.float64)
+            cur = ~on_cloth
+            for _ in range(n):
+                cur = np.asarray(Image.fromarray((cur * 255).astype(np.uint8))
+                                 .filter(ImageFilter.MaxFilter(3))) > 127
+                keep += cur
+            acc_x, acc_y, acc_w = accumulate(np.clip(keep / (n + 1.0), 0.0, 1.0))
 
     fx = acc_x / acc_w
     fy = acc_y / acc_w
@@ -1049,7 +1112,7 @@ def exaggerate(src_kps, dst_kps, k, joints=LEGS):
 def warp(src_rgba, src_kps, dst_kps, size, alpha=1.6, step=4, anchors=5, margin=0.0,
          method="skin", fig=None, across=1.0, foot_w=1.0, props=(), rigid_torso=True,
          hard_foot=0.160, torso_feather=0.050, foot_flex=1.0, occlude=True,
-         arm_reach=0.0):
+         arm_reach=0.0, arm_free_cloth=True):
     """One deformed frame. Alpha is warped with the colour, so the silhouette moves too."""
     if method == "skin":
         dst_kps = clamp_limbs(src_kps, dst_kps)
@@ -1057,14 +1120,16 @@ def warp(src_rgba, src_kps, dst_kps, size, alpha=1.6, step=4, anchors=5, margin=
         return warp_occluded(src_rgba, src_kps, dst_kps, size, fig,
                              alpha=alpha, step=step, across=across, foot_w=foot_w,
                              props=props, hard_foot=hard_foot, rigid_torso=rigid_torso,
-                             torso_feather=torso_feather, foot_flex=foot_flex, arm_reach=arm_reach)
+                             torso_feather=torso_feather, foot_flex=foot_flex, arm_reach=arm_reach,
+                            arm_free_cloth=arm_free_cloth)
     if method == "skin":
         mx, my = skin_field(src_kps, dst_kps, size, alpha=alpha, step=step, fig=fig,
                             across=across, foot_w=foot_w,
                             alpha_src=src_rgba[:, :, 3], props=props,
                             rgb_src=src_rgba[:, :, :3], hard_foot=hard_foot,
                             rigid_torso=rigid_torso, torso_feather=torso_feather,
-                            foot_flex=foot_flex, arm_reach=arm_reach)
+                            foot_flex=foot_flex, arm_reach=arm_reach,
+                            arm_free_cloth=arm_free_cloth)
     else:
         P = handles(dst_kps, size, anchors, margin)
         Q = handles(src_kps, size, anchors, margin)
