@@ -13,6 +13,41 @@ found while fixing it. The findings are ordered by how much they cost to learn.
 
 ---
 
+## 0a. THE RULE ABOVE ALL THE OTHERS: DUMP THE THING AND LOOK AT IT
+
+Put first because it is the one that keeps paying, on problems that have nothing to do with
+each other. Every section below has an instance.
+
+**Five parameter sweeps on the shoe went nowhere; one picture of the mask answered it in
+minutes.** Three sweeps of the shirt's colour tolerances moved nothing; one picture painting
+each pixel by *which gate rejected it* showed that saturation was discarding 53% of the
+garment. The forearm cylinder had passed its own check and a dump of the skeleton on the
+photograph showed the segment lying on the shirt rather than on the arm.
+
+**And twice now a defect has been found ONLY by a dump, with every number green:**
+
+* a **green hole punched through the raised trainer** — the fragment count moved 21 px to 48
+  and a hole is not a fragment, so nothing flagged it;
+* a **green streak up the fly** where the two leg layers abut — an interior hole, narrower
+  than the inter-leg gap surrounding it, so every silhouette measure read it as the gap.
+
+The transferable form, which applies well outside this project:
+
+> **A metric answers the question it was written for. A defect that is a different SHAPE of
+> thing passes it in silence.** A count of fragments cannot see a hole; a measure of a
+> silhouette's extent cannot see an interior gap; a check on an input cannot see what the
+> transform did to it. Before trusting any number, ask what the picture would look like if
+> something *else* were wrong — and if you cannot answer, dump it and look.
+
+Two corollaries that have each cost a round here:
+
+1. **Look at it at 100% or magnified, never scaled to fit a sheet.** Four rounds went past
+   with a visible defect because 468-pixel figures were being reviewed at 28%.
+2. **Check the reference can physically SHOW the quantity** before measuring it. §7i spent a
+   round on a foot-clearance number read off a clip in which the feet are below the frame, the
+   mask's bottom is cast shadow, and the swing foot is occluded for exactly the phase it is
+   highest. The segmentation worked perfectly; the information was never in the picture.
+
 ## 0. The rule to reach for first: the init beats the prompt
 
 **Where a defect is about WHAT SOMETHING IS, change the init. The prompt is for things the
@@ -1500,6 +1535,32 @@ The rule works for a shoe because the region it protects is small, compact and s
 background; a garment's edge is long, soft and adjacent to an arm, so any test of the form
 "outside the plate and shirt-coloured" keeps finding the garment's own antialiased rim. The
 residual +7% on cel 2 is accepted rather than chased.
+
+### The real fix: the arm swings on an arc
+
+`clamp_limbs` stops the renderer drawing an impossible limb, which is worth having on its own
+and will be worth having again the next time a cycle is authored. But the pose should not be
+impossible in the first place, and `pose_author.skeleton` was placing each elbow and wrist by
+**independent x and y amplitudes**. The directions were always right; nothing held the length.
+Specifically the elbow's vertical term carried `abs(arm)` while the wrist's carried the signed
+`arm`, so on the half of the cycle where the sign is negative the elbow rose while the wrist
+dropped and the forearm grew 0.027 of figure height — 22% — before the horizontal terms were
+even counted.
+
+The joints are now placed exactly as before and then pulled back onto arcs of the canonical
+radius about their parent, with the chain carried so a corrected elbow moves its wrist. The
+radii come from the same expressions with the swing set to zero, so they are functions of the
+build and the proportion table rather than numbers typed in.
+
+```
+                 before (dst / src)              after
+R forearm   1.01x 1.15x 1.32x 1.06x      constant in every cel
+L forearm   1.02x 1.18x 1.36x 1.08x      constant in every cel
+```
+
+**Scope, checked rather than asserted**: across all 80 authored cels, the only joints that
+moved are the elbows (8.9 px) and the wrists (23 px). Nose, neck, shoulders, hips, knees and
+ankles are bit-identical, so every leg, bob, sway and depth decision in this file still stands.
 
 ### And one defect the occlusion work introduced
 

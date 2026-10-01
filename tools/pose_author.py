@@ -446,10 +446,57 @@ def skeleton(build, frame):
     k[1] = (s(1.00), y_sh)
     k[2] = (-sh + s(1.00) + twist, y_sh)
     k[5] = (+sh + s(1.00) + twist, y_sh)
+    # AN ARM SWINGS ON AN ARC, AND THIS TABLE USED TO PLACE IT BY INDEPENDENT X AND Y
+    # AMPLITUDES, WHICH AUTHORS A POSE THAT CANNOT EXIST.
+    #
+    # The expressions below give the DIRECTION of each swing, which was always right. What was
+    # wrong was that nothing held the limb's length: the elbow's vertical term carried
+    # `abs(arm)` while the wrist's carried the signed `arm`, so on the half of the cycle where
+    # the sign is negative the elbow rose while the wrist dropped and the forearm grew by
+    # 0.027 of figure height - 22% - on top of whatever the horizontal terms did.
+    #
+    # Measured as the destination bone over the source bone, which is the only ratio that
+    # matters because the source photograph IS a pose:
+    #
+    #     R forearm   1.01x   1.15x   1.32x   1.06x
+    #     L forearm   1.02x   1.18x   1.36x   1.08x
+    #
+    # A ratio above 1.0 is not a large number, it is an IMPOSSIBLE one. The source has the
+    # arms hanging straight down, perpendicular to the view, so every arm bone is already at
+    # its true length there, and the projection of a rigid segment can only ever be SHORTER.
+    #
+    # What it cost: `warp_walk.skin_field` runs with `across = 1.0`, so a limb keeps its WIDTH
+    # while its length is free - which is exactly what makes a foreshortened shin read as a
+    # bent knee in a front view. Handed a bone that gets LONGER it does the reverse and draws
+    # the arm out into a ribbon at constant width, smears the hand off the end, and drags the
+    # shirt beside it into a bell over the hip. A player had already rejected that once, in
+    # these words: "The mans shirt seems to be part of his arm".
+    #
+    # So the joints are placed as before and then pulled back onto arcs of the canonical
+    # radius about their parent. Direction is kept; length is not negotiable.
     k[3] = (-(sh * 0.90 + arm_r * 0.5) + s(0.95), Y["elbow"] + y_head - abs(arm_r) * 0.25)
     k[6] = (+(sh * 0.90 + arm_l * 0.5) + s(0.95), Y["elbow"] + y_head - abs(arm_l) * 0.25)
     k[4] = (-(sh * 0.97 + arm_r) + s(0.90), Y["wrist"] + y_head - arm_r * 0.55)
     k[7] = (+(sh * 0.97 + arm_l) + s(0.90), Y["wrist"] + y_head + arm_l * 0.55)
+
+    # The canonical radii are the same expressions with no swing in them, so they come from
+    # the build and the proportion table rather than from a number typed here.
+    up_len = float(np.hypot(sh - sh * 0.90, Y["elbow"] - Y["shoulder"]))
+    fo_len = float(np.hypot(sh * 0.97 - sh * 0.90, Y["wrist"] - Y["elbow"]))
+    for sho, elb, wri in ((2, 3, 4), (5, 6, 7)):
+        for a_, b_, L in ((sho, elb, up_len), (elb, wri, fo_len)):
+            vx = k[b_][0] - k[a_][0]
+            vy = k[b_][1] - k[a_][1]
+            n = float(np.hypot(vx, vy))
+            if n < 1e-9:
+                continue
+            f = L / n
+            nx, ny = k[a_][0] + vx * f, k[a_][1] + vy * f
+            # the chain moves with its parent, so a corrected elbow carries its wrist
+            dx, dy = nx - k[b_][0], ny - k[b_][1]
+            k[b_] = (nx, ny)
+            if b_ == elb:
+                k[wri] = (k[wri][0] + dx, k[wri][1] + dy)
     # The hips take the OPPOSITE twist to the shoulders - that counter-rotation is the
     # measured shoulder-to-hip offset of +-1.5% of height, and it is the same rotation the
     # arms are expressing, so it shares their phase.
