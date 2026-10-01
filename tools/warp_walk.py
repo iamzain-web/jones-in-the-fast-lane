@@ -848,6 +848,29 @@ def skin_field(src_kps, dst_kps, size, alpha=2.0, step=2, reach=0.26, fig=None,
                     w = own.astype(np.float64)
                 fx = fx * (1.0 - w) + gx * w
                 fy = fy * (1.0 - w) + gy * w
+                # THE SHOE'S SMEAR RULE WAS TRIED HERE TWICE AND IS WRONG BOTH TIMES. The
+                # second attempt fixed the predicate the first one got wrong - `w < 0.5` is
+                # the outer half of the FEATHER BAND, which is cloth inside the garment, so
+                # it carved the shirt; `~own` is strictly outside the plate and is the honest
+                # test. It still carved the shirt, on all four cels including the clean one,
+                # and took the plate's area to 0.94 of the source where 1.00 is rigid.
+                #
+                # THE SHOE'S SMEAR RULE IS CLOSED FOR THE SHIRT. THREE ATTEMPTS, THREE CARVED
+                # GARMENTS, and the third had no excuse left:
+                #
+                #   `w < 0.5`          tested the outer half of the FEATHER BAND, which is
+                #                      cloth inside the garment. Carved.
+                #   `~own`             strictly outside the plate. Still carved - the plate's
+                #                      edge stops inside the antialiased silhouette.
+                #   `~dilate(own, 9)`  only cloth well clear of the plate. STILL carved, a
+                #                      ragged green gash down the flank on three cels.
+                #
+                # The rule works for a shoe because the region it protects is small, compact
+                # and surrounded by background. A garment's edge is long, soft and adjacent to
+                # an arm, so any test of the form "outside the plate and shirt-coloured" keeps
+                # finding the garment's own antialiased rim. Most of the lobe was the ARM bone
+                # stretching anyway (`clamp_limbs`); what is left is accepted.
+                pass
 
     yy = np.arange(H, dtype=np.float64) / step
     xx = np.arange(W, dtype=np.float64) / step
@@ -1000,6 +1023,8 @@ def warp(src_rgba, src_kps, dst_kps, size, alpha=1.6, step=4, anchors=5, margin=
          method="skin", fig=None, across=1.0, foot_w=1.0, props=(), rigid_torso=True,
          hard_foot=0.160, torso_feather=0.050, foot_flex=1.0, occlude=True):
     """One deformed frame. Alpha is warped with the colour, so the silhouette moves too."""
+    if method == "skin":
+        dst_kps = clamp_limbs(src_kps, dst_kps)
     if method == "skin" and occlude:
         return warp_occluded(src_rgba, src_kps, dst_kps, size, fig,
                              alpha=alpha, step=step, across=across, foot_w=foot_w,
@@ -1024,6 +1049,54 @@ def warp(src_rgba, src_kps, dst_kps, size, alpha=1.6, step=4, anchors=5, margin=
     al = np.clip(got[:, :, 3:4], 0, 255)
     rgb = np.where(al > 1e-3, got[:, :, :3] / np.maximum(al / 255.0, 1e-3), 0.0)
     return np.clip(np.dstack([rgb, al]), 0, 255).astype(np.uint8)
+
+
+def clamp_limbs(src_kps, dst_kps):
+    """No projected limb can be LONGER than the limb itself.
+
+    A player, twice: the shirt looks like part of his arm, and the arm is a long thin strip
+    with no hand on the end. Both are one authoring fault, found by measuring every bone's
+    destination length against its source length:
+
+        bone        cel 0   cel 1   cel 2   cel 3
+        R forearm   1.01x   1.15x   1.32x   1.06x
+        L forearm   1.02x   1.18x   1.36x   1.08x
+        upper arms  1.01x   1.06x   1.04x   1.05x
+        legs        0.61x   1.01x   1.02x   0.99x
+
+    The forearms are stretched by up to 36%, and the four cels rank 0 < 3 < 1 < 2 - exactly
+    the order a human ranked them by eye, cel 0 clean and cel 2 worst.
+
+    `across` is 1.0 so a limb keeps its WIDTH while its length is free, which is what makes a
+    foreshortened shin read as a bent knee in a front view (§7aa). Applied to a bone that gets
+    LONGER it does the opposite and draws the limb out into a ribbon at constant width, with
+    the hand at the end smeared off it and the cloth beside it dragged into a bell over the
+    hip. The shirt was never the problem; it was downstream of the arm.
+
+    AND A RATIO ABOVE 1.0 IS NOT A TUNING QUESTION, IT IS IMPOSSIBLE. The source photograph
+    has the arms hanging straight down, perpendicular to the view, so each bone is already at
+    its true length there - and a projection of a rigid segment can only ever be SHORTER. Any
+    destination bone longer than its source one is an authored pose that no camera could see.
+
+    The cycle produces it because the wrist is placed by an x and a y amplitude independently
+    rather than on an arc of fixed radius about the elbow. The honest fix is in
+    `pose_author.CYCLE`; this clamp is in the renderer because the renderer should not draw an
+    impossible limb whatever it is handed, and because it can be verified against the cels
+    that exist. Direction is kept, length is capped, and the chain is walked outward so a
+    clamped elbow carries its wrist with it.
+    """
+    out = np.array(dst_kps, np.float64, copy=True)
+    for chain in ((2, 3, 4), (5, 6, 7), (8, 9, 10), (11, 12, 13)):
+        for a_, b_ in zip(chain[:-1], chain[1:]):
+            sv = np.asarray(src_kps[b_], np.float64) - np.asarray(src_kps[a_], np.float64)
+            sl = float(np.hypot(*sv))
+            dv = out[b_] - out[a_]
+            dl = float(np.hypot(*dv))
+            if dl > sl > 1e-6:
+                shift = dv * (sl / dl - 1.0)
+                for j in chain[chain.index(b_):]:
+                    out[j] = out[j] + shift
+    return out
 
 
 def leg_masks(alpha, kps, fig):
@@ -1051,7 +1124,19 @@ def leg_masks(alpha, kps, fig):
             best = dd if best is None else np.minimum(best, dd)
         d.append(best)
     below = yy >= hipy
-    return (op & below & (d[0] <= d[1]), op & below & (d[1] < d[0]))
+    masks = [op & below & (d[0] <= d[1]), op & below & (d[1] < d[0])]
+    # AND THE TWO MASKS OVERLAP SLIGHTLY, because a hard split is a seam. Each layer is
+    # warped by its own field, so along the crotch - where the split runs and the two fields
+    # diverge most - a gap opens and the background shows through the jeans as a thin green
+    # streak up the fly. Found by cropping the torso at 4x; no silhouette measure sees it,
+    # because the hole is interior and narrower than the inter-leg gap that surrounds it.
+    #
+    # Dilating each mask by a few pixels makes the layers share a strip instead of abutting.
+    # The near leg is drawn last, so the shared strip simply comes from the near leg, which is
+    # what it should show anyway.
+    g = max(3, int(round(0.006 * fig)) | 1)
+    return tuple(np.asarray(Image.fromarray((m * 255).astype(np.uint8))
+                            .filter(ImageFilter.MaxFilter(g))) > 127 for m in masks)
 
 
 def _over(dst, src):
@@ -1280,6 +1365,77 @@ def shirt_probes(rgb, alpha, kps, fig):
             "skin": skin}
 
 
+def plate_stats(rgb, alpha, kps, fig):
+    """The rigid plate's own properties, measured on a WARPED cel rather than on the mask.
+
+    THIS EXISTS BECAUSE `--shirt-check` READ GREEN OVER A BROKEN SHIRT, and the reason is the
+    fourth instance of one shape in this project. The mask test runs `shirt_mask` on the
+    SOURCE photograph and never opens a warped cel: it asks whether the mask covers the
+    garment at the point of DEFINITION and can say nothing about what the warp then does to
+    those pixels at the point of USE. Cel 0 is the one cel that is essentially the source, so
+    a defect that is a function of POSE is invisible to it by construction. §1's CLIP guard
+    covered one of two identical inputs; §8's GPU lock guarded one tool against itself; §7h's
+    forearm probe was positioned by the same wrong assumption as the fix. Same shape each
+    time: the check was not aimed at the thing that varies.
+
+    What varies here is the pose, so the test has to be on the output, and the property to
+    test is the one the section claims: THE PLATE IS RIGID. A rigid motion preserves area,
+    and it does not thin a limb.
+
+        area    shirt-coloured pixels, over the source's. A rigid plate reads 1.00 whatever
+                its rotation or translation. Measured on the cels that shipped: 1.02, 1.06,
+                1.11, 1.04 - the plate grows 11% on cel 2, which is the bell-shaped lobe
+                hanging over the hip.
+        arm     the narrowest width of the forearm band. Source 38 and 36 px; the cels read
+                33/34, 11/33, 11/37, 15/33 - the right forearm collapses to under a third on
+                exactly the three cels that are wrong.
+
+    Both rank the four cels in the order a human ranked them by eye, and both pass cel 0.
+    """
+    op = alpha > 100
+    H, W = op.shape
+    neck = np.asarray(kps[1], np.float64)
+    hipm = (np.asarray(kps[8], np.float64) + np.asarray(kps[11], np.float64)) / 2.0
+    cx = 0.5 * (neck[0] + hipm[0])
+    nose = np.asarray(kps[0], np.float64)
+
+    def med(y0, y1, x0, x1):
+        m = np.zeros((H, W), bool)
+        m[int(max(0, y0)):int(y1), int(max(0, x0)):int(x1)] = True
+        m &= op
+        return np.median(rgb[m], axis=0) if m.sum() > 40 else None
+
+    c = med(neck[1] + 0.05 * fig, neck[1] + 0.14 * fig, cx - 0.04 * fig, cx + 0.04 * fig)
+    s = med(nose[1] - 0.055 * fig, nose[1] - 0.025 * fig,
+            nose[0] - 0.025 * fig, nose[0] + 0.025 * fig)
+    if c is None or s is None:
+        return None
+    dc = np.sqrt(((rgb - c) ** 2).sum(axis=2))
+    ds = np.sqrt(((rgb - s) ** 2).sum(axis=2))
+    shirt = op & (dc < ds) & (dc < 70)
+    skin = op & (ds < dc)
+    arms = []
+    for elb, wri in ((3, 4), (6, 7)):
+        e = np.asarray(kps[elb], np.float64)
+        w_ = np.asarray(kps[wri], np.float64)
+        widths = []
+        for t in np.linspace(0.2, 0.8, 12):
+            px = e + (w_ - e) * t
+            y = int(px[1])
+            if not (0 <= y < H) or not skin[y].any():
+                continue
+            band = np.nonzero(skin[y])[0]
+            near = band[np.abs(band - px[0]) < 0.07 * fig]
+            if len(near) >= 3:
+                widths.append(int(near.max() - near.min() + 1))
+        # THE MEDIAN, NOT THE MINIMUM. The narrowest single sample along the band is wherever
+        # the shirt happens to cross the arm, so it reads a sliver on frames whose arms are
+        # fine - it flagged a cel at 39% that a human sees as a normal arm with a hand on it.
+        # "Is this limb a ribbon" is a question about the limb, not about its thinnest row.
+        arms.append(int(np.median(widths)) if widths else 0)
+    return {"area": int(shirt.sum()), "arms": arms}
+
+
 def report_shirt(a):
     """`--shirt-check <dir>`: run the both-halves mask test over every view in a cel
     directory and dump the mask over each figure at 1:1."""
@@ -1332,13 +1488,63 @@ def report_shirt(a):
             bg = Image.new("RGBA", o.size, (92, 132, 92, 255))
             Image.alpha_composite(bg, o).convert("RGB").save(
                 os.path.join(a.out, "shirtcheck_%d.png" % v))
+    # ---------------------------------------------------------------- THE POINT OF USE
+    # Everything above tests the MASK on the source. Everything below opens the WARPED cels,
+    # because the defect this was extended for is a function of the POSE and the mask is the
+    # same for every cel.
+    plates = sorted(glob.glob(os.path.join(a.shirt_check, "cut_*_l0_c[1-9].png")))
+    if plates:
+        print()
+        print("THE PLATE AT THE POINT OF USE - warped cels, not the mask")
+        print("%-6s %-5s %9s %9s %14s %s"
+              % ("view", "cel", "area", "area/src", "arm narrowest", "verdict"))
+        for p in sorted(glob.glob(os.path.join(a.shirt_check, "cut_*_l0_c*.png"))):
+            base = os.path.basename(p)
+            v = int(base.split("_")[1])
+            c = int(base.split("_c")[1].split(".")[0])
+            key = "%d/0/%d" % (v, c)
+            k0 = "%d/0/0" % v
+            if key not in poses["cels"] or k0 not in poses["cels"]:
+                continue
+            im = np.asarray(Image.open(p).convert("RGBA"))
+            fig = poses["cels"][k0].get("fig_h") or im.shape[0]
+            # THE SAME KEYPOINTS THE RENDERER USED, not the authored ones. The renderer
+            # clamps impossible limb lengths, so a probe placed from the raw pose looks where
+            # the arm is no longer drawn and reports a collapsed forearm on a correct frame.
+            # Testing at the point of use means using the pose at the point of use too.
+            kp = clamp_limbs(np.asarray(poses["cels"][k0]["keypoints"], np.float64),
+                             np.asarray(poses["cels"][key]["keypoints"], np.float64))
+            st = plate_stats(im[:, :, :3].astype(np.float64), im[:, :, 3], kp, fig)
+            if st is None:
+                continue
+            if c == 0:
+                ref = st
+                continue
+            ratio = st["area"] / max(1, ref["area"])
+            thin = min(st["arms"][i] / max(1, ref["arms"][i]) for i in (0, 1))
+            why = []
+            if abs(ratio - 1.0) > 0.04:
+                why.append("plate area %+.0f%% - A RIGID PLATE PRESERVES AREA"
+                           % (100 * (ratio - 1)))
+            if thin < 0.60:
+                why.append("forearm down to %.0f%% of its source width" % (100 * thin))
+            print("%-6d %-5d %9d %8.2fx %14s %s"
+                  % (v, c, st["area"], ratio, "%d,%d" % tuple(st["arms"]),
+                     "ok" if not why else "FAIL"))
+            for w in why:
+                bad.append("%d cel %d: %s" % (v, c, w))
+    else:
+        print()
+        print("no warped cels here (cut_*_c1..c3), so ONLY the mask was tested - which is")
+        print("the point of definition and cannot see a defect that depends on the pose.")
+
     print()
     if bad:
         print("%d problem(s):" % len(bad))
         for b in bad:
             print("   " + b)
     else:
-        print("every view: garment covered, arms and hands excluded")
+        print("every view: garment covered, arms and hands excluded, plate rigid")
     print("\nA hand printed as '-' means the block at that wrist holds no flesh (7e), not "
           "that it passed.")
     return 1 if bad else 0

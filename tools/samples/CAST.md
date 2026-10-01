@@ -1411,6 +1411,105 @@ layers meet.
 Cost: three fields per cel instead of one, so a four-cel view takes about seven minutes
 instead of two and a half. `--no-occlude` restores the single-field frame.
 
+## 7k. A projected limb cannot be longer than the limb — and the guard that missed it
+
+A player, twice: **"The mans shirt seems to be part of his arm!!!!, looks really stupid."**
+It came back. On three cels of four the shirt sagged into a bell over the hip, the hem traced
+an S-curve, the forearm beside it was a thin ribbon, and **the hand was gone**. Cel 0 was
+clean — which is the whole clue, because the wardrobe line and the source photograph are
+identical across all four, so whatever is wrong is a function of the POSE.
+
+### Why `--shirt-check` read green over it
+
+**Because it runs `shirt_mask` on the SOURCE photograph and never opens a warped cel.** It
+asks whether the mask covers the garment at the point of DEFINITION, and the mask is the same
+for every cel; cel 0 is the one cel that is essentially the source. A defect that varies with
+pose is invisible to it by construction.
+
+That is the fourth instance of one shape in this file, and the shape is worth naming once:
+**§1**'s CLIP guard checked one of two identical inputs; **§8**'s GPU lock guarded one tool
+against itself; **§7h**'s forearm probe was positioned by the same wrong assumption as the fix
+it was validating; and this one tested the input instead of the output. Every time, the check
+was not aimed at the thing that varies.
+
+### The check now tests the plate at the point of use
+
+A rigid motion preserves area and does not thin a limb, so on each **warped** cel:
+
+```
+             plate area / source     forearm, narrowest band
+  cel 0            1.02                     33, 34
+  cel 1            1.06                     11, 33
+  cel 2            1.11                     11, 37
+  cel 3            1.04                     15, 33
+  (source)         1.00                     38, 36
+```
+
+Both rank the cels 0 < 3 < 1 < 2 — exactly the order a human ranked them by eye — and both
+pass cel 0. `--shirt-check` now fails on cels 1–3 and says why.
+
+**The probe had to be fixed twice more before it was trustworthy**, and both are the same
+lesson one level down. It placed the forearm band from the AUTHORED pose while the renderer
+draws from a clamped one, so it looked where the arm is no longer drawn; and it took the
+MINIMUM width along the band, which is wherever the shirt happens to cross the arm, and so
+cried wolf at 39% on a frame with a normal arm and a hand on it. Point of use means the pose
+at the point of use, and "is this a ribbon" is a question about the limb, not its thinnest row.
+
+### The cause: the cycle authors an impossible arm
+
+Every bone's destination length against its source length:
+
+```
+bone        cel 0   cel 1   cel 2   cel 3
+R forearm   1.01x   1.15x   1.32x   1.06x
+L forearm   1.02x   1.18x   1.36x   1.08x
+upper arms  1.01x   1.06x   1.04x   1.05x
+legs        0.61x   1.01x   1.02x   0.99x
+```
+
+**The forearms are stretched by up to 36%.** `across` is 1.0, so a limb keeps its WIDTH while
+its length is free — which is exactly what makes a foreshortened shin read as a bent knee
+(§7aa). Applied to a bone that gets LONGER it does the reverse: the limb is drawn out into a
+ribbon at constant width, the hand on the end is smeared off it, and the cloth beside it is
+dragged into the bell. **The shirt was never the fault; it was downstream of the arm.**
+
+And a ratio above 1.0 is not a tuning question, it is **impossible**. The source photograph
+has the arms hanging straight down, perpendicular to the view, so each bone is already at its
+true length there, and the projection of a rigid segment can only ever be SHORTER. The cycle
+produces it because the wrist is placed by an x and a y amplitude independently rather than on
+an arc of fixed radius about the elbow.
+
+`clamp_limbs` caps every bone at its source length, keeping direction and walking the chain
+outward so a clamped elbow carries its wrist. The honest fix is in `pose_author.CYCLE`; the
+clamp is in the renderer because the renderer should not draw an impossible limb whatever it
+is handed. **Result: the ribbon and the missing hand are gone on all four cels**, and the
+plate's area drops from 1.11 to 1.07 on the worst cel.
+
+### Closed for good: the shoe's smear rule does not work on a garment
+
+Three attempts, three carved shirts:
+
+```
+w < 0.5             the outer half of the FEATHER BAND - cloth inside the garment
+~own                strictly outside the plate
+~dilate(own, 9)     only cloth well clear of the plate
+```
+
+The third had no excuse left and still cut a ragged green gash down the flank on three cels.
+The rule works for a shoe because the region it protects is small, compact and surrounded by
+background; a garment's edge is long, soft and adjacent to an arm, so any test of the form
+"outside the plate and shirt-coloured" keeps finding the garment's own antialiased rim. The
+residual +7% on cel 2 is accepted rather than chased.
+
+### And one defect the occlusion work introduced
+
+A thin green streak up the fly on cels 1 and 3: the two leg masks abut along the crotch and
+each layer is warped by its own field, so where the fields diverge the background shows
+through. Found by cropping the torso at 4x — no silhouette measure sees it, because the hole
+is interior and narrower than the inter-leg gap surrounding it. The masks now overlap by
+0.006 of figure height so the layers share a strip instead of abutting, and the near leg is
+drawn last so the strip shows what it should.
+
 ## 8. Two bugs that looked like hardware faults
 
 **`largest()` was O(components × pixels)** with a Python flood fill. Fine on a clean matte;
