@@ -795,6 +795,18 @@ def collar_for(view, loop=0):
 # confirmation. Anything that changes WHAT A THING IS has to be changed here.
 SHOE_INIT = {282: (236, 236, 234)}
 
+# Wrist to fingertip as a fraction of figure height. Anthropometric (hand length is about
+# 10.5-11% of stature), not tuned. Used to run the init's forearm capsule past the wrist so
+# there is a hand drawn outside the trouser column - see init_field.
+HAND_LEN = 0.105
+# The hand's own radius, and how far outboard of the wrist it is centred, both as fractions
+# of figure height. These are NOT the forearm's numbers and they are not anatomy - they are
+# what it takes for the mass to survive a 62px blur, which is the same thing the briefcase
+# needed and for the same reason. Chosen by sweeping the init against the forearm's own
+# measured contrast rather than by eye; see init_field.
+HAND_R = 0.042
+HAND_OUT = 0.0
+
 
 def shoe_for(view, loop=0):
     s = _median_of_cels(_measure_shoe_cel, view, loop, ("top", "halfw", "colour"))
@@ -1135,12 +1147,57 @@ def init_field(cel, size, bg, blur=62, grain=8, bands=None, soft=18, glasses=Fal
         cap(k[5], k[6], fig * 0.055 * g, bands["torso"])
         # The FOREARM takes the face colour, i.e. skin. Most of this cast is in short
         # sleeves, and it is a better guess than sleeving every arm to the wrist.
-        cap(k[3], k[4], fig * 0.042 * g, bands["face"])
-        cap(k[6], k[7], fig * 0.042 * g, bands["face"])
+        #
+        # AND IT RUNS PAST THE WRIST BY A HAND'S LENGTH, which is what stops the model
+        # putting the hands in the pockets.
+        #
+        # It used to stop dead at the wrist keypoint. At mid-swing the wrist sits against
+        # the hip, so the init was painting a column of skin that ended exactly where the
+        # trouser column began - which is a picture of a hand disappearing into a pocket.
+        # The negative prompt said `hands in pockets` and the init was drawing them, and
+        # the init wins (§0). Three separate measurements agreed before this changed: the
+        # hand refiner reported "no hand at the authored wrist" on four of six crops,
+        # `--shirt-check` reported both hands swallowed by the garment, and the rendered
+        # arm's projected range fell to 0.0535 against the footage's 0.0588-0.0660.
+        #
+        # 0.105 of figure height is wrist to fingertip on a standing adult - hand length is
+        # about 10.5-11% of stature - so this is the anthropometric length, not a number
+        # tuned until the picture looked right. The radius is left at the forearm's own,
+        # which makes one capsule rather than two and slightly over-wides the hand; a hand
+        # that is a little too wide reads as a hand, and a hand that is not drawn at all
+        # reads as a pocket.
+        def past_wrist(elb, wri, length):
+            dx, dy = wri[0] - elb[0], wri[1] - elb[1]
+            n = float(np.hypot(dx, dy)) or 1.0
+            return (wri[0] + dx / n * length, wri[1] + dy / n * length)
+
         cap(k[8], k[9], fig * 0.075 * g, bands["thigh"])
         cap(k[11], k[12], fig * 0.075 * g, bands["thigh"])
         cap(k[9], k[10], fig * 0.058 * g, bands["shin"])
         cap(k[12], k[13], fig * 0.058 * g, bands["shin"])
+        # THE ARMS GO ON AFTER THE LEGS, because in a front view they hang IN FRONT of the
+        # thighs. This is the draw order the figure actually has, and getting it wrong is
+        # what made the first attempt at the hand look like it had not landed at all.
+        #
+        # Lengthening the capsule past the wrist on its own changed almost nothing: the
+        # thigh capsule is drawn next, it is 0.075 of figure height in radius against the
+        # forearm's 0.042, and at the hand's position it spanned x 221-375 against the
+        # hand's 196-282. Twenty-five pixels of an eighty-six pixel hand survived. The init
+        # was drawing the hand and then painting the trouser over it, which is a better
+        # picture of a hand in a pocket than the one it replaced.
+        #
+        # So the hand is drawn where a hand is, and nothing is painted over it afterwards.
+        hl = fig * HAND_LEN * g
+        mid_x = 0.5 * (k[8][0] + k[11][0])
+        for elb, wri in ((k[3], k[4]), (k[6], k[7])):
+            cap(elb, wri, fig * 0.042 * g, bands["face"])
+            hx, hy = past_wrist(elb, wri, hl)
+            # OUTBOARD, AWAY FROM THE MIDLINE. A relaxed hand hangs outside the thigh, not
+            # on top of it, and the init needs it clear of the trouser column for the same
+            # reason the briefcase did: adjacent masses merge under a 62px blur.
+            hx += (fig * HAND_OUT * g) * (1.0 if hx > mid_x else -1.0)
+            r = fig * HAND_R * g
+            pd.ellipse([hx - r, hy - r, hx + r, hy + r], fill=bands["face"])
         # A WAISTBAND, SO TWO GARMENTS ARE TWO SHAPES. View 286's top and shorts are both
         # pink - torso (240,80,160), thigh (240,167,171) - so the init painted one unbroken
         # pink column from shoulder to thigh, and the model read a single garment and drew

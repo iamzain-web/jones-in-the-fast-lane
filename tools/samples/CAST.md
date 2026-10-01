@@ -1974,6 +1974,24 @@ upstream in the source pose.
 From a mid-swing source every cel is a squeeze, which the warp handles natively. **§0b's
 generation rule is therefore not an optimisation for a sagittal cycle; it is a precondition.**
 
+### The current build STAYS. The new one is not better on every axis.
+
+| | plate area | sleeve | hands swallowed | lateral | projected |
+|---|---|---|---|---|---|
+| **in `tools/samples` now** | 0.97–0.98 | 68.2% | L only, 17.6% | 0.0257 | **0.0660 — in band** |
+| regenerated (`warp_mid4`) | 0.99–1.02 | 65.6% | both, 21.6/24.3 | 0.0227 | 0.0535 — below |
+| + init hand, draw order (`warp_mid6`) | 0.99–1.02 | 65.1% | both, 20.8/22.5 | **0.0208** | 0.0526 — below |
+
+Better on the shirt plate and better on lateral sway. **Worse on the sleeve, worse on the
+hands, and the projected arm drops out of the reference band** where the current build sits
+inside it. So the deliverables are not rebuilt and the current build stands — not as a
+judgement call, but because the standing rule is that the replacement has to win on every axis
+and this one loses on three.
+
+The regenerated source is still the better *source* — same man, crew neck, single-tone white
+trainers — and it should go in as soon as the hands are solved, because that is the one defect
+standing between it and a clean sweep.
+
 ### Re-measured after the wardrobe regeneration, not assumed to carry
 
 The source changed underneath both results, so both were measured again rather than inherited.
@@ -2011,6 +2029,79 @@ confirm the only answer it could have produced.
 If that reading is right, then **`hands in pockets` is no longer cosmetic**: it is costing the
 arm swing the thing §7l was built to deliver, and the init-side fix named in §0 (run the
 forearm capsule past the wrist by a hand's length) is the next move rather than a tidy-up.
+
+## 7n. The hands: cause found, two fixes applied, defect NOT fixed. And it bounds §0.
+
+The cause was right and the remedy did not work, which is worth more written down than a win
+would be.
+
+**The cause, confirmed:** the init painted the forearm as a skin capsule that stopped at the
+wrist keypoint. At mid-swing the wrist sits against the hip, so the init drew skin ending dead
+at the trouser column — a picture of a hand going into a pocket. The negative prompt said
+`hands in pockets`; the init drew them; the init won.
+
+**Fix 1 — the capsule runs past the wrist by a hand's length (0.105 of figure height).**
+Anthropometric, not tuned: the authored wrist is at 0.455 and the hip at 0.505, and wrist
+to fingertip is about 10.5% of stature, so the hand runs 0.455 → 0.560 and ends *below* the
+hip exactly as a real relaxed hand does. **The frame came back with the hands still in the
+pockets.**
+
+**Fix 2 — the arms are drawn AFTER the legs.** The first attempt looked like a change that had
+not landed, and nearly got treated as one. It had landed; the *thigh capsule was painted over
+it*. The thigh is 0.075 of figure height in radius against the forearm's 0.042, and at the
+hand's position it spanned x 221–375 against the hand's 196–282 — twenty-five pixels of an
+eighty-six pixel hand survived. The init was drawing the hand and then painting the trouser on
+top, which is a *better* picture of a hand in a pocket than the one it replaced. Reordering is
+also simply correct: in a front view the arms hang in front of the thighs. **Measured +21
+levels at the hand. The frame came back with the hands still in the pockets.**
+
+### Why it cannot be pushed further from here, measured
+
+Contrast above the background colour, which is what the model actually has to see through a
+**62 px** blur:
+
+```
+forearm (a limb the init demonstrably gets across)        118
+the wrist itself                                          100
+hand, after both fixes                                     60
+hand, radius 0.042 -> 0.070                            60 -> 67
+hand, nudged outboard 0.030 / 0.055                    35 / 20
+```
+
+**The blur radius (62) is larger than the hand radius (43), so a hand is below the size this
+init can express at all.** Widening it buys 7 levels and starts drawing a cartoon hand.
+
+**And nudging it outboard made it worse, 60 → 20**, which disproved the hypothesis I had
+carried over from the briefcase ("big enough AND separated enough"). That lesson does not
+transfer: the briefcase was a dark mass that needed separating from a dark suit, whereas
+moving the hand off the body surrounds it with backdrop and washes it out. **A rule learned on
+one defect is a hypothesis on the next one.**
+
+One sweep had to be thrown away: varying the capsule length moved the probe point with it, so
+longer always measured lower and the experiment could not have produced any other answer. Same
+error as §7k, caught by noticing that `HAND_LEN 0` scored 100 — the highest in the table.
+
+### What this bounds about §0
+
+§0 says the init beats the prompt, and the shoe row proves it at its strongest. **This is the
+other edge of the same rule.** The init is a 62 px-blurred colour field: it is the strong lever
+for *what a large mass is* — a garment, a shoe, a briefcase, a dark bar across the eye line —
+and it has **no authority over anything smaller than its own blur**. A hand is smaller than its
+blur. So is a wristwatch, which is why that one has not moved either.
+
+The honest statement of the rule is therefore: **the init beats the prompt on masses that
+survive the blur, and below that size neither lever has been shown to work.** Where the defect
+is smaller than 62 px, the levers left are the pose (place the limb where the ambiguity does
+not arise), the blur itself, or a refinement pass — not a better adjective.
+
+### The test that was asked for could not be run
+
+The question was whether the projected arm range returns to the reference band once the hands
+come out of the pockets. **The hands did not come out, so the test has no precondition and is
+neither confirmed nor refuted.** What can be said is that the init changes alone did not move
+it: 0.0535 → 0.0526 against a band of 0.0588–0.0660, which is noise, and `--shirt-check`
+independently still reports both hands swallowed (20.8% / 22.5%). Those two agree, which is
+consistent with the reading but is not a test of it.
 
 ## 7m. The shoe mask classifies ONE tone, and the shoe had two. Open, deliberately.
 
@@ -2065,6 +2156,42 @@ window: a check that cannot fail on the case you care about.
 
 **Nothing silences this deviation except the comment at the `wear` line.** That is a weak place
 to keep it, and it is where it is kept, deliberately and with this paragraph pointing at it.
+
+### The attached shadow: judged at cel resolution, and it is not there
+
+The regenerated source fails one screen check — `soles 1136 vs authored 1089` — and the cause
+is **not** the shoe. The shoe ends cleanly around row 1119. What reaches 1136 is a near-black
+cast shadow under one trainer: rows 1125–1133, mean `(0,0,1)`, 26–33 px wide. `shadow` is in
+the negative prompt and was reaching the model; it fired anyway.
+
+The question is whether that matters, and **the rung you measure it at decides the answer.**
+At the 1065-row generation rung it is an obvious black blob. The 1990 cel is **39×95 with a
+94-row figure**, so the same blob is about **one cel pixel tall and three wide** — and a single
+dark pixel directly under a shoe is what ground contact looks like, not what a defect looks
+like.
+
+**It turned out to be neither, because it never gets that far.** Traced through the real fit
+step rather than a simulated downsample:
+
+```
+                           near-black px in the bottom 2% of the figure
+warped input (1058 rows)              214 of 338
+fitted 12x   (1079 rows)                5 of 1092
+```
+
+The fitted cel's bottom rows are white shoe throughout (161–182). **`silhouette_matte` already
+removes the shadow**, and for a reason that is worth keeping: the shadow is `(0,0,1)` and the
+backdrop outside the figure is `(0,0,0)`. The matte cannot tell them apart, so the shadow keys
+out with the background.
+
+So: **no alpha clip, and the sole check stays exactly as it is.** The check is honest — it is
+measuring a stage at which the shadow is genuinely present. It is just measuring a stage the
+shadow does not survive. Loosening it to make the number go away would have removed a working
+instrument to hide an artefact that was already being handled one step later.
+
+The general point, which is the same one as §0c and the `±0.09` window from the other side:
+**a defect's size is meaningless until you say which rung you measured it at.** This one is
+fatal at 1065 rows, invisible at 95, and already deleted by the time it reaches either.
 
 ### The window bug underneath it survived only because the feet were always apart
 
