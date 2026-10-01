@@ -617,6 +617,14 @@ def main():
                     help="write the standing idle for every cel instead of the walk cycle "
                          "- this is what the stop-and-show frames are generated from")
     ap.add_argument("--views", help="comma separated, e.g. 282,286")
+    ap.add_argument("--arm-swing-deg", type=float, default=None, dest="arm_swing_deg",
+                    help="sagittal swing half-angle. The reference measures 32-35 deg; "
+                         "going outside that buys projected range by authoring a walk the "
+                         "footage does not contain.")
+    ap.add_argument("--arm-lateral", type=float, default=None, dest="arm_lateral",
+                    help="sideways amplitude. Set to 0 to measure how much of the realised "
+                         "lateral range is NOT cycle amplitude - i.e. hand extent and the "
+                         "probe row sampling a hand on one cel and a forearm on another.")
     ap.add_argument("--arm-scale", type=float, default=1.0, dest="arm_scale",
                     help="fraction of the authored arm swing to use. The warp is deforming "
                          "a photograph of a man standing still, so past a certain relative "
@@ -624,6 +632,13 @@ def main():
                          "the limb and the shirt tears into a lobe over the hip")
     a = ap.parse_args()
     globals()["ARM_SCALE"] = a.arm_scale
+    # Written through globals() for the same reason ARM_SCALE is: these are read at module
+    # level inside the cycle, and `global X` after a read in the same function is a
+    # SyntaxError. None means "leave the authored constant alone".
+    if a.arm_swing_deg is not None:
+        globals()["ARM_SWING_DEG"] = a.arm_swing_deg
+    if a.arm_lateral is not None:
+        globals()["ARM_LATERAL"] = a.arm_lateral
 
     W, H = (int(v) for v in a.size.lower().split("x"))
     os.makedirs(a.out, exist_ok=True)

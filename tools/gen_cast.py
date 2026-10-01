@@ -793,6 +793,16 @@ def collar_for(view, loop=0):
 # the init went on painting the measured (84,52,51) brown, and the shoe came out BLACK with a
 # white sole. The init won on value and the prompt moved only the trim - §0, fifth
 # confirmation. Anything that changes WHAT A THING IS has to be changed here.
+# Views whose hands are refined even when the flesh gate says there is nothing there.
+#
+# ON FOR 282 BY DECISION, not by default-for-everything. The game draws at the 1990 cel's
+# 39x95, where the hand is 2-3 pixels: a fused finger is below resolution and a MISSING hand
+# is not, so a skin blob where a hand belongs beats no hand at all. That trade is specific to
+# this view's mid-swing pose, where the authored wrist lands against the hip and the model
+# reads it as a pocket. Everywhere else the gate's original reasoning still holds and it
+# stays on - see the gate in refine() and 7n.
+FORCE_HAND_VIEWS = {282}
+
 SHOE_INIT = {282: (236, 236, 234)}
 
 # Wrist to fingertip as a fraction of figure height. Anthropometric (hand length is about
@@ -1626,7 +1636,7 @@ def refine(img_pipe, torch, base, cel, who, device, args):
         jobs.append(("head", k[0][0], k[0][1] + fig * 0.005, fig * 0.115,
                      f"close up photograph of the face of {who['who']}, "
                      f"looking at the camera, sharp focus, photorealistic",
-                     args.head_strength))
+                     args.head_strength, 512))
     if args.refine_hands:
         for nm, kp in (("hand_r", k[4]), ("hand_l", k[7])):
             # ONLY REFINE A HAND WHERE THERE IS ONE. The crop is taken at the AUTHORED
@@ -1650,23 +1660,27 @@ def refine(img_pipe, torch, base, cel, who, device, args):
             # hand-shaped blob on a hip, so this stays off by default and is only ever
             # turned on for a frame someone is going to look at.
             sf = skin_fraction(base, kp[0], kp[1] + fig * 0.012, fig * 0.085)
-            if sf < 0.08 and not getattr(args, "force_hands", False):
+            forced = (getattr(args, "force_hands", False)
+                      or cel["view"] in FORCE_HAND_VIEWS)
+            if sf < 0.08 and not forced:
                 print(f"      skipped {nm}: no hand at the authored wrist "
                       f"(the model put it elsewhere, skin {sf:.3f})", flush=True)
                 continue
             if sf < 0.08:
                 print(f"      {nm}: skin {sf:.3f} is below the gate, forced", flush=True)
-            jobs.append((nm, kp[0], kp[1] + fig * 0.012, fig * 0.085,
-                         "close up photograph of one relaxed human hand hanging at the "
-                         "side, five fingers, natural anatomy, sharp focus",
-                         args.hand_strength))
+            jobs.append((nm, kp[0], kp[1] + fig * 0.012, fig * args.hand_crop,
+                         "a single human hand hanging relaxed at the side, fingers "
+                         "slightly apart and clearly separated, four fingers and one "
+                         "thumb, anatomically correct hand, detailed knuckles, sharp "
+                         "focus, photorealistic",
+                         args.hand_strength, args.hand_res))
     if args.refine_feet:
         fy = max(k[10][1], k[13][1])
         fx = (k[10][0] + k[13][0]) / 2.0
         half = max(fig * 0.095, abs(k[13][0] - k[10][0]) * 0.75 + fig * 0.05)
         jobs.append(("feet", fx, fy + fig * 0.022, half,
                      "close up photograph of a pair of shoes on a standing person's feet, "
-                     "natural anatomy, sharp focus", args.foot_strength))
+                     "natural anatomy, sharp focus", args.foot_strength, 512))
 
     # ATTENTION SLICING IS FOR THE 640x1280 BASE, NOT FOR THESE. Slicing is what makes the
     # base fit in 4GB at all, and it costs roughly a factor of two in time; a 512x512 crop
@@ -1676,15 +1690,19 @@ def refine(img_pipe, torch, base, cel, who, device, args):
     if jobs and args.slicing:
         img_pipe.disable_attention_slicing()
     try:
-        for nm, cx, cy, half, prompt, strength in jobs:
+        for nm, cx, cy, half, prompt, strength, res in jobs:
             half = int(round(half))
             if half < 24:
                 continue
             x0, y0, x1, y1 = crop_box(cx, cy, half, (W, H))
             if x1 - x0 < 32 or y1 - y0 < 32:
                 continue
-            crop = out.crop((x0, y0, x1, y1)).resize((512, 512), Image.LANCZOS)
-            blank = Image.new("RGB", (512, 512), (0, 0, 0))
+            # RESOLUTION IS PER JOB. A hand is the smallest thing this pipeline has to get
+            # right and it was being refined at the same 512 as a whole head. Rendering the
+            # hand crop larger is the only lever that operates at the hand''s own scale -
+            # the init cannot, because a hand is smaller than its 62px blur (7n).
+            crop = out.crop((x0, y0, x1, y1)).resize((res, res), Image.LANCZOS)
+            blank = Image.new("RGB", (res, res), (0, 0, 0))
             gen = torch.Generator(device=device).manual_seed(who["seed"] + 977)
             t = time.time()
             fixed = img_pipe(prompt=prompt + ", plain green screen background",
@@ -2024,6 +2042,12 @@ def main():
                          "fails the screen")
     ap.add_argument("--head-strength", type=float, default=0.42)
     ap.add_argument("--hand-strength", type=float, default=0.50)
+    ap.add_argument("--hand-res", type=int, default=512,
+                    help="render the hand refinement crop at this resolution. A hand is the "
+                         "smallest feature in the pipeline and 512 across a whole-hand crop "
+                         "is what fused fingers look like.")
+    ap.add_argument("--hand-crop", type=float, default=0.085,
+                    help="half-size of the hand crop as a fraction of figure height")
     ap.add_argument("--force-hands", action="store_true",
                     help="refine the hand crop even when there is no flesh at the authored "
                          "wrist. OFF by default: see the gate in refine(). This is how a "

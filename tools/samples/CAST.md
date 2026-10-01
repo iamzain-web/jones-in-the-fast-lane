@@ -39,6 +39,34 @@ The transferable form, which applies well outside this project:
 > transform did to it. Before trusting any number, ask what the picture would look like if
 > something *else* were wrong — and if you cannot answer, dump it and look.
 
+### A guard outlives the premise it was written under, and nothing fails when it does
+
+§7e's hand refiner gives up when the crop holds under 8% flesh. That was correct when it was
+written: the model placed the hands where it liked, so an empty crop meant there was no hand
+there to improve, and refining one anyway hallucinated a hand-shaped blob onto a hip.
+
+Then the premise changed — the hand is now *supposed* to be at the authored wrist, and a crop
+full of trouser is the defect itself rather than evidence of its absence. **The gate went on
+firing, and it was now protecting the defect.** Worse, it fired asymmetrically: `hand_r`
+measured 0.082 and passed, `hand_l` measured 0.065 and skipped, so **the hand that was more
+deeply in the pocket was precisely the one the refiner refused to touch.** The gate was doing
+most harm exactly where the problem was worst.
+
+Nothing announced this. The gate did not start failing, the log line it printed was accurate,
+and the comment above it was still true as written. The only thing that had changed was a
+belief held somewhere else in the pipeline.
+
+> **A check encodes an assumption about the world. When the assumption is retired, the check
+> does not retire with it — it carries on being correct about a world that no longer exists.**
+> Nothing fails, nothing warns, and the check's own comment still reads as justification.
+> Whenever a design decision is reversed, the thing to search for is not the code that
+> implemented it but the code that *defended* it.
+
+Same shape as §1's negative prompt, where `watch` sat in the file in the right variable with
+the right syntax and had been silently truncated away for a session; and as §0d, where
+`hands in pockets` was a sentence in a comment that *measured* the pockets and worked around
+them. Three ways for a thing to look handled while doing nothing.
+
 ### Two corollaries, each earned twice
 
 **If the probe is positioned by the thing you are varying, the experiment measures the probe.**
@@ -2163,6 +2191,97 @@ inventing a walk the reference does not contain. **The footage closed this lever
 opening it, which is still worth the measurement — the alternative was authoring it, waiting
 for a generation, and finding out afterwards.**
 
+## 7o. Both arm knobs, walked until they broke. The answer on each is: do not move it.
+
+`ARM_SWING_DEG` and `ARM_LATERAL` were treated as two independent knobs with two separate
+reference bands, not as a trade. Each was swept alone with the source held constant
+(`gen_mid7`), and each turned out to be the wrong lever — for a different reason.
+
+### The sampling loss is real, is 9%, and is not the problem
+
+The four keys sample arm phase `+1.00, −0.30, −1.00, +0.30`. **`cos` is even**, so those four
+phases produce only **two** distinct foreshortening values, and neither is the maximum: no key
+sits at `ph = 0`, true mid-swing, where the arm is longest in projection.
+
+```
+            cos at the four keys      realised span   ideal span   realised/ideal
+30 deg      0.866 0.988 0.866 0.988      0.1217        0.1340          91%
+35 deg      0.819 0.983 0.819 0.983      0.1641        0.1808          91%
+40 deg      0.766 0.978 0.766 0.978      0.2121        0.2340          91%
+45 deg      0.707 0.972 0.707 0.972      0.2653        0.2929          91%
+```
+
+**It is a flat 91% at every angle.** So it is a genuine sampling loss and worth knowing, but it
+is a constant 9% and cannot explain a ~20% shortfall. It was checked before the angle was
+touched, which was the right order — but it was not the answer.
+
+### The swing sweep: the band is only reachable OUTSIDE the footage
+
+```
+swing      lateral    projected    verdict
+30 deg     0.0318      0.0381      below
+35 deg     0.0320      0.0513      below
+40 deg     0.0312      0.0648      IN BAND
+45 deg     0.0330      0.0806      ABOVE
+REFERENCE  0.0139-0.0160   0.0588-0.0660
+```
+
+**40° hits the band and the footage measures 32–35°.** So the band is not reachable inside the
+reference, and the standing rule is that exceeding it buys the number by authoring a walk the
+clip does not contain. **`ARM_SWING_DEG` stays at 35.** Setting 40 would have passed the check
+and made the walk wrong.
+
+### And the sweep says exactly what IS wrong: the hand does not foreshorten
+
+Solving each measured range back for the effective length being foreshortened:
+
+```
+          shoulder->wrist = 0.2770      shoulder->fingertip = 0.3820
+30 deg  ->  L_eff 0.3130
+35 deg  ->  L_eff 0.3129
+40 deg  ->  L_eff 0.3057
+45 deg  ->  L_eff 0.3040
+```
+
+**L_eff is ~0.313 and flat across the whole sweep** — far nearer the wrist than the fingertip.
+The hand contributes only about a third of its length to the foreshortening.
+
+The cause is structural and is visible in one line: `BONES` runs `(1,2), (2,3), (3,4)` — neck,
+shoulder, elbow, **wrist**. COCO-18 has no fingertip keypoint, so **there is no hand bone**.
+The hand is carried along by the forearm's transform but is not shortened by it, and the
+`projected` measure runs shoulder-to-*hand*.
+
+**If the hand foreshortened properly, 35° would give `0.382 × 0.1641 = 0.0627` — inside the
+band, at the footage's own angle, with no tuning at all.** That is the fix: put the hand in the
+chain. Not a bigger swing.
+
+### Lateral: the cycle contributes 0.6% of it, so tuning the cycle cannot work
+
+Separated by setting the cycle's own amplitude to zero and re-measuring, source held constant:
+
+```
+ARM_LATERAL 0.008, hands OUT      0.0320
+ARM_LATERAL 0.000, hands OUT      0.0317     <- survives with the knob at ZERO
+ARM_LATERAL 0.008, hands pocketed 0.0208
+
+attributable to the CYCLE                     0.0002
+attributable to hand extent + probe sampling  0.0317
+reference band                           0.0139 - 0.0160
+```
+
+**Turning the knob off changes the measured lateral range by 0.0002 out of 0.0320.** The cycle
+is responsible for **0.6%** of the number it was about to be blamed for. Tuning `ARM_LATERAL`
+to bring 0.0320 down to 0.0150 would have required an absurd value and would have produced a
+cycle that was wrong the moment the hands changed again — which they just did, twice.
+
+**`ARM_LATERAL` stays at 0.008.** The overshoot is the rendered hand's own width, plus the probe
+row at 0.455 of figure height sampling a hand on one cel and a forearm on another. Both are
+downstream of the same missing hand bone.
+
+> Two knobs, two bands, two sweeps, and **neither knob was the lever**. Had these been moved
+> together on the assumption of a trade, 40° and a reduced lateral would have put both numbers
+> inside their bands with the walk further from the reference than when it started.
+
 ### What this bounds about §0
 
 §0 says the init beats the prompt, and the shoe row proves it at its strongest. **This is the
@@ -2474,14 +2593,21 @@ is four cels of a prop rather than any part of a character.
 * **Views 284, 286, 291, 292 fail `--shirt-check`** and are not to be rebuilt in this pass.
 * **28 cels have never been generated** (283, 287, 293–297, and all of body3). All of them
   must be shot mid-swing per §0b — that is now a precondition, not a preference (§7l).
-* **The projected arm range is short and the source is not the cause — §7n.** Three sources
-  with three different hand treatments all land at 0.051–0.054 against a reference band of
-  0.0588–0.0660, including one with the hands fully out of the pockets. That points at the
-  authored cycle's swing amplitude, not at the generator. **Lateral is simultaneously 2× too
-  high (0.0320 against 0.0139–0.0160), so these must not be chased with one number.**
+* **THE HAND NEEDS A BONE — §7o, and it is now the top of this list.** `BONES` ends at the
+  wrist, so the hand is carried by the forearm without being foreshortened by it. Measured
+  effective length is 0.313 against a true shoulder-to-fingertip of 0.382, flat across a
+  30–45° sweep. **One missing bone explains both open arm numbers**: the projected range is
+  short because a third of the arm does not foreshorten, and the lateral range is 2× high
+  because the hand's own width dominates it (the cycle contributes 0.0002 of 0.0320). With
+  the hand in the chain, 35° — the footage's own angle — predicts 0.0627, inside the band,
+  with no tuning. **Neither `ARM_SWING_DEG` nor `ARM_LATERAL` should be moved; both were
+  swept and both are the wrong lever.**
 * **Hand refinement produces fused fingers when forced past its gate (§7n).** `--force-hands`
-  places the hands correctly and mangles them. Below resolution at 94 rows, visibly wrong at
-  1:1. Needs a better hand pass, not a looser gate.
+  places the hands correctly and mangles them; it is ON for 282 by decision (`FORCE_HAND_VIEWS`)
+  because at 94 rows a fused finger is below resolution and a missing hand is not — see
+  `hand_both_rungs_282.png`. One attempt at fixing it properly (768px, 0.115 crop,
+  finger-specific prompt) came back **worse**: a hallucinated dark object held in the hand.
+  Needs a better hand pass, not a looser gate and not a bigger crop.
 * **`boil 12.12` on the mid-swing smoothing run** was observed and not investigated.
 * **`generate()`'s `best` variable is not the best, it is the LAST.** It is reassigned every
   attempt and only the `break` on a clean screen stops the loop, so when no attempt passes,
