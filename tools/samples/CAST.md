@@ -113,6 +113,46 @@ source photograph's own plate, which is what "rigid" is defined against in the f
 **And it was not a wash.** With the correct reference, cel 1 passes at 1.03 — it had been
 failing a bad yardstick for three rounds, and two of those were spent chasing it.
 
+## 0d. A term you believe is active may be a COMMENT. Twice in one day.
+
+**Grepping the file is not evidence that the model was asked. Decode the tokeniser's output
+and look for the word.**
+
+Today's source frame came back with the man's hands in his pockets, and the obvious question
+was why the negative prompt had not stopped it. It had not stopped it because **there was no
+such term**. `gen_cast.py` contained the string "in a pocket" exactly once, in the comment
+above the hand refiner's skip test:
+
+> the crop is taken at the AUTHORED wrist, but the model puts the hands where it likes — in a
+> pocket, behind the back, tucked into a jacket — so the crop frequently lands on plain cloth
+
+That comment *measures* the pockets (four of six hand crops under 8% skin), *works around*
+them, and never once objects to them. Anyone searching the file for "pocket" finds a careful,
+numerate paragraph on the subject and concludes it is handled. Nothing was ever asked.
+
+**The workaround is what hid it.** The refiner's skip test made the symptom tolerable — no
+hallucinated hand-blob on a jacket — so the underlying behaviour stopped being annoying enough
+to fix, and the comment explaining the workaround read, at a glance, like a fix.
+
+This is the **second** time in one day a term believed active turned out to be prose. The
+first was §1: twelve terms sat in the source file, in the correct syntax, in the right
+variable, and were being discarded by CLIP's 77-token window before they reached the model —
+`watch` among them, which is why that same source frame also came back wearing two wristwatches.
+
+Three different ways for a term to be inert, all of which look identical when you read the
+source:
+
+| How it fails | Looks like | Found by |
+|---|---|---|
+| It is in a comment | a handled concern | decoding, then searching the decode |
+| It is past token 77 | a correct prompt string | decoding, then searching the decode |
+| It is in the string but does not fire | a correct prompt string | the picture |
+
+The third is real too, and it paid for this round's tokens: `jewellery` was inside the window
+and reaching the model while the figure wore two wristwatches. All three are invisible to
+`grep` and the first two are invisible to a token *count*, which is why `check_guards` now
+decodes and searches for named terms (`PINNED`) rather than only counting.
+
 ## 0. The rule to reach for first: the init beats the prompt
 
 **Where a defect is about WHAT SOMETHING IS, change the init. The prompt is for things the
@@ -128,10 +168,48 @@ four separate times on four unrelated defects:
 | Four fashion models | "a heavy set man in his fifties" | 7.7-head, 0.107 shoulder | a slim young man |
 | Blue-grey shirt | "a pale pink shirt" | (239,231,240) near-white | pale blue-grey shirt |
 | No sunglasses | "dark sunglasses" | nothing at the eye line | no sunglasses |
+| Brown shoes | "white trainers" | (84,52,51) dark brown | **BLACK** trainers, white sole |
 
-The last one is the cleanest demonstration, because it was fixed by moving the *same*
+The sunglasses row is the cleanest demonstration, because it was fixed by moving the *same*
 instruction from one place to the other: "dark sunglasses" in the prompt did nothing, and a
 dark bar painted across the eye line in the init produced them immediately.
+
+**The shoe row is the strictest test this rule has had, and it is the reason to trust it.**
+Every previous row can be waved away as a term that never reached the model — §1 showed that
+half of them genuinely did not. This one cannot. "white trainers" was verified *in the decode*,
+at token 71 of 74, inside the window, before the frame was generated. The model was definitely
+asked. The init was still painting the measured brown, and what came back was a **black** shoe
+with a white sole: the init set the value, and the prompt was left decorating the trim.
+
+That is the useful form of the rule. The prompt did not lose outright — it moved the sole. It
+lost **on what the object is**, which is the half the init owns.
+
+### A prompt term that reached the model and did nothing is not evidence against the term
+
+Three of the four terms pinned for this run were verified in the decode and three failed in
+the pixels: the shoes above, the hands still in the pockets, and a watch-shaped blob still on
+the left wrist. **None of those is a reason to delete the term**, and the distinction matters
+because the obvious next move — "it didn't work, take it out and try different words" — is the
+move that wastes the day. The term is now doing the only job a prompt term can do: it is no
+longer *fighting* the init while the init is corrected. `watch` sat in the file for a whole
+session without reaching the model at all (§1), so this is the first frame on which it has
+actually been asked for, and the first on which its failure means anything.
+
+**What to do with each one is decided by which half the defect lives in:**
+
+| Defect | Whose half | Lever |
+|---|---|---|
+| V-neck | shape at the neckline | init already pins the neckline — fixed, came out crew |
+| Shoe colour | what the object is | `SHOE_INIT`, an init override |
+| Hands in pockets | where the limb ENDS | the init's forearm capsule stops at the wrist |
+| Wristwatch | a small detail on skin | the only one the prompt can plausibly own |
+
+The hands row is worth stating plainly, because it is not a model whim: the init paints the
+forearm as a skin capsule from elbow **to the wrist keypoint and no further**, and at mid-swing
+the wrist sits against the hip. So the init draws skin that stops dead at the trouser column —
+which is a picture of a hand going into a pocket. **The init was asking for the very thing the
+negative prompt was asking against.** Until the capsule runs on past the wrist by a hand's
+length, the prompt is arguing with the picture and the picture wins.
 
 **But the prompt is not powerless, and one failure was misdiagnosed as an init problem.**
 View 292 came back with an overhanging belly through two rounds of narrowing the init's
@@ -242,8 +320,14 @@ studio equipment, umbrella
 ```
 
 Every term added in response to a defect was in the discarded half. The wristwatch on view
-282 survived because nothing ever asked for it to go; so did the studio light stand. This
-also settles three arguments about what actually fixed things:
+282 survived because nothing ever asked for it to go; so did the studio light stand.
+
+**§0d is the sequel to this one** — a term can also be inert because it is sitting in a
+*comment*, which `grep` cannot distinguish from a prompt string and a token *count* cannot
+see at all. Both failures happened in one day. The check now decodes and searches for named
+terms (`PINNED` in `gen_cast.py`), because counting tokens never proved a word arrived.
+
+This also settles three arguments about what actually fixed things:
 
 | Defect | Prompt clause added | What actually fixed it |
 |---|---|---|
@@ -1890,6 +1974,117 @@ upstream in the source pose.
 From a mid-swing source every cel is a squeeze, which the warp handles natively. **§0b's
 generation rule is therefore not an optimisation for a sagittal cycle; it is a precondition.**
 
+### Re-measured after the wardrobe regeneration, not assumed to carry
+
+The source changed underneath both results, so both were measured again rather than inherited.
+`warp_mid4` is the regenerated source (seed 704311, crew neck, white trainers) warped through
+the same sagittal cycle.
+
+| | plate area, 4 cels | sleeve | hands swallowed |
+|---|---|---|---|
+| previous mid-swing source | 0.98 / 0.98 / 0.97 / 0.98 | 68.2% | L only, 17.6% |
+| **regenerated source** | **1.00 / 0.99 / 1.02 / 0.99** | 65.6% | **both**, 21.6% / 24.3% |
+
+**The shirt result carried and improved** — every cel within 2% of the source photograph's own
+plate, against 2–3% before. The V-neck is gone; the neckline came out crew.
+
+| | lateral range | projected range |
+|---|---|---|
+| before (lateral swing) | 0.0550 | 0.1352 |
+| sagittal, old source | 0.0354 | 0.0360 |
+| sagittal, mid-swing source | 0.0257 | 0.0660 |
+| **sagittal, regenerated source** | **0.0227** | **0.0535** |
+| REFERENCE (`walkref.mp4`) | 0.0139–0.0160 | 0.0588–0.0660 |
+
+**The lateral improved and the projected fell out of the reference band.** 0.0535 is below the
+footage's 0.0588 floor, where the previous source sat inside it at 0.0660. That is a
+regression and it is the one number in this round that went the wrong way.
+
+**The likely cause is the hands, and two independent measurements point the same way.** The
+projected instrument finds the hand's lowest row; `--shirt-check` independently reports both
+hands swallowed now against one before, and deeper (17.6% → 24.3% on the left). Hands buried
+further into the pockets give a higher hand-bottom and a shorter projected arm on every cel.
+Stated as the supported reading, **not** as a demonstrated cause — it has not been dumped and
+looked at, and §7k is the standing reminder of what happens when an experiment is allowed to
+confirm the only answer it could have produced.
+
+If that reading is right, then **`hands in pockets` is no longer cosmetic**: it is costing the
+arm swing the thing §7l was built to deliver, and the init-side fix named in §0 (run the
+forearm capsule past the wrist by a hand's length) is the next move rather than a tidy-up.
+
+## 7m. The shoe mask classifies ONE tone, and the shoe had two. Open, deliberately.
+
+**Recorded now, not fixed now.** The wardrobe has been changed to route around it so the
+mid-swing build can be judged; the mask itself is untouched.
+
+View 282's wardrobe line said `brown shoes`, measured off the 1990 cel's foot band (77,45,45).
+The model rendered that as a **two-tone boat shoe**: a near-black sole, a mid-brown upper, and
+a pale welt between them. `shoe_mask` classifies against a single reference colour, so it took
+the upper and left the sole behind. The sole then stayed in the body layer, the upper rotated
+with the foot, and the shoe came apart as it turned.
+
+**Why it is not being patched in this run.** The honest fix is a second reference colour —
+`shirt_mask` already had to go this way, from "a tolerance around one reference" to
+"nearest-of-two", when `sat_tol = 24` was measured on one figure and welded view 285's bare
+forearms into the torso plate. A tolerance wide enough to take a black sole *and* a mid-brown
+upper is also wide enough to take the jeans directly above them. That is a real piece of work
+with its own measurement, and doing it under time pressure while the shirt and arm results are
+waiting to be judged is how the one-reference classifier got shipped to nine characters in the
+first place.
+
+**The route around it**, which is a wardrobe change and nothing more: 282 is generated in
+**white trainers**. This is the only deliberate deviation from a measured 1990 band in the
+whole `wear` table and it is commented at the line. When the mask handles two tones, the line
+goes back to brown shoes.
+
+**And the wardrobe word alone did not deliver it** — see §0's shoe row. With the init still
+painting the measured (84,52,51), "white trainers" produced a **black** trainer with a white
+sole: a *higher*-contrast two-tone shoe than the brown one it replaced, i.e. the change made
+the thing it was meant to fix worse. Only after overriding the init colour (`SHOE_INIT`) did
+a plain white shoe appear, and the measured row profile is the proof:
+
+```
+source                      rows through the shoe              verdict
+gen_mid   brown boat shoe   (50,22,11) ... (98,76,68) then (176,175,175)   two tones
+gen_mid2  black trainer     (31,33,36) ... (60,58,58) then (178,174,170)   two tones, worse
+gen_mid4  white trainer     (194,201,209) ... (170,180,191) throughout     ONE tone
+```
+
+### I predicted `--check-wardrobe` would flag it. It does not, and that is the real finding
+
+The expectation written down was that scoring "white" against the (77,45,45) foot band would
+flag the deviation and keep it honest. Measured: **it does not flag, at any tolerance.**
+`check_wardrobe` scores each colour word against the **nearest band of any kind**, and "white"
+lands on the torso's (239,239,240) at a distance of **3**. The foot band is never consulted.
+
+So it is not that the checker is lenient here — it is that **a colour word is satisfied by any
+band anywhere on the figure**. "White trainers" would pass just as quietly on a figure wearing
+a white hat and black shoes. The guard reads green on a deviation that was made on purpose and
+would read green on one made by accident, which is the same shape as §0c and as the `±0.09`
+window: a check that cannot fail on the case you care about.
+
+**Nothing silences this deviation except the comment at the `wear` line.** That is a weak place
+to keep it, and it is where it is kept, deliberately and with this paragraph pointing at it.
+
+### The window bug underneath it survived only because the feet were always apart
+
+Separately, and already fixed: `shoe_mask` cut each shoe out of a window `±0.09 × fig_h` either
+side of the ankle. At a 62 px ankle separation **both windows contained both shoes** — they
+measured 150 px and 132 px wide against actual shoes of 64 px and 67 px — so each foot's mask
+dragged the other foot along with it. Fixed with a midline clip between the two ankles.
+
+The arithmetic was never safe: `2 × 0.09 × fig_h` exceeds the ankle separation whenever the
+feet are closer than about a fifth of figure height, which is **most of a real walk cycle**.
+It had never fired because **every pose it had ever run on had the feet far apart** — the old
+cycle's extreme keys, and the still poses before that. The constant was not loosened by the
+mid-swing change and no code moved under it; the mid-swing pose was simply the first input
+that ever put the feet near each other.
+
+So this is not a regression, it is a **latent fault that was being masked by an unrepresentative
+test set** — the same shape as §0c, where a reference drawn from the population could not see a
+defect the population shared. A constant that is only correct for the inputs you happen to have
+tried reads as correct forever.
+
 ## 8. Two bugs that looked like hardware faults
 
 **`largest()` was O(components × pixels)** with a Python flood fill. Fine on a clean matte;
@@ -1994,6 +2189,21 @@ is four cels of a prop rather than any part of a character.
 
 ## 10. Still open
 
+* **`shoe_mask` classifies one tone — see §7m.** Needs the `shirt_mask` treatment
+  (nearest-of-N rather than a tolerance around one reference), measured, not guessed. Until
+  it lands, view 282 is generated in white trainers instead of its measured brown, and
+  `--check-wardrobe` correctly flags that line. **Fixing the mask is what retires the
+  deviation; putting brown back without fixing the mask just re-breaks the shoe.**
+* **Views 284, 286, 291, 292 fail `--shirt-check`** and are not to be rebuilt in this pass.
+* **28 cels have never been generated** (283, 287, 293–297, and all of body3). All of them
+  must be shot mid-swing per §0b — that is now a precondition, not a preference (§7l).
+* **`boil 12.12` on the mid-swing smoothing run** was observed and not investigated.
+* **`generate()`'s `best` variable is not the best, it is the LAST.** It is reassigned every
+  attempt and only the `break` on a clean screen stops the loop, so when no attempt passes,
+  the frame that gets written is whichever one happened to run last — even if an earlier try
+  failed one check and the last failed six. Harmless so far because a passing try breaks out,
+  and genuinely useful with `--tries 1` (it is how a rejected frame can be put on disk and
+  looked at). But the name says a judgement it does not make.
 * **Consistency is unmeasured.** `boil` needs all four cels of a loop and only cel 0 of five
   views exists. `fit_walkers.py --measure` and
   `smooth_walk.py --dir assets/png12x-cast --scale 12` both still need running.

@@ -165,14 +165,64 @@ CAST = {
         "glasses": True,
         # View 280 carries a briefcase; the other three outfits do not.
         "prop": {"best": (24, 26, 38)},
-        "neg_extra": "sweater, cardigan, rolled sleeves, trainers, slim",
+        # `watch` and `hands in pockets` are character-wide because both are wrong in all
+        # four of his outfits. `watch` is one of the twelve terms that fell off the end of
+        # the 142-token negative and was never applied at all - see NEGATIVE - and it has
+        # been on every source frame since. `hands in pockets` had never been asked for AT
+        # ALL: it existed in this file only as prose, in the comment above the hand-refiner's
+        # skip test, which measured the pockets, worked around them, and never objected to
+        # them. The workaround is what hid it - the symptom was tolerable, so nobody wrote
+        # the term. Second time in one day that a term believed active turned out to be a
+        # comment; see tools/samples/CAST.md section 0d.
+        "neg_extra": "rolled sleeves, slim, watch, hands in pockets",
+        # WHERE THE TOKENS CAME FROM. This negative was at 77/77 - not truncated, but with
+        # zero free - so the four pinned terms had to be paid for, and the rule is to take
+        # the space from a synonym or a disproven term, never from a guard that predates the
+        # problem. Neither of these is an anatomy guard and neither is being weakened:
+        #
+        #   floor length skirt - body0 is a man whose four outfits are a suit, a blazer and
+        #     trousers, jeans, and underwear. It cannot fire on him. It stays in the shared
+        #     negative for body1, who is the reason it exists. NEGATIVE also records that it
+        #     was never what removed the skirt in the first place - the init's two leg
+        #     columns did that - so even where it applies it is the weak lever.
+        #   jewellery - superseded here by the specific term that replaces it. This is not a
+        #     guess: the mid-swing source came back wearing TWO wristwatches while
+        #     `jewellery` was inside the window and reaching the model. A term that was
+        #     active and did not fire is exactly the kind that should pay for the term that
+        #     names the thing directly.
+        "neg_drop": ("floor length skirt", "jewellery"),
+        # Paid for out of this character's own outfits, never out of the shared anatomy
+        # guards. `sweater, cardigan` and `trainers` were aimed at the tailored outfits and
+        # are now charged to them; 282 spends that budget on `v neck` instead.
+        "neg_outfit": {"best": "sweater, cardigan, trainers",
+                       "mid": "sweater, cardigan, trainers",
+                       # `v neckline` was here too and came out again: it put this outfit at
+                       # 78/77 on its own, and a synonym of a term already present is the
+                       # cheapest thing in the list to lose.
+                       "cheap": "v neck"},
         "wear": [
             # 280: torso and legs both (41,45,71) dark navy, feet dark.
             "wearing a mid grey blue two piece suit, pale blue shirt, dark tie, black shoes",
             # 281: torso (41,40,46) near black, legs (241,236,234) white, feet (73,42,41).
             "wearing a black blazer over cream trousers, brown loafers",
             # 282: torso (239,239,240) white 57%, legs (67,106,139) blue, feet (77,45,45).
-            "wearing a white crew neck t-shirt with a red logo, blue jeans, brown shoes",
+            #
+            # DELIBERATE DEVIATION FROM THE MEASURED CEL, and the only one in this table.
+            # The 1990 feet measure (77,45,45) brown and the line said "brown shoes", which
+            # the model rendered as two-tone brown boat shoes - a dark sole, a mid-brown
+            # upper and a pale welt between them. shoe_mask in warp_walk.py classifies on
+            # one colour, so it takes the upper and drops the sole, and the shoe shreds as
+            # it rotates. A white trainer is close to single-tone and masks cleanly.
+            # `--check-wardrobe` DOES NOT CATCH THIS, and that was worth finding out. It
+            # scores each colour word against the NEAREST band of any kind, so "white" here
+            # is satisfied by the torso's (239,239,240) at a distance of 3 and the foot band
+            # is never consulted. The deliberate deviation is invisible to it. So is an
+            # accidental one: any garment word whose colour happens to match some other band
+            # on the same figure passes silently. That is why this is written down here
+            # instead - the comment is the only thing guarding it.
+            # The real defect is the two-tone shoe mask, recorded in CAST.md 7m. When the
+            # mask handles two tones, this line should go back to brown shoes.
+            "wearing a white crew neck t-shirt with a red logo, blue jeans, white trainers",
             # 283: torso and legs skin, feet (19,19,35) dark.
             "wearing only white underwear, bare chest, bare legs, embarrassed",
         ],
@@ -295,6 +345,20 @@ COLOUR_WORDS = {
 GUARDS = ("deformed hands", "extra fingers", "missing fingers", "fused fingers",
           "extra limbs", "mutated", "seated", "cropped legs", "missing feet", "shadow")
 
+# Wardrobe terms pinned for a specific outfit, checked by name in the DECODED token stream.
+#
+# A token COUNT cannot tell you that a particular word arrived, and this file has now been
+# bitten by that twice. `watch` sat in the source for a whole session inside the discarded
+# half of a 142-token negative. `hands in pockets` was never in the source at all - it was a
+# sentence in the comment above the hand refiner's skip test, which measured the pockets,
+# worked around them, and never once objected to them. Both read as "handled" to anyone
+# grepping the file. Neither was reaching the model.
+#
+# So: the word, decoded, out of the tokeniser, or it is not pinned.
+PINNED = {
+    ("body0", "cheap"): ("watch", "hands in pockets", "v neck"),
+}
+
 
 def check_guards(a):
     """Are the anatomy guards actually reaching the model, and is the refinement on?
@@ -317,17 +381,33 @@ def check_guards(a):
     tok = CLIPTokenizer.from_pretrained(sd, subfolder="tokenizer", local_files_only=True)
     lim = tok.model_max_length
     bad = 0
+    # ONE ROW PER OUTFIT, NOT PER CHARACTER. The negative is assembled per outfit now - see
+    # negative_for - so a per-character check would decode a string the model is never given
+    # and would read green over whichever outfit happens to be the long one. That failure has
+    # already happened twice in this project in another form: a check that covers one of two
+    # inputs reads green forever. The outfit that overflows is the one nobody checked.
     for name, who in sorted(CAST.items()):
-        ng = negative_for(who)
-        ids = tok(ng).input_ids
-        reached = tok.decode(ids[1:min(len(ids) - 1, lim - 1)])
-        over = len(ids) > lim
-        miss = [g for g in GUARDS if g not in reached]
-        bad += len(miss) + (1 if over else 0)
-        print(f"  {name:<7} negative {len(ids):>3}/{lim} tokens"
-              f"{'  TRUNCATED' if over else ''}")
-        if miss:
-            print(f"          MISSING FROM THE MODEL: {', '.join(miss)}")
+        outfits = sorted({o for o in OUTFIT_I if o in who.get("neg_outfit", {})}
+                         | {None}, key=lambda o: (o is not None, o))
+        for outfit in outfits:
+            ng = negative_for(who, outfit)
+            ids = tok(ng).input_ids
+            reached = tok.decode(ids[1:min(len(ids) - 1, lim - 1)])
+            over = len(ids) > lim
+            miss = [g for g in GUARDS if g not in reached]
+            bad += len(miss) + (1 if over else 0)
+            label = f"{name}/{outfit}" if outfit else f"{name}"
+            print(f"  {label:<14} negative {len(ids):>3}/{lim} tokens"
+                  f"{'  TRUNCATED' if over else ''}")
+            if miss:
+                print(f"          MISSING FROM THE MODEL: {', '.join(miss)}")
+            # The terms this run was asked to pin. Counting tokens proves nothing about
+            # whether a specific WORD arrived; `watch` is the standing proof of that - it
+            # sat in the source file for a whole session while every count read fine.
+            for want in PINNED.get((name, outfit), ()):
+                if want not in reached:
+                    bad += 1
+                    print(f"          PINNED TERM DID NOT REACH THE MODEL: {want}")
     print(f"\n  extremity refinement: head={a.refine_head} hands={a.refine_hands} "
           f"feet={a.refine_feet}   (the hand crops are where hand quality comes from)")
     print(f"  {bad} problem(s). A guard absent here is a guard that does not exist.")
@@ -403,8 +483,8 @@ def wear_of(who, cel):
     return who["wear"][OUTFIT_I[cel["outfit"]]]
 
 
-def negative_for(who):
-    """The shared negative plus this character's own.
+def negative_for(who, outfit=None):
+    """The shared negative, plus this character's own, plus this OUTFIT's own.
 
     body2 needs "slim, slender, athletic, muscular, toned, young man, fashion model" and the
     others do not, because the thing being fought is specific to him: SD1.5's prior for an
@@ -413,9 +493,28 @@ def negative_for(who):
     pose_author.BUILDS - but the prompt should not be pulling the other way while it works.
 
     CLIP TRUNCATES THE NEGATIVE AT 77 TOKENS TOO, silently, and what falls off the end of
-    this one is whatever was added last. Checked at runtime in generate()."""
-    extra = who.get("neg_extra")
-    return f"{who['neg']}, {extra}" if extra else who["neg"]
+    this one is whatever was added last. Checked at runtime in generate().
+
+    `neg_outfit` EXISTS BECAUSE A CHARACTER-WIDE NEGATIVE CANNOT EXPRESS A WARDROBE THAT
+    CHANGES PER OUTFIT, and body0 proved it: "trainers" was negated for the whole character
+    to keep them off the business suit, and view 282 then needed white trainers. With one
+    flat list the only way to grant 282 its shoes was to let 280 and 281 have them too.
+    Same shape as `prop`, which is keyed by outfit for the same reason. It is also how the
+    budget is paid: 282 spends its tokens on "v neck" instead of on "trainers", rather than
+    every outfit carrying every other outfit's problems inside a 77-token window."""
+    terms = [t.strip() for t in who["neg"].split(",") if t.strip()]
+    for gone in who.get("neg_drop", ()):
+        # LOUD, BECAUSE A SILENT NO-OP IS THE EXACT FAILURE THIS FILE KEEPS HAVING. A typo
+        # here would quietly keep the term and quietly overflow the window instead, and the
+        # only symptom would be some other term falling off the far end.
+        if gone not in terms:
+            raise SystemExit(f"neg_drop lists {gone!r}, which is not in the shared negative")
+        terms.remove(gone)
+    if who.get("neg_extra"):
+        terms.append(who["neg_extra"])
+    if outfit is not None and who.get("neg_outfit", {}).get(outfit):
+        terms.append(who["neg_outfit"][outfit])
+    return ", ".join(terms)
 
 
 # ---------------------------------------------------------------------------
@@ -688,8 +787,20 @@ def collar_for(view, loop=0):
                            ("top", "bottom", "halfw", "shirt", "tie_halfw", "tie"))
 
 
+# The init's shoe colour, overridden for a view whose `wear` line deliberately departs from
+# the 1990 band. THE PROMPT CANNOT DO THIS ON ITS OWN and view 282 is the proof: the wardrobe
+# line was changed to "white trainers", the term reached the model (verified in the decode),
+# the init went on painting the measured (84,52,51) brown, and the shoe came out BLACK with a
+# white sole. The init won on value and the prompt moved only the trim - §0, fifth
+# confirmation. Anything that changes WHAT A THING IS has to be changed here.
+SHOE_INIT = {282: (236, 236, 234)}
+
+
 def shoe_for(view, loop=0):
-    return _median_of_cels(_measure_shoe_cel, view, loop, ("top", "halfw", "colour"))
+    s = _median_of_cels(_measure_shoe_cel, view, loop, ("top", "halfw", "colour"))
+    if s and view in SHOE_INIT:
+        s = dict(s, colour=SHOE_INIT[view])
+    return s
 
 
 def _measure_shoe_cel(view, loop=0, cel=0):
@@ -1508,7 +1619,7 @@ def refine(img_pipe, torch, base, cel, who, device, args):
             gen = torch.Generator(device=device).manual_seed(who["seed"] + 977)
             t = time.time()
             fixed = img_pipe(prompt=prompt + ", plain green screen background",
-                             negative_prompt=negative_for(who), image=crop,
+                             negative_prompt=negative_for(who, cel["outfit"]), image=crop,
                              control_image=blank,
                              strength=strength,
                              num_inference_steps=max(args.steps,
@@ -1661,7 +1772,7 @@ def generate(a):
         who = CAST[cel["body"]]
         bands = measure_bands(cel['view'], cel['loop'], cel['cel'])
         prompt = prompt_for(who, cel, bands)
-        neg = negative_for(who)
+        neg = negative_for(who, cel["outfit"])
         for what, s in (("prompt", prompt), ("negative", neg)):
             n = len(txt.tokenizer(s).input_ids)
             if n > txt.tokenizer.model_max_length:
