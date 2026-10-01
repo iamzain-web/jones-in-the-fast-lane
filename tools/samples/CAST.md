@@ -1323,6 +1323,94 @@ the warp has no depth ordering (§7d's honest limit, and the leg-occlusion work 
 The flex is a real improvement in how the raised shoe reads and it is worth having; it is not
 what closes the distance to 215-228.
 
+## 7j. The near leg now covers the far one, and it fixed a second fault nobody had attributed
+
+A single backward field maps every destination pixel exactly once, so it **cannot express one
+thing being in front of another**. That is not a tuning problem and no pose work reaches it.
+
+Measured the same way the reference stride was. A real walk, front view: **18% of frames show
+the two shins as a single ink run with no gap, and in a further 40% one leg is a 4–5 px sliver
+beside the other's 8–21 px** — about 70% of the far leg hidden, alternating every half-stride
+because the leading leg is the nearer one. Our shipped cels, at three heights:
+
+```
+                       one run     two runs    one a sliver
+  0.72 of the figure        0%         100%             0%
+  0.80                      0%         100%             0%
+  0.88                      0%         100%             0%
+```
+
+**Two runs of near-equal width in sixteen frames of sixteen, at every height.** Our silhouette
+is wrong for well over half the cycle.
+
+### Three layers, each with its own field
+
+```
+body      every joint moving, both legs erased from the source
+far leg   the NEAR leg's joints frozen at their source positions
+near leg  the FAR leg's joints frozen
+```
+
+Freezing the other leg's joints is what makes each leg independent of the limb it is supposed
+to be independent of; without it both layers inherit the same scissor and the occlusion is
+between two copies of one motion.
+
+**Which leg is near is a cycle fact, not a pixel fact**, and it is read as one: the nearer
+foot is the one whose destination ankle is LOWER, because §7ac established that with the
+camera above the ground plane nearer appears lower, and the ±0.010 depth offset in `CYCLE` is
+exactly what puts it there. Same discipline as the foot flex taking its weight from the
+authored shin rather than from the image.
+
+**The two legs split by geometry, not colour** — the opposite of the shoe and the shirt, and
+for a stated reason: both trouser legs are the same cloth, so colour has nothing to separate,
+while unlike a shirt and an arm the two legs genuinely *are* separated by their own bones.
+Nearest hip-knee-ankle chain. The split through the crotch is arbitrary and harmless, because
+both sides of it belong to the figure and the layers are composited back together.
+
+### The hole that was expected did not appear
+
+The scoped risk was the hole behind the near leg — pixels that were never photographed. There
+is none, and the reason is worth recording so nobody budgets for it again: **in the source
+photograph both legs are fully visible and separate**, so each leg's layer is warped from
+complete pixels of its own, and the far leg is merely *covered* rather than needing to be
+invented. The mirroring that was planned as the fallback was not needed.
+
+### And it fixed the leg separation, which had been measured and not explained
+
+Before occlusion, the rendered ankle separation against what the skeleton asks:
+
+```
+cel 0   skeleton 48 px   rendered 60   1.25x
+cel 1            70              70    1.00x
+cel 2            48              67    1.40x
+cel 3            70              70    1.01x
+```
+
+Faithful on the UP cels, **25–40% too wide on the two DOWN cels** — which are exactly the cels
+where the skeleton asks for the legs to overlap (48 px of separation against legs 50–57 px
+wide). The warp was pushing them apart precisely where they should have touched, so there was
+nothing to occlude and the defect looked like a cycle problem.
+
+The cause was the blend between the two legs' bones: each leg was being dragged outward by the
+other's scissor. Giving each leg its own field removes it. Cels 0 and 2 now read as **one run**
+at 0.88 (103 px and 119 px) where they were two with a 10 px gap.
+
+**Two faults, one cause, and the measurement that separated them was comparing the render
+against the skeleton rather than against taste.** A number that says "the legs are too far
+apart" is a cycle complaint; a number that says "the render is 1.4x what the skeleton asked"
+is a warp bug, and only the second one is actionable.
+
+### Checked at 4x before anything was believed
+
+The green hole of §7i was found by a dump and by nothing else, so the overlap was dumped
+before any metric was trusted. Where the near leg crosses the far one there is a clean dark
+silhouette edge — a real edge, which §7h's principle says is invisible — with no seam, no
+sliver of background between legs that should touch, and no hole at the hip where the three
+layers meet.
+
+Cost: three fields per cel instead of one, so a four-cel view takes about seven minutes
+instead of two and a half. `--no-occlude` restores the single-field frame.
+
 ## 8. Two bugs that looked like hardware faults
 
 **`largest()` was O(components × pixels)** with a Python flood fill. Fine on a clean matte;

@@ -998,8 +998,13 @@ def exaggerate(src_kps, dst_kps, k, joints=LEGS):
 
 def warp(src_rgba, src_kps, dst_kps, size, alpha=1.6, step=4, anchors=5, margin=0.0,
          method="skin", fig=None, across=1.0, foot_w=1.0, props=(), rigid_torso=True,
-         hard_foot=0.160, torso_feather=0.050, foot_flex=1.0):
+         hard_foot=0.160, torso_feather=0.050, foot_flex=1.0, occlude=True):
     """One deformed frame. Alpha is warped with the colour, so the silhouette moves too."""
+    if method == "skin" and occlude:
+        return warp_occluded(src_rgba, src_kps, dst_kps, size, fig,
+                             alpha=alpha, step=step, across=across, foot_w=foot_w,
+                             props=props, hard_foot=hard_foot, rigid_torso=rigid_torso,
+                             torso_feather=torso_feather, foot_flex=foot_flex)
     if method == "skin":
         mx, my = skin_field(src_kps, dst_kps, size, alpha=alpha, step=step, fig=fig,
                             across=across, foot_w=foot_w,
@@ -1018,6 +1023,99 @@ def warp(src_rgba, src_kps, dst_kps, size, alpha=1.6, step=4, anchors=5, margin=
     got = sample(pre.astype(np.float64), mx, my)
     al = np.clip(got[:, :, 3:4], 0, 255)
     rgb = np.where(al > 1e-3, got[:, :, :3] / np.maximum(al / 255.0, 1e-3), 0.0)
+    return np.clip(np.dstack([rgb, al]), 0, 255).astype(np.uint8)
+
+
+def leg_masks(alpha, kps, fig):
+    """The two legs' own source pixels, below the hips, split by nearest leg chain.
+
+    Colour cannot do this one - both trouser legs are the same cloth, which is the opposite
+    of the shoe and the shirt - but geometry can, because unlike a shirt and an arm the two
+    legs ARE separated by their own bones. Each pixel goes to whichever hip-knee-ankle chain
+    it is nearer. The split through the crotch is arbitrary and does not matter: both sides
+    of it belong to the figure and the layers are composited back together."""
+    op = alpha > 100
+    H, W = op.shape
+    yy, xx = np.mgrid[0:H, 0:W]
+    hipy = (float(kps[8][1]) + float(kps[11][1])) / 2.0
+    d = []
+    for chain in ((8, 9, 10), (11, 12, 13)):
+        best = None
+        for a_, b_ in zip(chain[:-1], chain[1:]):
+            A = np.asarray(kps[a_], np.float64)
+            B = np.asarray(kps[b_], np.float64)
+            v = B - A
+            L2 = max(float(v[0] * v[0] + v[1] * v[1]), 1e-6)
+            t = np.clip(((xx - A[0]) * v[0] + (yy - A[1]) * v[1]) / L2, 0.0, 1.0)
+            dd = (xx - (A[0] + t * v[0])) ** 2 + (yy - (A[1] + t * v[1])) ** 2
+            best = dd if best is None else np.minimum(best, dd)
+        d.append(best)
+    below = yy >= hipy
+    return (op & below & (d[0] <= d[1]), op & below & (d[1] < d[0]))
+
+
+def _over(dst, src):
+    """src composited OVER dst, both premultiplied RGBA in 0-255 floats."""
+    a = src[:, :, 3:4] / 255.0
+    return src + dst * (1.0 - a)
+
+
+def warp_occluded(src_rgba, src_kps, dst_kps, size, fig, **kw):
+    """One deformed frame with the near leg drawn OVER the far one.
+
+    WHY THIS IS NEEDED, measured the same way the reference was. Across a real stride, 18% of
+    frames show the two shins as a SINGLE ink run and in a further 40% one leg is a 4-5 px
+    sliver beside the other's 8-21 px - about 70% of the far leg hidden, alternating every
+    half-stride because the leading leg is the nearer one. Measured on our own shipped cels at
+    three heights: **two runs of near-equal width in 16 frames out of 16, at every height.**
+    Our silhouette is wrong for well over half the cycle and no pose work reaches it, because
+    a single backward field maps every destination pixel exactly once and therefore cannot
+    express one thing being in front of another.
+
+    So the frame is built in three layers, each with its OWN field:
+
+        body      every joint moving, both legs erased from the source
+        far leg   the near leg's joints frozen at their source positions
+        near leg  the far leg's joints frozen
+
+    Freezing the other leg's joints is what stops a leg being dragged by the limb it is
+    supposed to be independent of; without it both layers inherit the same scissor and the
+    occlusion is between two copies of the same motion.
+
+    WHICH LEG IS NEAR IS A CYCLE FACT, NOT A PIXEL FACT. It is read from the destination
+    ankles' heights: §7ac established that with the camera above the ground plane a nearer
+    foot appears LOWER, and the ±0.010 depth offset in `pose_author.CYCLE` is precisely what
+    puts it there. So the ordering comes from the authored phase, exactly as the foot flex's
+    weight comes from the authored shin.
+    """
+    figv = fig if fig else size[1]
+    legs = leg_masks(src_rgba[:, :, 3], src_kps, figv)
+    near = 0 if float(dst_kps[10][1]) > float(dst_kps[13][1]) else 1
+
+    a = src_rgba[:, :, 3:4] / 255.0
+    pre = np.dstack([src_rgba[:, :, :3] * a, src_rgba[:, :, 3:4]]).astype(np.float64)
+
+    def masked(m):
+        out = pre.copy()
+        out *= m[:, :, None]
+        return out
+
+    body = pre.copy()
+    body *= (~(legs[0] | legs[1]))[:, :, None]
+    mx, my = skin_field(src_kps, dst_kps, size, fig=fig,
+                        alpha_src=src_rgba[:, :, 3], rgb_src=src_rgba[:, :, :3], **kw)
+    acc = sample(body, mx, my)
+
+    for which in (1 - near, near):
+        frozen = np.array(dst_kps, np.float64, copy=True)
+        for j in ((8, 9, 10) if (1 - which) == 0 else (11, 12, 13)):
+            frozen[j] = src_kps[j]
+        lx, ly = skin_field(src_kps, frozen, size, fig=fig,
+                            alpha_src=src_rgba[:, :, 3], rgb_src=src_rgba[:, :, :3], **kw)
+        acc = _over(acc, sample(masked(legs[which]), lx, ly))
+
+    al = np.clip(acc[:, :, 3:4], 0, 255)
+    rgb = np.where(al > 1e-3, acc[:, :, :3] / np.maximum(al / 255.0, 1e-3), 0.0)
     return np.clip(np.dstack([rgb, al]), 0, 255).astype(np.uint8)
 
 
@@ -1321,6 +1419,12 @@ def main():
                          "instead of being carried perfectly flat, driven by that shin's "
                          "own foreshortening so a planted foot is untouched. 0 is off and "
                          "reproduces the flat carried shoe exactly")
+    ap.add_argument("--no-occlude", dest="occlude", action="store_false", default=True,
+                    help="stop drawing the NEAR leg over the far one. Occlusion builds the "
+                         "frame in three "
+                         "layers, each with its own field, instead of one - a single "
+                         "backward field maps every destination pixel once and so cannot "
+                         "express one limb being in front of another")
     ap.add_argument("--props", help="override the rigid-prop joints for this view: a "
                                     "comma-separated list of COCO-18 indices, or 'none'")
     ap.add_argument("--exaggerate", type=float, default=1.0,
@@ -1379,7 +1483,8 @@ def main():
                        a.method, cel.get("fig_h"),
                        across=(None if a.across < 0 else a.across), foot_w=a.foot_w,
                        props=props, hard_foot=a.hard_foot,
-                       torso_feather=a.torso_feather, foot_flex=a.foot_flex)
+                       torso_feather=a.torso_feather, foot_flex=a.foot_flex,
+                       occlude=a.occlude)
             note = "warped"
         p = os.path.join(a.out, f"cut_{a.view}_l{a.loop}_c{c}.png")
         Image.fromarray(out, "RGBA").save(p)
