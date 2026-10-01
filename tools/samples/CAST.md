@@ -48,6 +48,71 @@ Two corollaries that have each cost a round here:
    mask's bottom is cast shadow, and the swing foot is occluded for exactly the phase it is
    highest. The segmentation worked perfectly; the information was never in the picture.
 
+## 0b. GENERATION RULE: a warp source is shot at the MIDDLE of every motion
+
+Binding on everything generated from here, and it governs anything warped from a stills
+source rather than this cycle in particular.
+
+> **A source frame for a warp-based cycle is generated at the MIDDLE of every motion it will
+> be warped through, never at an extreme.** An extreme halves the usable range for free: one
+> end of the cycle costs nothing and the other costs double.
+
+It is free at generation time and unrecoverable afterwards without re-running the GPU, which
+makes it the cheapest decision available. **All 28 ungenerated cels — views 283, 287, 293–297,
+the whole of body3 — are generated this way.**
+
+Why it matters, measured (§7i): there is a limit of about **55 px of forearm travel, 0.054 of
+figure height**, beyond which a warp of a photograph of a man standing still has no information
+about how the cloth falls beside the limb, and the shirt tears into a lobe over the hip. View
+282's source was shot at a swing EXTREME, so its four cels need 26.9 / 61.7 / 69.1 / 44.4 px
+and two of them are over the limit. The same cycle against a mid-swing source needs
+**37.4 / 32.3 / 20.9 / 47.8 — maximum 47.8, all four inside it.**
+
+### And it does not cost identity, which was the thing to check first
+
+If a different source pose produced a different-looking person, adopting this for the 28 while
+282's cast stays as shot would put two different men on the board for one character — a far
+worse defect than one hem. **It does not.** Identity is pinned by one seed per character
+(`CAST[...]["seed"]`, 704311 for body0) with no IP-adapter and no face reference, and the
+evidence was already on disk: `cast-final` holds four generations of view 282 at the same seed,
+same prompt and **four different authored poses**. Measured across them, as median band colour:
+
+```
+hair     6 levels spread      face   11        <- the same man
+torso   10                    legs   30
+feet   164                                     <- the trainers, already flagged in §7a
+height  1.2%                  median width 7.6%
+```
+
+At 1:1 the four faces are one person — same beard, same hairline, same sunglasses. **What does
+not survive a pose change is GARMENT DETAIL**, which is §7d's finding and the entire reason the
+warp exists; and since only one frame per view is generated now, garment detail only has to be
+self-consistent *within* a view, which it is by construction.
+
+body3 has nothing generated at all, so its four views at mid-swing are self-consistent with
+each other. The remaining ungenerated views are the `+3` undressed tiers, which §9 already
+decided keep the 1990 art.
+
+## 0c. A reference drawn from the population you are testing cannot see a defect it shares
+
+Both halves of this were observed inside a single experiment, which is why it is stated as a
+rule rather than a caveat.
+
+`--shirt-check` compares each warped cel's rigid plate against a reference. With **cel 0** as
+the reference it went green the moment the defect moved *onto* cel 0 — winding the arm swing to
+zero took cel 0's forearm travel from 43.8 px to 73.6 and put the lobe there, and the other
+three were then scored against a broken yardstick and read 0.98–0.99. §7a had already recorded
+exactly this for the drift checker. Switching to the **loop median** then went green when zero
+swing spread a milder lobe across all four, because a median cannot see what the whole
+population shares.
+
+The fix is not a better statistic. It is a reference from **outside the population**: the
+source photograph's own plate, which is what "rigid" is defined against in the first place.
+`--shirt-check --src <source cel>` does that.
+
+**And it was not a wash.** With the correct reference, cel 1 passes at 1.03 — it had been
+failing a bad yardstick for three rounds, and two of those were spent chasing it.
+
 ## 0. The rule to reach for first: the init beats the prompt
 
 **Where a defect is about WHAT SOMETHING IS, change the init. The prompt is for things the
