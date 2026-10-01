@@ -62,8 +62,18 @@ import numpy as np
 from PIL import Image, ImageFilter
 
 # The bones, as index pairs into the COCO-18 layout. Same list sprite_pose draws.
-BONES = [(1, 2), (2, 3), (3, 4), (1, 5), (5, 6), (6, 7), (1, 8), (8, 9), (9, 10),
-         (1, 11), (11, 12), (12, 13), (1, 0)]
+# (4, 18) and (7, 19) are the HANDS. COCO-18 has no fingertip, so this chain used to end at
+# the wrist while the `projected` measure ran shoulder-to-HAND - a fixed segment of the arm
+# was carried by the forearm's transform without ever being shortened by it. Solving the
+# realised range back for the length actually foreshortening gave a flat L_eff of 0.313 at
+# 30, 35, 40 and 45 degrees, between shoulder-to-wrist (0.277) and shoulder-to-fingertip
+# (0.382) and not moving with the knob. See §7o.
+#
+# pose_author appends 18 and 19; every COCO-18 index keeps its meaning, and
+# sprite_pose.draw_pose is pinned to the first eighteen so the ControlNet image - and
+# therefore every generated frame - is untouched.
+BONES = [(1, 2), (2, 3), (3, 4), (4, 18), (1, 5), (5, 6), (6, 7), (7, 19),
+         (1, 8), (8, 9), (9, 10), (1, 11), (11, 12), (12, 13), (1, 0)]
 
 
 def handles(kps, size, anchors=5, margin=0.0):
@@ -641,8 +651,14 @@ def skin_field(src_kps, dst_kps, size, alpha=2.0, step=2, reach=0.26, fig=None,
     # is done in two passes: accumulate once with every bone, ask which destination pixels
     # landed on shirt, then accumulate again with the arm bones switched off there. One extra
     # field evaluation, which is cheap beside the three the occlusion layers already cost.
+    # THE HAND BONES BELONG IN HERE TOO. This set is what keeps the garment off the arm —
+    # the shirt is the one result already fixed, and a new bone the cloth could be dragged by
+    # is the single most likely way to undo it. Adding (4,18) and (7,19) to BONES without
+    # adding them here would have given the hem two new neighbours at exactly hip height,
+    # which is where the lobe was.
     ARM_CHAIN = {i for i, (ia, ib) in enumerate(BONES)
-                 if (ia, ib) in ((1, 2), (2, 3), (3, 4), (1, 5), (5, 6), (6, 7))}
+                 if (ia, ib) in ((1, 2), (2, 3), (3, 4), (4, 18),
+                                 (1, 5), (5, 6), (6, 7), (7, 19))}
 
     def accumulate(block):
         """`block` is a destination-space WEIGHT in 0..1 multiplying the arm chain: 0 deep
@@ -1199,7 +1215,15 @@ def clamp_limbs(src_kps, dst_kps):
     clamped elbow carries its wrist with it.
     """
     out = np.array(dst_kps, np.float64, copy=True)
-    for chain in ((2, 3, 4), (5, 6, 7), (8, 9, 10), (11, 12, 13)):
+    # THE HANDS ARE ON THE END OF THE ARM CHAINS. This table is the skeleton written out a
+    # second time, and when the hand bone was added to BONES it did not update itself: the
+    # fingertip sat in no chain, so a clamped wrist moved and left the hand behind, and the
+    # hand bone's two ends stopped agreeing. The hand was then dragged rather than
+    # foreshortened, the predicted projected range did not arrive, and the measured effective
+    # arm length stayed at 0.311 - the exact number that said the hand was not in the chain in
+    # the first place. §0a: the code that DEFENDS a design decision is the part that does not
+    # notice when the decision changes.
+    for chain in ((2, 3, 4, 18), (5, 6, 7, 19), (8, 9, 10), (11, 12, 13)):
         for a_, b_ in zip(chain[:-1], chain[1:]):
             sv = np.asarray(src_kps[b_], np.float64) - np.asarray(src_kps[a_], np.float64)
             sl = float(np.hypot(*sv))

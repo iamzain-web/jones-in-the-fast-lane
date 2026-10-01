@@ -13,6 +13,35 @@ found while fixing it. The findings are ordered by how much they cost to learn.
 
 ---
 
+## 0. THE DELIVERABLE IS THE GAME. FINISH EVERY ROUND BY INSTALLING.
+
+**`assets/png4x-cast0` and `assets/png12x-cast0` are the deliverable. `tools/samples` is a
+comparison aid and nothing else.**
+
+This is first because of how it was found. A whole day of work went into the walk — leg
+occlusion, the arc fix, the sagittal arms, the shirt off the arm chain, the mid-swing source,
+forced hand refinement — and **none of it reached the playable game.** The installed sprites
+were dated 30 September 17:10 throughout. The player was looking at day-old art and reporting
+that the walk was still wrong, and he was right, because the art he could see *was* the old
+art. Every measurement in this file had improved and the game had not changed by one pixel.
+
+The cause was a rule that was correct in its own terms and wrong in its reach: *do not replace
+the build until the new one wins on every axis.* That was meant to govern which comparison
+sheet to show. Applied to the game, it meant a build that lost on one measurement out of six
+could not ship, so nothing shipped at all — and a walk that moves correctly with an imperfect
+hand is enormously better than one that does not move correctly at all. **A quality bar that
+gates the only artefact anyone can actually play will eventually stop everything.**
+
+So:
+
+- **Measure, fix, INSTALL, then report.** Every round.
+- **Both scales, every time.** The ladder picks art by factor, so a half-installed set shows
+  new art at one scale and 30 September at the other.
+- **Verify on disk afterwards, by hash or timestamp, not by the copy step's exit code.** This
+  project has twice had a build report success while shipping the previous artefact.
+- **Say in the report what a player can now see that they could not see before** — and if a
+  round produced no installable improvement, say *those words*. That sentence is the check.
+
 ## 0a. THE RULE ABOVE ALL THE OTHERS: DUMP THE THING AND LOOK AT IT
 
 Put first because it is the one that keeps paying, on problems that have nothing to do with
@@ -2190,6 +2219,66 @@ the column, and in the direction that weakens the hint. Inventing a larger angle
 inventing a walk the reference does not contain. **The footage closed this lever rather than
 opening it, which is still worth the measurement — the alternative was authoring it, waiting
 for a generation, and finding out afterwards.**
+
+## 7p. The hand bone landed, and the prediction it was built on was WRONG
+
+The hand was added to the chain — `BONES` gained `(4,18)` and `(7,19)`, `pose_author` appends
+fingertips at 18 and 19, `clamp_limbs`' chain table gained them too. The prediction was that
+35° would then give **0.0627**, inside the reference band, with no tuning.
+
+**It gave 0.0510.** Essentially unchanged from 0.0513 without the bone, and the implied
+effective arm length stayed at 0.311 — the very number that was supposed to move to 0.382.
+
+### Why: the hand bone describes a hand that was never drawn
+
+Probing down the bone in the source photograph, asking at each step whether there is any hand
+there:
+
+```
+  0% along the bone (the wrist)   skin 12%
+ 10%                              skin 31%   <- hand
+ 20%                              skin  2%
+ 30% .. 100%                      skin  0%
+```
+
+**The bone is 108 px long and holds hand pixels over about 10% of it.** The generated hand is
+roughly a third of anthropometric length — it hangs just below the wrist and stops. A bone
+cannot foreshorten length that was never drawn.
+
+So `L_eff = 0.313` was never `0.277 + a hand that is not foreshortening`. It was
+**`0.277 + a hand that is only 0.036 long`** — the small drawn hand, already being carried and
+already foreshortening. The two readings predict the same flat 0.313 at every angle, which is
+why the sweep could not distinguish them, and I presented the wrong one as a cause rather than
+as the more interesting of two fits. **Flatness across the sweep ruled out an angle-dependent
+explanation; it never ruled out a short hand.**
+
+This traces straight back to §7n's bound: the init could not express a hand through a 62 px
+blur, so the model drew its own at its own scale, and the rig then described a hand that is
+not in the picture. **One defect, showing up a third time in a third place.**
+
+### What was kept, and what it costs
+
+The rig change is correct in itself — a chain that stops at the wrist while the measure runs to
+the hand is wrong whatever the pixels do — and it passed every condition: all 18 COCO-18 joints
+bit-identical across all 80 cels, all 80 ControlNet images byte-identical, the garment's arm
+chain still 0.00%. But measured against the build without it:
+
+```
+                          lateral            projected
+no hand bone              0.0320             0.0513
+hand bone                 0.0451             0.0510
+reference              0.0139-0.0160      0.0588-0.0660
+```
+
+**It buys nothing on projected and makes lateral worse**, because the bone drags trouser
+through the 90% of its length that holds no hand. Lateral sway is the defect the player named
+in the first place. **So the bone is in the code and the build shipped to the game is the one
+WITHOUT it**, until the source hand is the right size.
+
+`clamp_limbs` gaining `(2,3,4,18)` is a separate correctness fix and is inert here: in a
+sagittal swing every arm bone gets *shorter*, so the `dl > sl` clamp never fires on the arm at
+all. It was verified inert by hash, not by the numbers — which were identical, and under the
+old reasoning would have been read as a change that did not land (§0a).
 
 ## 7o. Both arm knobs, walked until they broke. The answer on each is: do not move it.
 

@@ -323,6 +323,10 @@ ARM_LATERAL = 0.008
 #   foot does, and travels a fraction of a step fore and aft. Small, and included because
 #   leaving it out is what made the feet read as stepping sideways.
 ARM_DEPTH = 0.003
+# Wrist to fingertip as a fraction of figure height. Anthropometric (hand length is about
+# 10.5-11% of stature), and the same constant gen_cast.HAND_LEN uses to draw the hand into
+# the init, so the rigging joint and the painted hand agree.
+HAND_LEN = 0.105
 
 
 def _leg(ank_x, ank_dy, knee_x, knee_dy):
@@ -488,7 +492,7 @@ def skeleton(build, frame):
     def s(frac):
         return sway * frac
 
-    k = [None] * 18
+    k = [None] * 20
     k[0] = (s(1.00), Y["nose"] + y_head)
     k[1] = (s(1.00), y_sh)
     k[2] = (-sh + s(1.00) + twist, y_sh)
@@ -527,7 +531,20 @@ def skeleton(build, frame):
     # camera and its hand appears slightly LOWER - the same depth cue the feet carry.
     up_seg = Y["elbow"] - Y["shoulder"]
     fo_seg = Y["wrist"] - Y["elbow"]
-    for sho, elb, wri, ph, sgn in ((2, 3, 4, arm_r, -1.0), (5, 6, 7, arm_l, +1.0)):
+    # THE HAND IS PART OF THE CHAIN, and leaving it out was costing a third of the arm''s
+    # foreshortening. `BONES` ended at the wrist because COCO-18 has no fingertip, while the
+    # `projected` measure runs shoulder-to-HAND - so a fixed segment of the arm was carried
+    # along without ever being shortened. Solving the realised range back for the length
+    # actually foreshortening gave a flat L_eff of 0.313 at 30, 35, 40 and 45 degrees,
+    # sitting between shoulder-to-wrist (0.277) and shoulder-to-fingertip (0.382) and not
+    # moving with the knob. See 7o.
+    #
+    # 18 and 19 are APPENDED, never inserted, so every COCO-18 index keeps its meaning.
+    # They are rigging joints for the warp and are NOT drawn into the ControlNet image -
+    # see sprite_pose.draw_pose, which is pinned to the canonical eighteen.
+    ha_seg = HAND_LEN
+    for sho, elb, wri, tip, ph, sgn in ((2, 3, 4, 18, arm_r, -1.0),
+                                        (5, 6, 7, 19, arm_l, +1.0)):
         cs = float(np.cos(np.radians(ARM_SWING_DEG * ph)))
         lat = ARM_LATERAL * ph
         dep = ARM_DEPTH * ph
@@ -535,6 +552,10 @@ def skeleton(build, frame):
         wy = ey + fo_seg * cs + dep * 0.6
         k[elb] = (sgn * (sh * 0.90 + lat * 0.5) + s(0.95), ey)
         k[wri] = (sgn * (sh * 0.97 + lat) + s(0.90), wy)
+        # The hand foreshortens on the SAME cosine as the rest of the arm, because it is on
+        # the same rigid segment in the sagittal plane. No new amplitude is introduced here:
+        # ARM_SWING_DEG and ARM_LATERAL are untouched.
+        k[tip] = (k[wri][0], wy + ha_seg * cs + dep * 0.8)
     # The hips take the OPPOSITE twist to the shoulders - that counter-rotation is the
     # measured shoulder-to-hip offset of +-1.5% of height, and it is the same rotation the
     # arms are expressing, so it shares their phase.

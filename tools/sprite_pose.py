@@ -306,7 +306,12 @@ def draw_pose(k, size, box, thickness):
 
     img = Image.blend(img, lay, 0.6)
     d = ImageDraw.Draw(img)
-    for i, p in enumerate(P):
+    # PINNED TO THE CANONICAL EIGHTEEN. ControlNet''s openpose model was trained on COCO-18
+    # and has never seen a nineteenth point, so anything past 17 must not reach the control
+    # image. pose_author appends fingertips at 18 and 19 as RIGGING joints for the warp -
+    # they belong to BONES, not to this picture. Drawing them here would silently change
+    # every generated frame, and the first symptom would be a cast that no longer matched.
+    for i, p in enumerate(P[:18]):
         if p is None:
             continue
         r = thickness
