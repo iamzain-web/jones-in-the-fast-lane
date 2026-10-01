@@ -1627,11 +1627,34 @@ public sealed partial class MainViewModel : ViewModelBase
 
         if (_mouthNext >= _mouth.Length)
         {
-            // Finished talking: close the mouth and take the balloon down with it.
-            _mouthTimer?.Stop();
-            _talkerCel = 0;
-            CloseBalloon(rebuild: false);
-            changed = true;
+            // The mouth table has run out. That is NOT the same thing as the line being
+            // over, and the difference only appears once a clip can be longer than the
+            // sync resource written for it.
+            //
+            // Sierra's recordings and Sierra's sync tables came out of the same session,
+            // so the two always ended together and this branch could close the balloon
+            // safely. A replacement clip has its own length: the generated greetings in
+            // `assets/audio/speech-kokoro` run up to 2.9 s past their table (clip 50),
+            // and closing here took the subtitle and the portrait away mid-sentence while
+            // the voice carried on talking to an empty screen.
+            //
+            // So the mouth shuts — there are no cues left to animate, and a mouth frozen
+            // mid-syllable looks worse than a closed one — but the balloon stays up until
+            // playback actually ends, which is what `Speak`'s own comment already says the
+            // rule is. With audio and sync in agreement, as they are for all 533 of
+            // Sierra's clips, this is byte-for-byte the old behaviour: the position is
+            // already null by the time the last frame is consumed.
+            //
+            // Guarded, because this branch is now reached on every one of the 33 ms ticks
+            // for as long as the clip outlives its table. An unconditional `changed = true`
+            // would rebuild the screen thirty times a second for nothing.
+            if (_talkerCel != 0) { _talkerCel = 0; changed = true; }
+
+            if (position is null)
+            {
+                _mouthTimer?.Stop();
+                CloseBalloon(rebuild: false);
+            }
         }
 
         if (changed) BuildScreen();
