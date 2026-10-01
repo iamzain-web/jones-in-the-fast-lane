@@ -279,6 +279,12 @@ BUILDS = {
 # original. That is what "nobody's body moves like that when they are walking" was describing.
 DOWN, UP = "down", "up"
 
+# How much of the authored arm swing to use. 1.0 is the table below as written; `--arm-scale`
+# overrides it. It is a knob rather than an edited table because the value that matters was
+# found by walking it down and watching where the render breaks, and the next person to author
+# a cycle against a still photograph will need to do the same walk.
+ARM_SCALE = 1.0
+
 
 def _leg(ank_x, ank_dy, knee_x, knee_dy):
     return {"ank_x": ank_x, "ank_dy": ank_dy, "knee_x": knee_x, "knee_dy": knee_dy}
@@ -391,7 +397,9 @@ def skeleton(build, frame):
     version was a place the model was left to invent a limb."""
     rise = frame["rise"]
     sway = frame["sway"]
-    arm = frame["arm"]
+    # ARM_SCALE EXISTS BECAUSE A WARP OF A STILL PHOTOGRAPH HAS A LIMIT, and the limit is
+    # measurable. See the note on the CYCLE table's `arm` entries.
+    arm = frame["arm"] * ARM_SCALE
     twist = frame["twist"]
     leg_r, leg_l = frame["r"], frame["l"]
     Y = proportions(build)
@@ -579,7 +587,13 @@ def main():
                     help="write the standing idle for every cel instead of the walk cycle "
                          "- this is what the stop-and-show frames are generated from")
     ap.add_argument("--views", help="comma separated, e.g. 282,286")
+    ap.add_argument("--arm-scale", type=float, default=1.0, dest="arm_scale",
+                    help="fraction of the authored arm swing to use. The warp is deforming "
+                         "a photograph of a man standing still, so past a certain relative "
+                         "movement it has no information about how the cloth falls beside "
+                         "the limb and the shirt tears into a lobe over the hip")
     a = ap.parse_args()
+    globals()["ARM_SCALE"] = a.arm_scale
 
     W, H = (int(v) for v in a.size.lower().split("x"))
     os.makedirs(a.out, exist_ok=True)

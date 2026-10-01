@@ -1618,8 +1618,89 @@ found not to work is worth more as a closed door than as a deleted one.
 
 **Three mechanisms have now failed on this lobe** — the arc fix (correct on its own terms, no
 effect here), the smear rule (three variants, three carved shirts) and the forearm reach cap.
-The honest state is that the mechanism is not understood, and the next move belongs in the
-authored hip swing rather than downstream of it.
+
+### What the two tables say when they are put side by side
+
+```
+             forearm travel      plate area
+  cel 0          43.8 px            1.00   clean
+  cel 3          26.8               1.02   clean
+  cel 1          60.6               1.03   FAIL
+  cel 2          67.3               1.07   FAIL
+```
+
+**The clean cels are the ones under ~45 px and the failing ones are over ~60.** That is the
+only reading that *separates* the cels rather than ranking them, and it says what the three
+failed mechanisms were all missing: there is an amount of relative movement beyond which a
+warp of a photograph of a man standing still simply has no information about how the cloth
+falls beside the limb. Below it, it has enough. No downstream rule can supply what the
+photograph does not contain.
+
+### And the lever is the SOURCE POSE, not the swing amplitude
+
+The obvious response is to wind the swing down. **It does not work, and why it does not is the
+transferable part.** Travel is measured against the pose the PHOTOGRAPH was shot in, and that
+pose — `poses-walk5` cel 0 — is a DOWN key with its arms at a swing EXTREME. So every cel at
+the opposite extreme is *two* amplitudes away, and reducing the swing just drags the other end
+of the cycle away from the source instead:
+
+```
+  arm scale   per-cel forearm travel          max
+     1.00     44.4  61.7  69.1  26.9         69.1
+     0.50     58.6  56.6  57.3  31.9         58.6
+     0.00     73.6  51.3  47.2  36.9         73.6
+```
+
+The floor is about 58 px at any amplitude. But the same cycle measured against a source shot
+at the MIDDLE of the swing:
+
+```
+  as shot (arm +0.034)    44.4  61.7  69.1  26.9    max 69.1
+  if shot at arm 0        37.4  32.3  20.9  47.8    max 47.8
+```
+
+**Three of the four cels drop inside the clean band and the maximum falls from 69 to 48.**
+
+> **A source frame for a warp-based cycle must be generated at the MIDDLE of every motion it
+> will be warped through, never at an extreme.** An extreme halves the usable range for free:
+> one end of the cycle costs nothing and the other costs double. This is the single cheapest
+> thing to get right about generating a cast for this pipeline, it costs nothing at generation
+> time, and it cannot be recovered afterwards without re-running the GPU.
+
+### Where it actually breaks, measured by walking the swing down
+
+Three builds, twelve cels, plate area against the SOURCE photograph's own plate:
+
+```
+  travel (px)   26.9  31.9  36.9  44.4  47.2  51.3 | 56.6  57.3  58.6  61.7  69.1  73.6
+  plate area    1.02  1.02  1.03  1.00  1.03  1.02 | 1.03  1.05  1.02  1.03  1.07  1.04
+```
+
+Everything at or under **51 px** is 1.00–1.03 and clean in the 1:1 crop. The two worst areas,
+1.05 and 1.07, sit at 57.3 and 69.1, and the lobe is plainly visible on both. **The limit is
+about 55 px of forearm travel — 0.054 of figure height.**
+
+The prediction that established the mechanism is worth stating separately, because it
+*distinguishes* this explanation from the alternatives rather than merely fitting it: wound to
+zero swing, cel 0's travel rises from 43.8 px to 73.6 and cels 1–3 fall to 36–51. **The lobe
+moved onto cel 0 and off the others.** It follows the travel, not the cel.
+
+### And why no amplitude fixes it
+
+The achievable floor is **58.6 px**, at half swing — and 58.6 is on the wrong side of a limit
+of ~55, by a few pixels. So there is no arm-swing amplitude that clears it with this source
+frame, and winding it down costs something real for nothing: §7b measured the 1990 art's arm
+swing at 0.032–0.086 of figure height and ours is authored at 0.034, already the bottom of
+that range, so half swing is 0.017 — less than the original's own arm movement, on an
+animation a player has twice rejected for not reading as a walk.
+
+**So the cycle is left as authored.** `pose_author --arm-scale` stays as a knob with the walk
+recorded above, because the next person authoring against a still photograph will need to do
+the same walk with different numbers.
+
+The lever is the source pose, and it is unreachable without the GPU: regenerating 282's
+photograph at mid-swing is hours plus a new figure to re-verify. **For the 28 cels never
+generated — views 283, 287, 293–297, all of body3 — it costs nothing and must be done.**
 
 ### And one defect the occlusion work introduced
 

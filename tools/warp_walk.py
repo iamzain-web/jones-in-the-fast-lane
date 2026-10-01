@@ -1521,17 +1521,17 @@ def report_shirt(a):
     # because the defect this was extended for is a function of the POSE and the mask is the
     # same for every cel.
     plates = sorted(glob.glob(os.path.join(a.shirt_check, "cut_*_l0_c[1-9].png")))
-    if plates:
+    if not plates:
         print()
-        print("THE PLATE AT THE POINT OF USE - warped cels, not the mask")
-        print("%-6s %-5s %9s %9s %14s %s"
-              % ("view", "cel", "area", "area/src", "arm narrowest", "verdict"))
+        print("no warped cels here (cut_*_c1..c3), so ONLY the mask was tested - which is")
+        print("the point of definition and cannot see a defect that depends on the pose.")
+    else:
+        per_cel = []
         for p in sorted(glob.glob(os.path.join(a.shirt_check, "cut_*_l0_c*.png"))):
             base = os.path.basename(p)
             v = int(base.split("_")[1])
             c = int(base.split("_c")[1].split(".")[0])
-            key = "%d/0/%d" % (v, c)
-            k0 = "%d/0/0" % v
+            key, k0 = "%d/0/%d" % (v, c), "%d/0/0" % v
             if key not in poses["cels"] or k0 not in poses["cels"]:
                 continue
             im = np.asarray(Image.open(p).convert("RGBA"))
@@ -1543,28 +1543,59 @@ def report_shirt(a):
             kp = clamp_limbs(np.asarray(poses["cels"][k0]["keypoints"], np.float64),
                              np.asarray(poses["cels"][key]["keypoints"], np.float64))
             st = plate_stats(im[:, :, :3].astype(np.float64), im[:, :, 3], kp, fig)
-            if st is None:
-                continue
-            if c == 0:
-                ref = st
-                continue
-            ratio = st["area"] / max(1, ref["area"])
-            thin = min(st["arms"][i] / max(1, ref["arms"][i]) for i in (0, 1))
+            if st is not None:
+                per_cel.append((v, c, st))
+
+        print()
+        print("THE PLATE AT THE POINT OF USE - warped cels, not the mask")
+        print("%-6s %-5s %9s %10s %14s %s"
+              % ("view", "cel", "area", "area/med", "arm narrowest", "verdict"))
+        # THE REFERENCE IS THE LOOP'S MEDIAN, NOT CEL 0, and §7a records why in almost these
+        # words for the drift checker: comparing to cel 0 assumes cel 0 is correct, and on a
+        # loop there is no reason it should be. It bit again here, on the very experiment it
+        # was needed for. Winding the arm swing to zero moved the defect ONTO cel 0 - its
+        # forearm travel went from 43.8 px to 73.6 - and the other three were then scored
+        # against a broken reference and read 0.98-0.99, green, while the picture showed the
+        # lobe sitting on cel 0. Second time in this file; the shape is "the reference is
+        # whichever one I happened to trust".
+        # AND THE SOURCE PHOTOGRAPH IS THE REFERENCE WHEN IT IS AVAILABLE (`--src`), because
+        # the loop median has the mirror-image blind spot: it cannot see a defect the WHOLE
+        # loop shares. Both failures were observed within one experiment. Cel 0 as reference
+        # went green when the defect moved onto cel 0; the median went green when winding the
+        # swing to zero spread a milder lobe across all four. "Rigid" is defined against the
+        # thing the plate was cut from, so that is what to compare with.
+        src_ref = None
+        if a.src and os.path.exists(a.src):
+            im0 = np.asarray(Image.open(a.src).convert("RGBA"))
+            k00 = "%d/0/0" % per_cel[0][0]
+            src_ref = plate_stats(im0[:, :, :3].astype(np.float64), im0[:, :, 3],
+                                  np.asarray(poses["cels"][k00]["keypoints"], np.float64),
+                                  poses["cels"][k00].get("fig_h") or im0.shape[0])
+            if src_ref:
+                print("reference: the SOURCE photograph, %d px" % src_ref["area"])
+        if src_ref is None:
+            print("reference: the loop median (pass --src for the source photograph, which "
+                  "is the only one that can see a defect the whole loop shares)")
+        for v, c, st in per_cel:
+            same = [s for vv, _, s in per_cel if vv == v]
+            ref_area = (src_ref["area"] if src_ref
+                        else float(np.median([s["area"] for s in same])))
+            ref_arms = (src_ref["arms"] if src_ref
+                        else [float(np.median([s["arms"][i] for s in same]))
+                              for i in (0, 1)])
+            ratio = st["area"] / max(1.0, ref_area)
+            thin = min(st["arms"][i] / max(1.0, ref_arms[i]) for i in (0, 1))
             why = []
             if abs(ratio - 1.0) > 0.04:
-                why.append("plate area %+.0f%% - A RIGID PLATE PRESERVES AREA"
-                           % (100 * (ratio - 1)))
+                why.append("plate area %+.0f%% off the loop median - A RIGID PLATE "
+                           "PRESERVES AREA" % (100 * (ratio - 1)))
             if thin < 0.60:
-                why.append("forearm down to %.0f%% of its source width" % (100 * thin))
-            print("%-6d %-5d %9d %8.2fx %14s %s"
+                why.append("forearm down to %.0f%% of the loop median" % (100 * thin))
+            print("%-6d %-5d %9d %9.2fx %14s %s"
                   % (v, c, st["area"], ratio, "%d,%d" % tuple(st["arms"]),
                      "ok" if not why else "FAIL"))
             for w in why:
                 bad.append("%d cel %d: %s" % (v, c, w))
-    else:
-        print()
-        print("no warped cels here (cut_*_c1..c3), so ONLY the mask was tested - which is")
-        print("the point of definition and cannot see a defect that depends on the pose.")
 
     print()
     if bad:
