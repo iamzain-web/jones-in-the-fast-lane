@@ -43,6 +43,14 @@
   <ItemGroup>
     <Compile Include="..\Jones.App\Jones.App\ItemText.cs" Link="Ported\ItemText.cs" />
     <Compile Include="..\Jones.App\Jones.App\StoreLayout.cs" Link="Ported\StoreLayout.cs" />
+
+    <!--
+      `PanelScale` is linked in for the same reason and on the same terms: it is the
+      arithmetic that decides how big a building's interior is drawn, it is checked against
+      `Board.All` by `PanelScaleTests`, and a copy of it here would go on passing after
+      someone changed the real one. It uses only System types.
+    -->
+    <Compile Include="..\Jones.App\Jones.App\PanelScale.cs" Link="Ported\PanelScale.cs" />
   </ItemGroup>
 
 </Project>

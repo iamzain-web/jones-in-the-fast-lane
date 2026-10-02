@@ -54,6 +54,23 @@ public sealed class SpriteVm
 
     public double W => Image?.PixelSize.Width ?? 0;
     public double H => Image?.PixelSize.Height ?? 0;
+
+    /// <summary>
+    /// The in-location panel transform this sprite was built under — see
+    /// <see cref="PanelScale"/>. <see cref="PanelTransform.None"/> for everything that is
+    /// not part of a building's interior, which is everything on the board.
+    /// </summary>
+    public PanelTransform T { get; } = PanelScale.Current;
+
+    /// <summary>
+    /// Where the view actually puts it, and how big. The drawn rectangle and the CLICKABLE
+    /// rectangle are both bound to these, so a scaled button cannot respond in the place it
+    /// used to be drawn in.
+    /// </summary>
+    public double DrawX => T.MapX(X);
+    public double DrawY => T.MapY(Y);
+    public double DrawW => T.Size(W);
+    public double DrawH => T.Size(H);
 }
 
 /// <summary>
@@ -220,6 +237,25 @@ public sealed class MenuLineVm
 
     /// <summary>What this line was built from, so a network joiner can build it identically.</summary>
     internal Jones.Net.LineDto Args { get; }
+
+    /// <summary>The in-location panel transform this line was built under. See <see cref="PanelScale"/>.</summary>
+    public PanelTransform T { get; } = PanelScale.Current;
+
+    /// <summary>
+    /// The HIT rectangle as drawn. <see cref="W"/>/<see cref="H"/> stay font 10's own, in
+    /// the original's space, because callers measure with them; these are what the button
+    /// is actually given, so the clickable area moves and shrinks with the line.
+    /// </summary>
+    public double DrawX => T.MapX(X);
+    public double DrawY => T.MapY(Y);
+    public double DrawW => T.Size(W);
+    public double DrawH => T.Size(H);
+
+    /// <summary>The drawn bitmap's offset and size, scaled with everything else.</summary>
+    public double DrawImageDx => T.Size(ImageDx);
+    public double DrawImageDy => T.Size(ImageDy);
+    public double DrawImageW => T.Size(ImageW);
+    public double DrawImageH => T.Size(ImageH);
 }
 
 /// <summary>
@@ -242,6 +278,17 @@ public sealed class BalloonButtonVm(double x, double y, double w, double h,
     public string Text { get; } = text;
 
     public ICommand Command { get; } = Net.InputGate.Command(onClick);
+
+    /// <summary>
+    /// The panel transform, so a balloon that moved with a shopkeeper's mouth is still
+    /// pressed where it is drawn. See <see cref="PanelScale"/>.
+    /// </summary>
+    public PanelTransform T { get; } = PanelScale.Current;
+
+    public double DrawX => T.MapX(X);
+    public double DrawY => T.MapY(Y);
+    public double DrawW => T.Size(W);
+    public double DrawH => T.Size(H);
 }
 
 /// <summary>A clickable rectangle with no art of its own, for board hotspots.</summary>
@@ -399,6 +446,19 @@ public sealed class TextVm
     /// <summary>Where the bitmap is actually drawn — <see cref="X"/> plus <see cref="Dx"/>.</summary>
     public double ImageX => X + Dx;
     public double ImageY => Y + Dy;
+
+    /// <summary>The in-location panel transform this label was built under. See <see cref="PanelScale"/>.</summary>
+    public PanelTransform T { get; } = PanelScale.Current;
+
+    /// <summary>
+    /// Where the view puts the bitmap, and how big. The offset is a LENGTH and is scaled;
+    /// the coordinate is a PLACE and is mapped — doing both with the same multiplication is
+    /// how a label ends up a pixel or two out from the line it belongs to.
+    /// </summary>
+    public double DrawImageX => T.MapX(X) + T.Size(Dx);
+    public double DrawImageY => T.MapY(Y) + T.Size(Dy);
+    public double DrawImageW => T.Size(ImageW);
+    public double DrawImageH => T.Size(ImageH);
 
     /// <summary>
     /// How this label's bitmap is sampled. See <see cref="MenuLineVm.Interpolation"/>: the

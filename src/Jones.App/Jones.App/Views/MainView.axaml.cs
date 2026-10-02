@@ -66,6 +66,103 @@ public partial class MainView : UserControl
         }
 
         Hook(Vm);
+
+        if (!string.IsNullOrEmpty(System.Environment.GetEnvironmentVariable("JONES_DEBUG_HITTEST")))
+        {
+            // Waits for the screen to exist and for the shopkeeper's greeting to finish: a
+            // balloon is MODAL and puts a click-to-dismiss layer over the whole canvas, so
+            // probing under one would correctly report that nothing else is reachable.
+            var t = new Avalonia.Threading.DispatcherTimer
+            {
+                Interval = System.TimeSpan.FromMilliseconds(1000),
+            };
+            var tries = 0;
+            t.Tick += (_, _) =>
+            {
+                tries++;
+                if (Vm is not { } v || v.Sprites.Count == 0)
+                {
+                    if (tries > 40) { t.Stop(); System.Console.WriteLine("HITTEST no screen"); }
+                    return;
+                }
+
+                // The greeting is spoken on entry and blocks everything underneath, which is
+                // faithful and useless to probe under. Dismissed through the view model's own
+                // command rather than with a synthetic click.
+                if (v.IsBalloonShowing)
+                {
+                    v.DismissBalloonCommand.Execute(null);
+                    if (tries > 40) { t.Stop(); System.Console.WriteLine("HITTEST balloon never cleared"); }
+                    return;
+                }
+
+                // A first pass that finds NOTHING means the containers have not been realised
+                // yet, not that the screen is broken, so it keeps trying.
+                if (ProbeHitTesting() > 0 || tries > 40) t.Stop();
+            };
+            t.Start();
+        }
+    }
+
+    /// <summary>
+    /// THE HIT-TEST PROBE — <c>JONES_DEBUG_HITTEST=1</c>, inert without it.
+    ///
+    /// <para>
+    /// Asks the visual tree, WITH NO MOUSE INVOLVED, whether the centre of every clickable
+    /// thing on screen actually hit-tests to that thing: every shop line, every icon button,
+    /// every balloon button and all thirteen board hotspots. It exists because
+    /// <see cref="PanelScale"/> moves and resizes a building's whole interior, and a control
+    /// that draws in the new place but answers in the old one is worse than no change at all
+    /// — and because the machine this is developed on cannot be driven with synthetic input.
+    /// </para>
+    ///
+    /// <para>
+    /// A pass that finds NOTHING means the item containers have not been realised yet, not
+    /// that the screen is broken, so the caller tries again; the balloon is dismissed first,
+    /// because it is modal and correctly covers everything underneath it.
+    /// </para>
+    /// </summary>
+    private int ProbeHitTesting()
+    {
+        if (Vm is not { } vm) return 0;
+
+        var f = RenderScale.Factor;
+        int pass = 0, fail = 0;
+        var misses = new System.Collections.Generic.List<string>();
+
+        void Probe(object model, double x, double y, double w, double h, string what)
+        {
+            if (w <= 0 || h <= 0) return;
+            var p = new Point((x + w / 2) * f, (y + h / 2) * f);
+            var hit = GameCanvas.InputHitTest(p) as Avalonia.Visual;
+            while (hit is not null && !ReferenceEquals(hit.DataContext, model))
+                hit = Avalonia.VisualTree.VisualExtensions.GetVisualParent(hit);
+
+            if (hit is not null) { pass++; return; }
+            fail++;
+            var what2 = (GameCanvas.InputHitTest(p) as Control)?.GetType().Name ?? "nothing";
+            misses.Add($"HITTEST MISS {what} at game ({x:0.##},{y:0.##}) {w:0.##}x{h:0.##} -> {what2}");
+        }
+
+        foreach (var s in vm.Sprites)
+            if (s.IsClickable)
+                Probe(s, s.DrawX, s.DrawY, s.DrawW, s.DrawH, $"sprite v{s.View} l{s.Loop} c{s.Cel}");
+
+        foreach (var m in vm.MenuLines)
+            if (m.Enabled)
+                Probe(m, m.DrawX, m.DrawY, m.DrawW, m.DrawH, $"line \"{m.Tooltip}\"");
+
+        foreach (var b in vm.BalloonButtons)
+            Probe(b, b.DrawX, b.DrawY, b.DrawW, b.DrawH, $"balloon button \"{b.Text}\"");
+
+        foreach (var hs in vm.Hotspots)
+            Probe(hs, hs.X, hs.Y, hs.W, hs.H, $"hotspot \"{hs.Tooltip}\"");
+
+        if (pass == 0) return 0;   // nothing realised yet; the caller tries again
+
+        foreach (var m in misses) System.Console.WriteLine(m);
+        System.Console.WriteLine($"HITTEST {pass} hit, {fail} missed");
+        return pass;
     }
 
     // ------------------------------------------------------------------

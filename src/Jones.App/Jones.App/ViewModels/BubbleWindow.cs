@@ -25,6 +25,22 @@ public sealed class BalloonPartVm
 
     /// <summary>Set for a corner cel, the tail cel, or a rendered line of text.</summary>
     public Bitmap? Image { get; init; }
+
+    /// <summary>
+    /// The in-location panel transform this part was built under — see
+    /// <see cref="PanelScale"/>. A shopkeeper's balloon is pinned to their mouth by its tail
+    /// tip, so when the interior is drawn smaller the balloon has to come with it or the
+    /// tail points at nothing. The system `Print`s (Save, Restore, About, Quit) are NOT
+    /// built inside that scope and so carry the identity, which is right: they are chrome,
+    /// they appear on screens with no shopkeeper at all, and the original draws them at
+    /// full size over everything.
+    /// </summary>
+    public PanelTransform T { get; init; } = PanelScale.Current;
+
+    public double DrawX => T.MapX(X);
+    public double DrawY => T.MapY(Y);
+    public double DrawW => T.Size(W);
+    public double DrawH => T.Size(H);
 }
 
 /// <summary>

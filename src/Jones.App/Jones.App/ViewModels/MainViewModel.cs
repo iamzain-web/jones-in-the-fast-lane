@@ -1820,6 +1820,13 @@ public sealed partial class MainViewModel : ViewModelBase
         if (_screen != Screen.LocationPanel) return;
         if (BubbleWindow.TalkFor(P.Location) is not { } t) return;
 
+        // THE SHOPKEEPER'S BALLOON IS PART OF THE INTERIOR. Its tail tip is an absolute
+        // screen coordinate — `BubbleWindow::open` does `(SetPort 0)` first, see
+        // BubbleWindow — and it is aimed at the shopkeeper's mouth, so it has to move and
+        // shrink with the portrait or the tail points at empty board. The system `Print`s
+        // above this line are deliberately OUTSIDE the scope; see BalloonPartVm.T.
+        using var panel = PanelScale.Open();
+
         // The spoken line first. A queued question waits for it to finish, as it does in
         // the CD build, where `proc0_18` plays the clip out before the `Print` goes up.
         if (SpokenLine.Length > 0)
@@ -2243,6 +2250,14 @@ public sealed partial class MainViewModel : ViewModelBase
         // the board was mine, and it gives away information the original withholds.
         if (ShowPanel)
         {
+            // THE CALCULATOR IS PART OF THE INTERIOR even though its coordinates are
+            // absolute, so it is built inside the panel's scope — see PanelScale. (252,160)
+            // is (69+183, 44+116), the dialog's own bottom-right corner, which is how a
+            // thing the scripts position absolutely can still be scaled as one of its
+            // parts. Left out of the scope it would be the one piece of the room that stays
+            // behind, sitting on top of Socket City.
+            using var panel = PanelScale.Open();
+
             Sprites.Add(new SpriteVm(StoreLayout.CalcView, StoreLayout.CalcLoop, 0,
                                      StoreLayout.CalcLeft, StoreLayout.CalcTop));
 
@@ -2273,7 +2288,16 @@ public sealed partial class MainViewModel : ViewModelBase
                 () => GoTo(target.Id), loc.Name));
         }
 
-        if (_screen == Screen.LocationPanel) BuildLocationPanel();
+        // THE WHOLE INTERIOR IS BUILT INSIDE ONE SCOPE, which is what makes the deviation
+        // safe: nothing in BuildLocationPanel or anything it calls has to know about the
+        // scale, every coordinate below here is still `DialogX + nsLeft` in the original's
+        // own 320x200 space, and nothing added anywhere in that subtree can be missed. See
+        // PanelScale.
+        if (_screen == Screen.LocationPanel)
+        {
+            using var panel = PanelScale.Open();
+            BuildLocationPanel();
+        }
 
         // The podium, drawn over the room the same way `winnerScript` state 0 paints it in.
         else if (_screen == Screen.Winner) BuildWinner();
@@ -2463,6 +2487,28 @@ public sealed partial class MainViewModel : ViewModelBase
         _playerCount = 1;
         StartGame();
         BuildScreen();
+    }
+
+    /// <summary>
+    /// The same diagnostic, one step further in: <c>JONES_DEBUG_LOCATION=SocketCity</c>
+    /// starts a one-player game and opens that building's interior dialog, so the
+    /// LOCATION PANEL can be captured without driving mouse or keyboard input at a machine
+    /// the user is sitting at. The name is a <see cref="LocationId"/>, case-insensitive;
+    /// an unknown one is ignored and the board is left showing.
+    ///
+    /// It goes in through <see cref="EnterBuilding"/>, which is the same method
+    /// <see cref="Arrive"/> calls once the door animation is done, so the screen built is
+    /// the real one — not a stripped-down stand-in that could hide a layout fault.
+    /// </summary>
+    internal void DebugJumpToLocation(string name)
+    {
+        _playerCount = 1;
+        StartGame();
+
+        if (!Enum.TryParse<LocationId>(name.Trim(), ignoreCase: true, out var id)) return;
+
+        P.Location = id;
+        EnterBuilding();
     }
 
     private void StartGame()
@@ -3284,6 +3330,54 @@ public sealed partial class MainViewModel : ViewModelBase
 
     /// <summary>False where the font could not be loaded, which hides the switch.</summary>
     public static bool QuicksandFontAvailable => UiFont.Available;
+
+    // ------------------------------------------------------------------
+    // The in-location panel size
+    // ------------------------------------------------------------------
+
+    /// <summary>
+    /// THE IN-LOCATION PANEL SWITCH, as the player sees it — on is the fitted interior that
+    /// leaves all thirteen buildings uncovered, off is Sierra's own full-size one.
+    ///
+    /// <para>
+    /// A DELIBERATE DEVIATION, asked for by Zain, and ON BY DEFAULT because that is what he
+    /// asked for. <see cref="PanelScale"/> holds the geometry and the arithmetic: the size
+    /// chosen, which building bounds each edge of it, and why three quarters is the only
+    /// fraction that costs nothing in sharpness.
+    /// </para>
+    ///
+    /// <para>
+    /// LIVE, for the same reason <see cref="QuicksandFont"/> is live: setting it rebuilds
+    /// the screen, so the shop you are standing in redraws at the other size with nothing
+    /// else changing. A switch that took effect on the next visit would be useless for
+    /// judging it.
+    /// </para>
+    ///
+    /// <para>
+    /// IT IS NOT ON A KEY, and that is checked rather than assumed — see
+    /// <see cref="QuicksandFont"/> for the same argument in full. The game binds F1 and
+    /// F4-F10, Ctrl-Q/S/T/V/Y/Z, Esc and the two mouse modifiers (text 997[6] and 997[7]);
+    /// this port has taken F2 and F3; every list in the game binds the digits. So it lives
+    /// beside the sound switches: modern chrome, outside the Viewbox, where the port's other
+    /// non-Sierra controls are — and reachable on Android, which has no keyboard.
+    /// </para>
+    /// </summary>
+    public bool SmallLocationView
+    {
+        get => PanelScale.Enabled;
+        set
+        {
+            if (PanelScale.Enabled == value) return;
+
+            PanelScale.Enabled = value;
+            OnPropertyChanged();
+
+            // Every view model on screen carries the transform it was BUILT under, so the
+            // screen has to be rebuilt for the new one to mean anything. That is also what
+            // makes this a back-to-back comparison rather than a restart.
+            BuildScreen();
+        }
+    }
 
 
     // ------------------------------------------------------------------

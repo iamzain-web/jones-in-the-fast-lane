@@ -219,6 +219,28 @@ public sealed partial class MainViewModel
         return list;
     }
 
+    /// <summary>
+    /// KNOWN LIMITATION, AND IT IS THE IN-LOCATION PANEL SWITCH'S. A frame carries each
+    /// element's coordinate in the original's 320x200 space and nothing that says which
+    /// elements belong to a building's interior, so a joiner cannot apply
+    /// <see cref="PanelScale"/>: it rebuilds every element with the identity transform and
+    /// therefore draws Sierra's FULL-SIZE interior while a host with the switch on draws the
+    /// fitted one. The board behind it is identical either way.
+    ///
+    /// <para>
+    /// CLICKS ARE NOT AFFECTED, which is why this is a cosmetic divergence rather than a
+    /// broken seat: the identity a joiner sends and the identity
+    /// <see cref="ExecuteRemoteInput"/> matches it against are both built from the UNSCALED
+    /// <c>X</c>/<c>Y</c>, which the switch does not touch — only <c>DrawX</c>/<c>DrawY</c>
+    /// move, and those are the view's business.
+    /// </para>
+    ///
+    /// <para>
+    /// Fixing it needs the frame to carry the transform AND the index at which each
+    /// collection's panel elements begin, which is a protocol change; it is recorded here
+    /// rather than guessed at.
+    /// </para>
+    /// </summary>
     internal FrameMsg CaptureFrame(int seq)
     {
         var f = new FrameMsg

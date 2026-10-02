@@ -106,6 +106,16 @@ public partial class App : Application
                     catch (Exception e) { SciArt.Trace("DebugJumpToBoard threw: " + e); }
                 }, Avalonia.Threading.DispatcherPriority.Background);
 
+            // The same diagnostic one step further in: JONES_DEBUG_LOCATION=<LocationId>
+            // opens that building's interior, so the location panel can be rendered without
+            // driving the mouse. Posted for the same reason as the line above.
+            if (Environment.GetEnvironmentVariable("JONES_DEBUG_LOCATION") is { Length: > 0 } where)
+                Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+                {
+                    try { vm.DebugJumpToLocation(where); }
+                    catch (Exception e) { SciArt.Trace("DebugJumpToLocation threw: " + e); }
+                }, Avalonia.Threading.DispatcherPriority.Background);
+
             return vm;
         });
 
