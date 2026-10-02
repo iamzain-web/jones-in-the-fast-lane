@@ -956,10 +956,28 @@ def skin_field(src_kps, dst_kps, size, alpha=2.0, step=2, reach=0.26, fig=None,
                 w = float(np.clip((1.0 - ratio) / 0.39, 0.0, 1.0))
                 ky = 1.0 + foot_flex * w * (1.0 - ratio)
                 th = foot_flex * w * (np.arctan2(dv[0], dv[1]) - np.arctan2(sv[0], sv[1]))
+                # NO SCALE TERM. A RIGID TRANSFORM HAS NONE, AND THIS ONE DID.
+                #
+                # `ky` divided the shoe's own pixels, squashing it to 1/ky of its height, and
+                # on this cycle ky reaches 1.383 - the swing shoe came out at 0.72 of its
+                # height on cels 0 and 2 and 1.00 on cels 1 and 3. So the shoe changed SHAPE
+                # from key to key by 28%, the in-betweens faithfully interpolated between a
+                # tall shoe and a short one, and what the player saw was the feet warping as
+                # he walked. The rotation term over the same cels is 2 degrees.
+                #
+                # It was meant to model foreshortening, and foreshortening of a real shoe is
+                # a ROTATION about a horizontal axis - the projection shortens because the
+                # object turns, and the object keeps its shape while it does. Compressing the
+                # pixels instead gets the silhouette roughly right for one frame and destroys
+                # rigidity across the cycle, which is the thing that actually reads in motion.
+                #
+                # `ky` is kept and reported because it is still the measure of how much
+                # foreshortening the shin is asking for, and a later rotation-based model
+                # will need it. It no longer scales anything.
                 ca, sa = np.cos(-th), np.sin(-th)
                 rx, ry = ca * dx - sa * dy, sa * dx + ca * dy
                 gx = s0f[0] + rx
-                gy = s0f[1] + ry / max(ky, 1e-3)
+                gy = s0f[1] + ry
             else:
                 gx = s0f[0] + dx
                 gy = s0f[1] + dy
@@ -1031,6 +1049,14 @@ def skin_field(src_kps, dst_kps, size, alpha=2.0, step=2, reach=0.26, fig=None,
         # source shoe's own pixel count is the yardstick a later stage checks the warped shoe
         # against: the correct value is 1.00 and any drift is deformation by definition.
         globals()["LAST_SRC_SHOE_PX"] = int(anysh.sum())
+        # The DRAWN shoe: pixels inside the rigid region whose sample lands on the source
+        # shoe. That is the warped shoe's own area, found through the region rather than by
+        # asking the warped picture what colour things are - which is what made the two
+        # previous attempts at this useless. Under a rigid transform it equals the source
+        # shoe's area, so the ratio has a known correct value of 1.00.
+        globals()["LAST_REGION_PX"] = int(
+            (anysh[np.clip(fy.astype(int), 0, anysh.shape[0] - 1),
+                   np.clip(fx.astype(int), 0, anysh.shape[1] - 1)] & m).sum())
         cover = m.sum() / max(1, want.sum())
         if cover < 0.90:
             print(f"      foot: region claim {cover*100:.0f}% of what the field draws as "
@@ -1995,6 +2021,7 @@ def main():
         print(f"  rigid prop bone at joint(s) {props}", flush=True)
     os.makedirs(a.out, exist_ok=True)
 
+    rigid = {}
     for c in range(4):
         cel = poses["cels"].get(key % c)
         if cel is None:
@@ -2019,7 +2046,25 @@ def main():
             note = "warped"
         p = os.path.join(a.out, f"cut_{a.view}_l{a.loop}_c{c}.png")
         Image.fromarray(out, "RGBA").save(p)
+
+        # RIGIDITY, MEASURED THROUGH THE REGION MASK AND CARRIED FORWARD.
+        #
+        # The shoe's area is a known invariant: a rigid transform preserves it, so the
+        # correct value is 1.00 and any drift is deformation by definition. Two earlier
+        # attempts at this measured the wrong thing - foot-band area across the cycle, which
+        # tracks the POSE and scored the clean build worst; and shoe area found by COLOUR in
+        # the warped cel, which counts trouser on a character whose shoes and trousers are
+        # both black and scored the fixed build identical to the broken one.
+        #
+        # The region mask is neither. It is the exact set of pixels the rigid transform was
+        # applied to, known here and nowhere downstream, so it is recorded here for the gate
+        # to use rather than re-derived from pixels that cannot carry the answer.
+        rigid[str(c)] = {"src_shoe_px": globals().get("LAST_SRC_SHOE_PX", 0),
+                         "dst_region_px": globals().get("LAST_REGION_PX", 0)}
         print(f"  {os.path.basename(p)}  {note}", flush=True)
+
+    with open(os.path.join(a.out, f"rigid_{a.view}_l{a.loop}.json"), "w") as f:
+        json.dump({"view": a.view, "loop": a.loop, "cels": rigid}, f, indent=1)
     print(f"4 cels -> {a.out}")
 
 
