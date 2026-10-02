@@ -92,6 +92,15 @@ namespace Jones.App;
 /// </para>
 ///
 /// <para>
+/// THAT RESTORES THE GEOMETRY AND NOT THE WHOLE ROOM, and the difference is worth stating
+/// rather than being discovered. Two other deviations live inside this panel and have their
+/// own switches: the calculator body (<see cref="CalculatorBody"/>, <c>JONES_CALCULATOR=1</c>)
+/// and the three board elements that are hidden while the panel is scaled — those come back
+/// on their own at scale 1, since they are gated on it. Sierra's room exactly is
+/// <c>JONES_PANEL_SCALE=1 JONES_CALCULATOR=1</c>.
+/// </para>
+///
+/// <para>
 /// NOTHING ABOVE THIS CLASS KNOWS ABOUT IT. The view models still compute
 /// <c>DialogX + nsLeft</c> in the original's 320x200 space, exactly as the scripts do, and
 /// still measure the 1x fonts; the transform is applied in the VIEW, through the
