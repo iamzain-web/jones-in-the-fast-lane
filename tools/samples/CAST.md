@@ -42,6 +42,45 @@ So:
 - **Say in the report what a player can now see that they could not see before** — and if a
   round produced no installable improvement, say *those words*. That sentence is the check.
 
+### And the install must be ACCEPTED, not just verified. `tools/check_install.py`
+
+The first install under the rule above shipped a matte failure to the player. It was verified
+by hash and timestamp — **which proves the files moved and says nothing about what is in
+them.** The cels carried opaque background outside the figure: view 282 at 19–22% near-black
+against a clean baseline of 5%, view 281 at 48%. The player relaunched and saw blobs round the
+man, and that was the first anyone knew.
+
+**The cause was mine and it was one line of plumbing.** `fit_walkers.key()` does
+`Image.open(p).convert("RGB")`, which drops alpha. `warp_walk` writes its transparent region as
+`(0,0,0)`, so handing the warped cut-outs straight to the fit gave `silhouette_matte` a **black
+backdrop** — and that matte decides the uncertain band of its trimap by colour. Against black
+it cannot tell a navy suit, a black blazer or dark hair from the background, so it kept the
+background. Every earlier fit run was clean at 5% because it was fed the *generator's* frames,
+which have the green field the matte was built for. The chain measures 5.0% at the source, 5.0%
+after the warp, and 19–22% after the fit: **the fit is where it enters.**
+
+**And the obvious fix produced the opposite defect**, which is why the gate measures two
+colours. Compositing the cut-outs back over the green field removes the black and leaves
+**green** inside the sprite instead — 20% of it — because the trimap's *core* comes from the
+1990 silhouette and the warped figure is narrower than that outline, so background inside the
+core is forced opaque whatever colour it is. A gate that watched only black would have passed
+that build.
+
+> **Verifying that an artefact was delivered is not the same as accepting it.** Hash and
+> timestamp answer "did it move". Only opening it answers "is it right". Every delivery step
+> in this project now needs the second question, because the first one passed while the player
+> was looking at the failure.
+
+The near-miss that should have caught it came an hour earlier: a dark shape beside the figure
+on a contact sheet turned out to be **the sheet's own grey panel behind a navy suit**. Judging
+a matte by eye on a dark background misses real intrusions and invents false ones in the same
+glance. **Magenta, not grey. A number, not a look.**
+
+The gate is calibrated per view against a known-clean build, because one global threshold would
+either pass 281's broken 48% or fail its clean 25% — its blazer really is that dark. And it was
+checked the only way a check can be: **it fails on both known-bad sets and passes the known-good
+one.**
+
 ## 0a. THE RULE ABOVE ALL THE OTHERS: DUMP THE THING AND LOOK AT IT
 
 Put first because it is the one that keeps paying, on problems that have nothing to do with
