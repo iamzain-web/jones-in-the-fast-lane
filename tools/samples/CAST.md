@@ -74,7 +74,29 @@ that build.
 The near-miss that should have caught it came an hour earlier: a dark shape beside the figure
 on a contact sheet turned out to be **the sheet's own grey panel behind a navy suit**. Judging
 a matte by eye on a dark background misses real intrusions and invents false ones in the same
-glance. **Magenta, not grey. A number, not a look.**
+glance — **it fails in both directions at once, which is why it feels like it is working.**
+The information was in hand an hour before the failure shipped, and the next matte was judged
+the same way. **Magenta, not grey. A number, not a look.**
+
+### The gate needed a second half, and it still has a limit
+
+The first version measured only background intruding **into** the sprite. Two different
+attempted fixes then ate the figure instead — one took a blazer, a shoulder and most of a
+face; the other took the hair and one sunglass lens — and **both walked straight through the
+gate**, because removing dark pixels makes the near-black percentage go *down*. View 281 went
+from a broken 48% to an eaten 24% and read healthier than the clean build at 25%.
+
+> **A check for too-much cannot see too-little.** Every threshold has a direction, and the
+> failure that gets through is the one travelling the other way.
+
+So the gate also measures how much of the 1990 outline the sprite still **fills** — clean
+builds 0.587–0.713, the eaten 281 0.520–0.547 — and it is run against every known-bad set as
+well as the known-good one each time it changes.
+
+**And its limit, stated rather than discovered later: it did not catch the eaten hair.** A few
+per cent of area, all of it dark, moves neither metric. That one was found by compositing the
+head over magenta and looking at it, and nothing in this file would have found it otherwise.
+The gate stops a catastrophe reaching the player; it does not replace §0a.
 
 The gate is calibrated per view against a known-clean build, because one global threshold would
 either pass 281's broken 48% or fail its clean 25% — its blazer really is that dark. And it was
