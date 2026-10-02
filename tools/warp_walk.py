@@ -186,16 +186,27 @@ def shoe_mask(rgb, alpha, src_ankles, fig, tol=52.0, grow=7):
     # A foot cannot extend past the midline between the two ankles, so that is where the
     # window ends. Geometry that was always true and was never enforced because no pose had
     # tested it.
-    mid = 0.5 * (float(src_ankles[0][0]) + float(src_ankles[1][0])) \
-        if len(src_ankles) == 2 else None
+    # AND THE MIDLINE CLIP THAT FIXED IT WAS ITSELF WRONG, FOR THE SAME POSE CLASS.
+    #
+    # The sentence above - "a foot cannot extend past the midline between the two ankles" -
+    # is true of two feet side by side and FALSE IN A FRONT VIEW the moment one of them
+    # swings forward. The forward foot is nearer the camera and its projected outline
+    # crosses the midline; that is what foreshortening looks like from the front. Clipping
+    # the window at a vertical line therefore sliced the toe off square, and because the
+    # cut follows a column rather than the shoe, what came out was rectangular blocks -
+    # torn hems, a shoe reduced to a stump, fragments detached below the foot, on all three
+    # characters. The damage is in the WARP, not the fit: the source shoes are clean and
+    # the warped cels are already shredded.
+    #
+    # Both the original bug and that fix came from treating this as a one-dimensional
+    # partition. It is not. Every shoe pixel belongs to the ankle it is NEAREST to, which
+    # gives each pixel to exactly one foot (so the windows cannot overlap) without ever
+    # cutting along a straight line (so a crossing toe keeps its shape). It is the same
+    # rule `leg_masks` already uses to split the legs, applied one joint further down.
     masks = []
-    for ax, ay in src_ankles:
+    ank = [(float(p[0]), float(p[1])) for p in src_ankles]
+    for ai, (ax, ay) in enumerate(ank):
         x0, x1 = int(max(0, ax - 0.09 * fig)), int(min(op.shape[1], ax + 0.09 * fig))
-        if mid is not None:
-            if ax < mid:
-                x1 = int(min(x1, mid))
-            else:
-                x0 = int(max(x0, mid))
         band = op[bot - int(0.020 * fig):bot - int(0.004 * fig), x0:x1]
         cols = rgb[bot - int(0.020 * fig):bot - int(0.004 * fig), x0:x1][band]
         if len(cols) < 30:
@@ -206,7 +217,15 @@ def shoe_mask(rgb, alpha, src_ankles, fig, tol=52.0, grow=7):
         sub = rgb[y0:y1, x0:x1]
         d = np.sqrt(((sub - ref) ** 2).sum(axis=2))
         one = np.zeros(op.shape, bool)
-        one[y0:y1, x0:x1] = (d < tol) & op[y0:y1, x0:x1]
+        keep = (d < tol) & op[y0:y1, x0:x1]
+        # Nearest-ankle ownership, in two dimensions. Whichever ankle this pixel is closer
+        # to owns it; the other foot's mask cannot claim it, and nothing is cut on a column.
+        if len(ank) == 2:
+            yy, xx = np.mgrid[y0:y1, x0:x1]
+            mine = (xx - ax) ** 2 + (yy - ay) ** 2
+            ox, oy = ank[1 - ai]
+            keep &= mine <= (xx - ox) ** 2 + (yy - oy) ** 2
+        one[y0:y1, x0:x1] = keep
         # A SHOE HAS NO HOLES IN IT EITHER. The colour test drops the laces, the logo and the
         # dark eyelets, leaving small islands enclosed by shoe. While the shoe was carried as
         # a pure translation a two-pixel hole was invisible; once `foot_flex` stretches the
@@ -839,7 +858,46 @@ def skin_field(src_kps, dst_kps, size, alpha=2.0, step=2, reach=0.26, fig=None,
         # tilt the planted shoe by 14 degrees - a foot that is flat on the ground does not
         # rotate because the leg above it leans.
         figv = fig if fig else H
+
+        # THE PRECONDITION, STATED AND TESTED RATHER THAN ASSUMED.
+        #
+        # This whole block exists to carry TWO SHOES as two rigid bodies, and it can only do
+        # that while the two shoes are separable. Each one is found in a window +-0.09 of
+        # figure height about its ankle, so once the ankles are closer together than a shoe
+        # is wide, the two windows describe overlapping regions of the same pixels and every
+        # downstream step - ownership, the "own translation onto own shoe" test, the smear
+        # deletion - is reasoning about a partition that does not exist.
+        #
+        # That is now the NORMAL case, not an edge case: §0b made mid-swing the generation
+        # rule, and a mid-swing stance is precisely one with the feet close together. The
+        # source here measures 62 px between the ankles against a 184 px pair of windows.
+        #
+        # Measured, view by view, warping the same sources both ways:
+        #
+        #            rigid path on          rigid path off
+        #   280      2/5 0/6 0/4 0/6        1/3 0/4 0/3 0/4     (detached fragments / runs)
+        #   281      0/4 0/4 0/4 1/4        0/3 0/3 0/3 0/4
+        #   282      2/11 3/8 0/5 1/8       0/6 0/5 0/4 0/5
+        #
+        # With it on, the shoes tore: hems in blocks, one shoe reduced to a stump, fragments
+        # detached below the foot, on all three characters, and it reached the player. With
+        # it off the general skinning field draws the feet and they come out solid. The cost
+        # the block was added to avoid - a shoe sheared into a spike - was measured on the
+        # OLD cycle, whose extreme keys move a foot much further than a sagittal swing does.
+        sep = abs(float(src_kps[10][0]) - float(src_kps[13][0]))
+        if sep < 0.12 * figv:
+            hard_foot = 0.0
+
+    if hard_foot and rgb_src is not None:
         shoes = shoe_mask(rgb_src, alpha_src, [src_kps[10], src_kps[13]], figv)
+
+        # WHAT THE GENERAL FIELD WOULD DRAW AS SHOE, kept so the rigid path can be checked
+        # against it and abandoned if it cannot cover it - see the coverage test below.
+        fx_gen, fy_gen = fx.copy(), fy.copy()
+        anysh0 = shoes[0] | shoes[1]
+        want = anysh0[np.clip(fy_gen.astype(int), 0, anysh0.shape[0] - 1),
+                      np.clip(fx_gen.astype(int), 0, anysh0.shape[1] - 1)]
+
         m = np.zeros(VX.shape, bool)
         for ank, kne, sh in zip((10, 13), (9, 12), shoes):
             t0f = np.asarray(dst_kps[ank], np.float64)
@@ -872,9 +930,65 @@ def skin_field(src_kps, dst_kps, size, alpha=2.0, step=2, reach=0.26, fig=None,
         # Anything OUTSIDE the rigid region that still reads shoe pixels is a smear of the
         # shoe rather than the shoe. Send it off-frame; `sample` resolves that to background
         # rather than to an edge-clamped colour.
-        anysh = shoes[0] | shoes[1]
-        smear = anysh[np.clip(fy.astype(int), 0, anysh.shape[0] - 1),
-                      np.clip(fx.astype(int), 0, anysh.shape[1] - 1)] & ~m
+        # DOES THE RIGID PATH ACTUALLY COVER THE FOOT? IF NOT, DO NOT USE IT.
+        #
+        # The rigid region claims a destination pixel only when that foot's OWN translation
+        # lands on that foot's OWN shoe. That is a strict test and it is what makes the
+        # method safe - but when it fails to claim most of the foot, what follows is not a
+        # slightly worse shoe, it is a deleted one: the smear rule below removes every
+        # unclaimed pixel that samples shoe, so a partial claim comes out as a shoe with
+        # pieces missing. That shipped. Torn hems, a shoe reduced to a stump and fragments
+        # detached below the foot, on all three characters, and the player saw it.
+        #
+        # The premise is a stance where the two shoes are separable. At mid-swing they are
+        # not: 62 px between the ankles against a +-92 px window, one foot raised 102 px.
+        # Rather than guess a pose threshold, the block checks its own work - if it cannot
+        # claim the foot, the general skinning field is left to draw it, which is what
+        # `--hard-foot 0` does and which produces solid shoes on every cel of this cycle.
+        #
+        # Measured on view 282: rigid claim covers 0.46-0.71 of the foot here, against the
+        # old cycle where it covers essentially all of it.
+        # 0.98, NOT 0.90. At 0.90 view 280 passed the test on three cels of four and came out
+        # damaged anyway - a rigid region that misses a tenth of the shoe still has the smear
+        # rule delete that tenth. The bar is "covers the foot", not "covers most of it",
+        # because the consequence of a near miss here is a hole rather than a blur.
+        # Walked down: 0.90 let view 280 through on three cels of four and it came out
+        # damaged; 0.98 still let two cels through with two detached fragments each. The
+        # rigid path is only safe when it covers the shoe OUTRIGHT, so the bar says that.
+        cover = m.sum() / max(1, want.sum())
+        if cover < 0.995:
+            # NOT a return: the ribcage block below is the shirt fix and must still run.
+            print(f"      foot: rigid region covers only {cover*100:.0f}% of the shoe - "
+                  f"leaving the feet to the general field", flush=True)
+            fx, fy = fx_gen, fy_gen
+            smear = np.zeros(VX.shape, bool)
+        else:
+            anysh = shoes[0] | shoes[1]
+            smear = anysh[np.clip(fy.astype(int), 0, anysh.shape[0] - 1),
+                          np.clip(fx.astype(int), 0, anysh.shape[1] - 1)] & ~m
+
+        # BUT NOT AT THE FOOT ITSELF, OR IT DELETES THE SHOE IT IS PROTECTING.
+        #
+        # This rule removes a GHOST - shoe colour smeared somewhere a shoe is not, up a shin
+        # or out into the backdrop - and it does it by deleting every pixel that samples shoe
+        # and was not claimed by the rigid region. That is safe only while the rigid region
+        # claims the whole destination shoe. At mid-swing it does not: the ankles are 62 px
+        # apart against a +-92 px window, one foot is raised 102 px, and the two feet's
+        # transforms differ enough that part of each destination shoe fails the "own
+        # translation onto own shoe" test. Those pixels are then deleted, and the shoe comes
+        # apart - torn hems, a shoe reduced to a stump, fragments below the foot, on all
+        # three characters. It reached the player.
+        #
+        # Measured: with this whole block off (`--hard-foot 0`) the warp produces ZERO
+        # detached fragments on every cel; with it on, three to five.
+        #
+        # A ghost is by definition somewhere the foot is not, so the rule has no business
+        # within a shoe's reach of a destination ankle. Outside that it still fires.
+        for ankj in (10, 13):
+            t = np.asarray(dst_kps[ankj], np.float64)
+            near = ((VX - t[0]) ** 2 + (VY - t[1]) ** 2) <= (0.13 * figv) ** 2
+            smear &= ~near
+
         fx = np.where(smear, -1e4, fx)
         fy = np.where(smear, -1e4, fy)
 

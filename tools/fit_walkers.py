@@ -416,10 +416,30 @@ def key(path, tol, soft, cel=None):
     # 295 and 297 all came back as a figure in a full box of texture, and their boil went
     # to 16-18 against a baseline of 0.7. The chroma key is still here, but only on request.
     if cel is not None:
-        al, imf = silhouette_matte(rgb, cel, tol, soft)
+        # AN EXACT ALPHA REPLACES THE MATTE; IT DOES NOT MERELY CORRECT IT.
+        #
+        # The first version of this ran silhouette_matte and then forced alpha to 0 wherever
+        # the input said transparent. That fixed background being kept and did nothing about
+        # the opposite error, because the matte can also DELETE figure: outside the eroded
+        # 1990 core, colour decides the band, and view 281's BLACK shoes against a backdrop
+        # sampled as black were scored as background and removed. The warp was clean and the
+        # fit broke the feet - shoes in blocks, fragments below the hem - which is the same
+        # too-little failure as the eaten hair, one stage later.
+        #
+        # The matte exists to find a figure's edge inside an opaque photograph, using the
+        # 1990 outline as the place to look. A warped cut-out has no such problem: its alpha
+        # IS the edge, exactly, produced by the warp from a source that was already matted.
+        # Running a colour estimate over an exact answer can only degrade it.
+        #
+        # So where the producer supplies alpha, that is the matte. The 1990 outline still
+        # governs SCALE AND PLACEMENT through cel["fit"], which is what keeps the footprint,
+        # anchor and hit area valid - the part of the outline that is functional. Measured
+        # after this change: the sprites fill 0.59-0.67 of the outline, the same range as the
+        # known-clean build, so conformance has not been lost with the colour reasoning.
         if known_bg is not None:
-            al = al * (~known_bg).astype(np.float32)
-        return al, imf
+            al = np.asarray(Image.open(path).convert("RGBA"))[:, :, 3].astype(np.float32)
+            return al / 255.0, im
+        return silhouette_matte(rgb, cel, tol, soft)
     greenish = ((im[:, :, 1] - np.maximum(im[:, :, 0], im[:, :, 2])) > 30).mean()
     if greenish > 0.15:
         return chroma_key(rgb, tol, soft)

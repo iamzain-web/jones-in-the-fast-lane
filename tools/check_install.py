@@ -43,7 +43,17 @@ from PIL import Image
 PNG1X = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
                      "assets", "png")
 
-BLACK_CEILING = {280: 20.0, 281: 42.0, 282: 9.0}
+# 280 is 24 rather than 20 because the ceiling was calibrated against the 30 September
+# source and the current one is a different photograph: the same character, a slightly
+# fuller and darker navy suit, measuring 20.2-20.4% where the old one measured 16.1%. The
+# figure is intact - 0-1 fragments, 3 runs, fill 0.567-0.591, and the feet checked by eye
+# over magenta - so the extra black is cloth. The broken build that shipped measured 34.3%,
+# so 24 still separates it by a wide margin.
+#
+# Recalibrating a threshold because the subject changed is legitimate; doing it because the
+# build failed is not. The distinction is whether there is independent evidence the build is
+# right, and here there are three other metrics and a picture.
+BLACK_CEILING = {280: 24.0, 281: 42.0, 282: 9.0}
 BLACK_DEFAULT = 20.0
 GREEN_CEILING = 3.0
 
@@ -63,6 +73,54 @@ GREEN_CEILING = 3.0
 COVER_FLOOR = {280: 0.55, 281: 0.56, 282: 0.54}
 COVER_DEFAULT = 0.54
 
+# AND THE THIRD HALF, WHICH IS THE SAME BLIND SPOT AGAIN, FOUND AGAIN.
+#
+# The whole-sprite coverage floor cannot see a SHOE. The feet are a few per cent of the
+# figure, so a shoe can be reduced to a stump, shattered into blocks or removed outright
+# while both the black percentage and the fill ratio stay comfortably inside their limits -
+# view 281 lost a shoe and still read 0.591 fill against a 0.56 floor.
+#
+# This is the identical failure to the eaten hair, and it was found the identical way: by
+# cropping the feet over magenta and looking. It was also DESCRIBED as minor in the same
+# report that stated the rule it breaks - a check for too-much cannot see too-little - so
+# the rule is written at the top of this file and the instrument is here.
+#
+# Two signals, because neither alone separates the builds:
+#
+#   fragments   pieces detached from the main body. Clean builds have exactly ZERO on every
+#               cel of every view; the broken build had 1-4 on nine cels of twelve. A sharp
+#               discriminator, but three damaged cels were torn WITHOUT anything breaking
+#               off, and those it cannot see.
+#   runs/row    the most horizontal runs on any row of the foot band. A clean pair of shoes
+#               is 2 or 3 - two legs, occasionally a gap. Shredding a hem into blocks drives
+#               it up: the broken build reached 4, 5 and 6.
+#
+# CALIBRATED ON ALL SIXTEEN CELS, NOT THE FOUR BASE ONES. The first cut of these thresholds
+# was taken from c0-c3 only, where the clean build never exceeds 3 runs and never detaches
+# anything - and it then failed the clean build on five cels, because `smooth_walk` tweens
+# each base cel into four and the IN-BETWEEN frames are legitimately raggeder than the keys
+# they are interpolated from. A reference drawn from part of the population cannot see what
+# the rest of it does; §0c, third time.
+#
+#   measured over all 16 cels of each view
+#                      frags            runs/row
+#     clean   280      0-1              3
+#             281      0                2-3
+#             282      0                2-4
+#     broken  280      0-2              4-7
+#             281      1-6              4-7
+#             282      0-4              3-5
+#
+# Neither signal separates them CEL BY CEL - the clean build has a one-fragment cel and a
+# four-run cel, and the broken build has cels with neither. They separate cleanly one step
+# out, and the question being asked is a build-level one anyway: these thresholds fail all
+# three broken views and pass all three clean ones, with the limit sitting just past the
+# clean maximum rather than halfway to the broken minimum.
+FOOT_BAND = 0.16
+FOOT_FRAG_MIN_PX = 12
+FOOT_FRAG_MAX = 1
+FOOT_RUNS_MAX = 4
+
 def measure(path):
     im = np.asarray(Image.open(path).convert("RGBA")).astype(int)
     a = im[:, :, 3] > 200
@@ -72,7 +130,79 @@ def measure(path):
     black = 100.0 * (a & (rgb.max(axis=2) < 40)).sum() / a.sum()
     g = rgb[:, :, 1] - np.maximum(rgb[:, :, 0], rgb[:, :, 2])
     green = 100.0 * (a & (g > 25)).sum() / a.sum()
-    return black, green, coverage(path, im.shape[0], a)
+    return black, green, coverage(path, im.shape[0], a), feet(a)
+
+
+def feet(a):
+    """(detached fragments, worst runs-per-row) in the bottom band of the figure.
+
+    The two signals that see a shoe come apart. Neither alone is enough: a shoe can shatter
+    and leave nothing detached, or detach without the hem going ragged."""
+    ys = np.nonzero(a.any(axis=1))[0]
+    if len(ys) < 8:
+        return 0, 0
+    y0, y1 = int(ys[0]), int(ys[-1])
+    top = int(y1 - FOOT_BAND * (y1 - y0 + 1))
+
+    # RUNS NARROWER THAN A FEW PIXELS ARE ANTI-ALIAS FRINGE, NOT TEARING, and counting them
+    # made this metric fail a build whose feet are intact. The offending rows were the last
+    # three or four above the sole with run widths like [6, 10, 6, 2, 1] - a one-pixel and a
+    # two-pixel sliver off the edge of a shoe. The known-clean build has exactly the same
+    # thing ([3, 1, 48, 43]). Ignoring them is not a loosened threshold; it is the metric
+    # measuring what it claims to measure. A torn shoe is made of blocks, not of single
+    # pixels.
+    minw = max(2, a.shape[1] // 100)
+    worst = 0
+    for y in range(top, y1 + 1):
+        xs = np.nonzero(a[y])[0]
+        if not len(xs):
+            continue
+        brk = np.nonzero(np.diff(xs) > 1)[0]
+        s = 0
+        segs = []
+        for b in brk:
+            segs.append(int(xs[b] - xs[s] + 1)); s = b + 1
+        segs.append(int(xs[-1] - xs[s] + 1))
+        worst = max(worst, sum(1 for w in segs if w >= minw))
+
+    # Components of the whole sprite; anything that is not the body and is bigger than a
+    # speck is a piece that has broken off.
+    lab = np.zeros(a.shape, np.int32)
+    nxt = 1
+    eq = {}
+    def find(x):
+        while eq[x] != x:
+            eq[x] = eq[eq[x]]; x = eq[x]
+        return x
+    for y in range(a.shape[0]):
+        xs = np.nonzero(a[y])[0]
+        if not len(xs):
+            continue
+        brk = np.nonzero(np.diff(xs) > 1)[0]
+        s = 0
+        segs = []
+        for b in brk:
+            segs.append((xs[s], xs[b])); s = b + 1
+        segs.append((xs[s], xs[-1]))
+        for x0, x1 in segs:
+            above = set(lab[y - 1, x0:x1 + 1].tolist()) - {0} if y else set()
+            if not above:
+                eq[nxt] = nxt; lab[y, x0:x1 + 1] = nxt; nxt += 1
+            else:
+                r = min(find(v) for v in above)
+                lab[y, x0:x1 + 1] = r
+                for v in above:
+                    eq[find(v)] = r
+    sizes = {}
+    for v in np.unique(lab):
+        if v == 0:
+            continue
+        sizes[find(int(v))] = sizes.get(find(int(v)), 0) + int((lab == v).sum())
+    if not sizes:
+        return 0, worst
+    body = max(sizes.values())
+    frags = sum(1 for k, n in sizes.items() if n != body and n >= FOOT_FRAG_MIN_PX)
+    return frags, worst
 
 
 def coverage(path, h, a):
@@ -94,14 +224,15 @@ def coverage(path, h, a):
 
 def check(directory, views):
     bad = []
-    print("  %-26s %9s %8s %7s  %s" % ("cel", "black%", "green%", "fill", "verdict"))
+    print("  %-26s %9s %8s %7s %5s %5s  %s"
+          % ("cel", "black%", "green%", "fill", "frag", "runs", "verdict"))
     for v in views:
         ceil = BLACK_CEILING.get(v, BLACK_DEFAULT)
         for p in sorted(glob.glob(os.path.join(directory, "view_%d_l0_c*.png" % v))):
             m = measure(p)
             if m is None:
                 continue
-            black, green, fill = m
+            black, green, fill, (frags, runs) = m
             floor = COVER_FLOOR.get(v, COVER_DEFAULT)
             why = []
             if black > ceil:
@@ -110,11 +241,15 @@ def check(directory, views):
                 why.append("green > %.0f%%" % GREEN_CEILING)
             if fill is not None and fill < floor:
                 why.append("EATEN: fills %.2f < %.2f of the 1990 outline" % (fill, floor))
+            if frags > FOOT_FRAG_MAX:
+                why.append("%d detached fragment(s)" % frags)
+            if runs > FOOT_RUNS_MAX:
+                why.append("FEET SHREDDED: %d runs on a foot row" % runs)
             if why:
                 bad.append((os.path.basename(p), black, green))
-            print("  %-26s %8.1f%% %7.1f%% %7s  %s"
+            print("  %-26s %8.1f%% %7.1f%% %7s %5d %5d  %s"
                   % (os.path.basename(p)[:26], black, green,
-                     "-" if fill is None else "%.3f" % fill,
+                     "-" if fill is None else "%.3f" % fill, frags, runs,
                      "ok" if not why else "FAIL: " + ", ".join(why)))
     return bad
 
