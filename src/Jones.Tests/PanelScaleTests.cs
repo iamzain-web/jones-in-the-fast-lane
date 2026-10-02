@@ -57,12 +57,23 @@ public class PanelScaleTests
     /// calculator, which every location script draws on entry at the absolute (252,160).
     /// </summary>
     [Fact]
-    public void GroupExtentIsTheDialogPlusTheCalculator()
+    public void GroupExtentIsTheDialogPlusTheCashFigure()
     {
-        Assert.Equal(PanelScale.DialogLeft + PanelScale.GroupWidth,
-                     StoreLayout.CalcLeft + CalcWidth);
-        Assert.Equal(PanelScale.DialogTop + PanelScale.GroupHeight,
-                     StoreLayout.CalcTop + CalcHeight);
+        Assert.Equal(184, PanelScale.GroupWidth);
+        Assert.Equal(StoreLayout.CashLeft + StoreLayout.CashWidth, PanelScale.GroupWidth);
+        Assert.Equal(StoreLayout.CashTop + StoreLayout.CashHeight, PanelScale.GroupHeight);
+    }
+
+    /// <summary>
+    /// AND THE CALCULATOR BODY IS WHAT USED TO MAKE IT 244x150. Kept as an assertion,
+    /// because the whole justification for removing it is the difference between the two.
+    /// </summary>
+    [Fact]
+    public void TheCalculatorBodyWasWhatPushedTheGroupOntoTheTown()
+    {
+        Assert.Equal(244, StoreLayout.CalcLeft + CalcWidth - PanelScale.DialogLeft);
+        Assert.Equal(150, StoreLayout.CalcTop + CalcHeight - PanelScale.DialogTop);
+        Assert.True(PanelScale.GroupWidth < 244 && PanelScale.GroupHeight < 150);
     }
 
     /// <summary>
@@ -96,15 +107,17 @@ public class PanelScaleTests
     /// three tests for why — but the arithmetic is the floor of the trade and is pinned here.
     /// </summary>
     [Fact]
-    public void SeventyFivePercentCoversNoBuildingAndIsTheLargestThatDoes()
+    public void TheNoCoverageScaleCoversNoBuildingAndIsTheLargestThatDoes()
     {
         var g = Group(PanelScale.LargestWithNoCoverage);
         Assert.False(CoversAnyBuilding(g));
-        Assert.True(CoversAnyBuilding((g.L, g.T, g.W + 1, g.H)));
+        Assert.True(CoversAnyBuilding((g.L, g.T, g.W, g.H + 1)));
 
-        // Stated as the ratio as well, so the reason survives a change to either number.
-        Assert.Equal(PanelScale.FreeWidth / (double)PanelScale.GroupWidth,
+        // HEIGHT binds now that the calculator body is gone: 114/124 against 183/184.
+        Assert.Equal(PanelScale.FreeHeight / (double)PanelScale.GroupHeight,
                      PanelScale.LargestWithNoCoverage, 10);
+        Assert.True(PanelScale.FreeHeight / (double)PanelScale.GroupHeight
+                    < PanelScale.FreeWidth / (double)PanelScale.GroupWidth);
     }
 
     /// <summary>
@@ -149,32 +162,31 @@ public class PanelScaleTests
     }
 
     /// <summary>
-    /// AND WHAT THE CALCULATOR COSTS AT THAT SCALE, so a change to either number has to be
-    /// looked at rather than slipping through: it clips Socket City's top-left corner and the
-    /// University's right edge, and nothing else. Full size costs 60x33 of Socket City.
+    /// THE WHOLE GROUP, INCLUDING THE CASH FIGURE, COVERS NOTHING at the chosen scale - and
+    /// the margin is thin on purpose, so a change to the scale or to the figure's slot has to
+    /// be looked at rather than slipping through. The figure's bottom edge lands 0.33 of a
+    /// pixel above the University's first row.
     /// </summary>
     [Fact]
-    public void AtTheRequestedScaleOnlyTheCalculatorCoversAnything()
+    public void AtTheRequestedScaleTheCashFigureCoversNothingEither()
     {
         var s = PanelScale.Requested;
         var t = new PanelTransform(s,
                                    PanelScale.FreeLeft - PanelScale.DialogLeft * s,
                                    PanelScale.FreeTop - PanelScale.DialogTop * s);
 
-        var calc = (t.MapX(StoreLayout.CalcLeft), t.MapY(StoreLayout.CalcTop),
-                    t.Size(CalcWidth), t.Size(CalcHeight));
+        var cash = (t.MapX(PanelScale.DialogLeft + StoreLayout.CashLeft),
+                    t.MapY(PanelScale.DialogTop + StoreLayout.CashTop),
+                    t.Size(StoreLayout.CashWidth), t.Size(StoreLayout.CashHeight));
 
-        var hit = new List<string>();
-        foreach (var place in Board.All)
-        {
-            var overlapX = calc.Item1 < place.Left + place.Width
-                           && place.Left < calc.Item1 + calc.Item3;
-            var overlapY = calc.Item2 < place.Top + place.Height
-                           && place.Top < calc.Item2 + calc.Item4;
-            if (overlapX && overlapY) hit.Add(place.Name);
-        }
+        Assert.False(CoversAnyBuilding(cash));
+        Assert.False(CoversAnyBuilding(Group(s)));
 
-        Assert.Equal(["Socket City", "University"], hit.OrderBy(n => n).ToArray());
+        // Where the margin actually is, named so a regression reads as a number.
+        var bottom = cash.Item2 + cash.Item4;
+        Assert.InRange(bottom, 157.0, 158.0);          // the University's first row is 158
+        var right = cash.Item1 + cash.Item3;
+        Assert.InRange(right, 230.0, 251.0);           // Socket City's first column is 251
     }
 
     /// <summary>
@@ -209,16 +221,6 @@ public class PanelScaleTests
     /// when 4s is an integer, so between 0.75 and 1 there is nothing — which is exactly why
     /// the default is a twelfth, whole at the 12 this build runs and nowhere else.
     /// </summary>
-    [Theory]
-    [InlineData(4)]
-    [InlineData(8)]
-    [InlineData(12)]
-    public void TheNoCoverageScaleIsWholeAtEveryArtFactor(int artFactor)
-    {
-        var product = PanelScale.LargestWithNoCoverage * artFactor;
-        Assert.Equal(Math.Round(product), product, 10);
-    }
-
     [Fact]
     public void NothingBetweenThreeQuartersAndFullSizeIsWholeAtEveryArtFactor()
     {
@@ -276,14 +278,11 @@ public class PanelScaleTests
             Assert.Equal(PanelScale.FreeLeft + StoreLayout.ExitLeft * PanelScale.Requested, exitX, 10);
             Assert.Equal(PanelScale.FreeTop + StoreLayout.ExitTop * PanelScale.Requested, exitY, 10);
 
-            // And the calculator, which the scripts position absolutely and which would
-            // otherwise be the one piece left behind on top of Socket City. It MOVES; at the
-            // default scale it still clips Socket City, which is a separate decision about
-            // where `gCalc` lives and is pinned by
-            // AtTheRequestedScaleOnlyTheCalculatorCoversAnything.
-            var calc = (L: t.MapX(StoreLayout.CalcLeft), T: t.MapY(StoreLayout.CalcTop),
-                        W: t.Size(CalcWidth), H: t.Size(CalcHeight));
-            Assert.True(calc.L < StoreLayout.CalcLeft, "the calculator did not move inwards");
+            // And the cash figure, which replaced the calculator and is dialog-relative like
+            // everything else, so it needs no special case at all.
+            var cash = t.MapX(PanelScale.DialogLeft + StoreLayout.CashLeft);
+            Assert.Equal(PanelScale.FreeLeft + StoreLayout.CashLeft * PanelScale.Requested,
+                         cash, 10);
         }
         finally
         {

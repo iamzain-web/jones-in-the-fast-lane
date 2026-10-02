@@ -2297,8 +2297,16 @@ public sealed partial class MainViewModel : ViewModelBase
             // behind, sitting on top of Socket City.
             using var panel = PanelScale.Open();
 
-            Sprites.Add(new SpriteVm(StoreLayout.CalcView, StoreLayout.CalcLoop, 0,
-                                     StoreLayout.CalcLeft, StoreLayout.CalcTop));
+            // THE CALCULATOR BODY IS GONE - a user-requested change, and the one that took
+            // the interior's largest intrusion on the town to nothing. `gCalc` is view 0
+            // loop 4, 61x34 at the absolute (252,160), and it could not be moved: a search of
+            // the whole 320x200 board for a 61x34 rectangle clear of the thirteen Place
+            // rectangles, the parked marble, the clock, the week counter and the panel
+            // returns ZERO positions. So the container goes and the number stays. See
+            // PanelScale.CalculatorBody; JONES_CALCULATOR=1 puts it back.
+            if (PanelScale.CalculatorBody)
+                Sprites.Add(new SpriteVm(StoreLayout.CalcView, StoreLayout.CalcLoop, 0,
+                                         StoreLayout.CalcLeft, StoreLayout.CalcTop));
 
             // The readout, exactly as `calc::doit` draws it (`room1.sc:1437-1455`): text
             // 1[3] `"%6s "` â€” a six-character RIGHT-ALIGNED FIELD plus a trailing space â€”
@@ -2311,9 +2319,23 @@ public sealed partial class MainViewModel : ViewModelBase
             // 4px, so padding to six characters does NOT line the right edge up â€” the
             // readout's right edge creeps as the figure gains digits, and true
             // right-alignment hid that.
-            Texts.Add(new TextVm($"{P.Cash,6} ",
-                                 StoreLayout.CalcLeft + StoreLayout.CalcDisplayLeft,
-                                 StoreLayout.CalcTop + StoreLayout.CalcDisplayTop,
+            // WHERE THE FIGURE GOES. With the body drawn it keeps the script's own offsets
+            // from the cel; without it, the Dialog's bottom-right corner - nsLeft 150, nsTop
+            // 117, which is 184-34 (the figure's widest form flush with the Dialog's right
+            // edge) on the first row clear of `exitButton`. See StoreLayout.CashLeft for the
+            // search that establishes there is nowhere else.
+            //
+            // EVERYTHING ELSE IS THE SCRIPT'S AND UNCHANGED: text 1[3] `"%6s "`, font 14,
+            // colour index 0, and the opaque band of index 101 - which is `dsBACKGROUND`,
+            // not a container this port invented to replace the one it removed. The figure
+            // is still LEFT-aligned from a fixed x, so its right edge still creeps as the
+            // amount gains digits, exactly as the shipped game's does.
+            var (cashX, cashY) = PanelScale.CalculatorBody
+                ? (StoreLayout.CalcLeft + StoreLayout.CalcDisplayLeft,
+                   StoreLayout.CalcTop + StoreLayout.CalcDisplayTop)
+                : (DialogX + StoreLayout.CashLeft, DialogY + StoreLayout.CashTop);
+
+            Texts.Add(new TextVm($"{P.Cash,6} ", cashX, cashY,
                                  fontNumber: StoreLayout.CalcFont,
                                  colour: SciPalette.Hex(StoreLayout.CalcColour),
                                  background: StoreLayout.CalcBackground));

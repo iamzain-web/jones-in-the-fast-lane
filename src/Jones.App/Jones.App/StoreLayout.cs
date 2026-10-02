@@ -368,6 +368,44 @@ public static class StoreLayout
     public const int CalcFont = 14, CalcColour = 0, CalcBackground = 101;
 
     /// <summary>
+    /// WHERE THE FIGURE GOES WITH THE CALCULATOR BODY GONE - see
+    /// <see cref="PanelScale.CalculatorBody"/> for the deviation itself. Dialog-relative, so
+    /// it scales and moves with the panel like every other part of the room.
+    ///
+    /// <para>
+    /// (150,117), AND THERE IS NOWHERE ELSE. The figure is 34x7 at its widest (font 14, see
+    /// below), and a search of all 184x119 of the Dialog against every control in all
+    /// thirteen layouts returns **2040 positions clear of every control and not one of them
+    /// below row 23** - the interior is full, which is unsurprising since Sierra laid it out.
+    /// The bottom-right corner belongs to `exitButton`, nsLeft 143 nsTop 108 and 32x9, so
+    /// rows 108..116 of columns 143..174 are spoken for; the first row below it is 117, and
+    /// 184 - 34 = 150 puts the figure's widest form flush with the Dialog's own right edge.
+    /// </para>
+    ///
+    /// <para>
+    /// IT IS LEFT-ALIGNED FROM 150 AND NOT RIGHT-ALIGNED TO 184, deliberately. Font 14's
+    /// space is 4px against its 5px digits, so `"%6s "` does NOT line the right edge up and
+    /// the readout creeps as the figure gains digits - a quirk of the shipped game that
+    /// `CalcDisplayLeft` above already documents and that working rule 4 says to keep.
+    /// Right-aligning here would quietly fix it.
+    /// </para>
+    ///
+    /// <para>
+    /// Rows 120..123 fall below the Dialog's declared `nsBottom 119`. So did the calculator,
+    /// by a great deal more: it sat at the absolute (252,160), which is dialog-relative
+    /// (183,116) and 61x34, reaching to (244,150).
+    /// </para>
+    /// </summary>
+    public const int CashLeft = 150, CashTop = 117;
+
+    /// <summary>
+    /// The figure's widest form, measured off `assets/raw/font/14.font` across every digit
+    /// count: `"%6s "` is 34px at six digits and 7px tall. Used by the layout tests, and by
+    /// <see cref="CashLeft"/> to put the right edge on the Dialog's own.
+    /// </summary>
+    public const int CashWidth = 34, CashHeight = 7;
+
+    /// <summary>
     /// Job lists (scripts 216â€“224). Every job sits at nsLeft 25; only the starting row
     /// and the spacing differ, and the Factory tightens to 8px to fit nine jobs.
     /// The header is a WButton above them.

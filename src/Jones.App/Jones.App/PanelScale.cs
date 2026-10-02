@@ -16,14 +16,17 @@ namespace Jones.App;
 /// <c>gCalc</c>, the calculator that shows your cash, is at the ABSOLUTE (252,160)
 /// (`room1.sc:1419`) and every location script draws it on entry and erases it on the way
 /// out (`room1.sc:39`). It happens to land exactly on the dialog's own bottom-right corner —
-/// (252,160) is (69+183, 44+116) — so it is treated here as one more dialog-relative part
-/// at nsLeft 183, nsTop 116, which is what keeps it from being left behind.
+/// (252,160) is (69+183, 44+116) — so it is treated here as one more dialog-relative part,
+/// which is what keeps it from being left behind.
 /// </para>
 ///
 /// <para>
-/// THE GROUP, THEREFORE, IS 244x150 AT (69,44): columns 69..312, rows 44..193. The dialog
-/// box is only 184x119, but the calculator's 61x34 cel hangs out to (313,194), and that
-/// overhang is the part that sits on top of Socket City.
+/// THE GROUP IS 184x124 AT (69,44), because the calculator's BODY is no longer drawn — see
+/// <see cref="CalculatorBody"/>, which is the deviation that made this whole trade easy. The
+/// cash figure alone sits at dialog-relative (150,117) and is 34x7, so the group is the
+/// Dialog's own box deepened by five rows. While the body was drawn the group was 244x150:
+/// that 61x34 cel hung out to (244,150) from the same origin and was, by itself, the largest
+/// thing the interior put on top of the town.
 /// </para>
 ///
 /// <para>
@@ -36,10 +39,10 @@ namespace Jones.App;
 /// </para>
 ///
 /// <para>
-/// SO THE LARGEST THE GROUP CAN BE WITHOUT TOUCHING A BUILDING is 183/244 = 0.75 by width
-/// and 114/150 = 0.76 by height; width binds, and three quarters is exact. That figure is
-/// <see cref="LargestWithNoCoverage"/> and it is NOT what this port draws, for the reason
-/// below.
+/// SO THE LARGEST THE GROUP CAN BE WITHOUT TOUCHING A BUILDING is 183/184 = 0.995 by width
+/// and 114/124 = 0.919 by height; HEIGHT binds — <see cref="LargestWithNoCoverage"/>. The
+/// chosen <see cref="Requested"/> of 11/12 = 0.9167 is just inside it, so the interior as
+/// this port draws it covers no building at all.
 /// </para>
 ///
 /// <para>
@@ -56,11 +59,17 @@ namespace Jones.App;
 ///
 /// <para>
 /// SO THE SCALE IS A TRADE, NOT AN OPTIMUM, and <see cref="Requested"/> is where it was
-/// settled: <b>11/12</b>. The bare edge is 13 columns and 7 rows rather than 44 and 26, which
-/// reads as a border instead of a void; the Employment Office and University roofs come out
-/// from under it completely; and the calculator still clips Socket City's top-left corner by
-/// 41x31 instead of 60x33. Between 0.75 and 0.958 the DIALOG covers nothing at all and every
-/// pixel of Socket City uncovered costs a pixel of blank board — they are the same move.
+/// settled: <b>11/12</b>. The bare edge is 13 columns and 7 rows rather than the 44 and 26 of
+/// the first attempt, which reads as a border instead of a void; the Employment Office and
+/// University roofs come out from under it completely; and nothing is covered.
+/// </para>
+///
+/// <para>
+/// HOLD IT THERE FOR NOW. The board's blank middle is being filled with generated town, and
+/// once there is something under the dialog the trade changes — shrinking would start buying
+/// back real buildings instead of cream. 11/12 is the right answer to the board as it is
+/// today and should be revisited against the board as it becomes, with the new picture
+/// measured the way this one was.
 /// </para>
 ///
 /// <para>
@@ -99,12 +108,53 @@ public static class PanelScale
     public const int DialogTop = 44;
 
     /// <summary>
-    /// The group's true extent from that origin: the 184x119 dialog box widened and
-    /// deepened by the calculator cel's overhang to (313,194). Measured, not assumed —
-    /// view 0 loop 4 cel 0 is 61x34 and sits at (252,160).
+    /// THE CALCULATOR BODY. False — the default — draws the cash figure alone, at
+    /// <see cref="StoreLayout.CashLeft"/>; true restores `gCalc`, the 61x34 cel at the
+    /// absolute (252,160).
+    ///
+    /// <para>
+    /// A USER-REQUESTED CHANGE, and it is the one that dissolved a problem rather than
+    /// trading it. The calculator was the single largest thing the interior put on top of
+    /// the town — 60x33 of Socket City at full size — and it could not be moved: a search of
+    /// all 320x200 for a 61x34 rectangle clear of the thirteen `Place` rectangles, the parked
+    /// marble, the clock, the week counter and the panel returns ZERO positions, the best
+    /// alternative (237,137) is worse than where it already sat, and the first size that fits
+    /// anywhere at all is 0.70 — at which the readout's own six characters no longer fit the
+    /// cel at the script's offsets. Removing the body takes that 60x33 to nothing and shrinks
+    /// the group from 244x150 to 184x124, which is what lifts
+    /// <see cref="LargestWithNoCoverage"/> from 0.75 to 0.919.
+    /// </para>
+    ///
+    /// <para>
+    /// WHAT IS KEPT: the value, its format (text 1[3] `"%6s "`), font 14, colour index 0 and
+    /// the opaque band of index 101 — all `room1.sc:1437-1455`'s own — and WHEN it appears,
+    /// which is inside a building and nowhere else (`room1.sc:39` erases it on the way out).
+    /// Only the container goes.
+    /// </para>
+    ///
+    /// <para>
+    /// <c>JONES_CALCULATOR=1</c> puts the body back without a rebuild, which is the only way
+    /// to compare the two.
+    /// </para>
     /// </summary>
-    public const int GroupWidth = 244;
-    public const int GroupHeight = 150;
+    public static bool CalculatorBody =>
+        Environment.GetEnvironmentVariable("JONES_CALCULATOR") is "1";
+
+    /// <summary>
+    /// The group's true extent from the dialog's origin, WITH the calculator body gone: the
+    /// 184x119 box, deepened to 124 by the cash figure, which sits at dialog-relative
+    /// (150,117) and is 34x7 at its widest — so 150+34 = 184 is the box's own right edge and
+    /// 117+7 = 124 is five rows below its floor.
+    ///
+    /// <para>
+    /// It was 244x150 while `gCalc` was drawn, because that cel hung out to (244,150) from
+    /// the same origin. Restoring it with <see cref="CalculatorBody"/> restores those
+    /// numbers too, and the arithmetic below then describes a group this port no longer
+    /// draws — which is why <see cref="LargestWithNoCoverage"/> is stated against THIS one.
+    /// </para>
+    /// </summary>
+    public const int GroupWidth = 184;
+    public const int GroupHeight = 124;
 
     /// <summary>
     /// The largest rectangle on the board that no <c>Place</c> rectangle touches: columns
@@ -133,18 +183,19 @@ public static class PanelScale
     public const double Requested = 11.0 / 12.0;
 
     /// <summary>
-    /// The largest scale at which the interior — INCLUDING the calculator — touches none of
-    /// the thirteen <c>Place</c> rectangles: 183/244, exactly three quarters.
+    /// The largest scale at which the interior touches none of the thirteen <c>Place</c>
+    /// rectangles. With the group at 184x124 in a 183x114 hole it is the HEIGHT that binds —
+    /// 114/124 = 0.9194, against 183/184 = 0.9946 by width.
     ///
     /// <para>
-    /// IT IS NOT THE DEFAULT, and the reason is the whole of the class remarks: at 0.75 the
-    /// panel covers no building and leaves 44 columns and 26 rows of blank #F8F8F0 board
-    /// showing, because there is no town under the dialog to uncover. It is kept as a named
-    /// constant because the arithmetic is worth not losing — it is the point at which the
-    /// trade bottoms out — and because `PanelScaleTests` pins it.
+    /// IT WAS 0.75 while the calculator body was drawn (183/244, width-bound), and that
+    /// number is the whole reason the first attempt looked ridiculous: it left 44 columns and
+    /// 26 rows of blank #F8F8F0 board showing. Removing the body bought back everything
+    /// between 0.75 and 0.919, and <see cref="Requested"/> at 11/12 = 0.9167 now sits just
+    /// INSIDE it — so the chosen scale covers no building at all, which it did not before.
     /// </para>
     /// </summary>
-    public const double LargestWithNoCoverage = 0.75;
+    public const double LargestWithNoCoverage = 114.0 / 124.0;
 
     /// <summary>
     /// <c>JONES_PANEL_SCALE</c>, which overrides <see cref="Requested"/> without a rebuild
