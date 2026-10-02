@@ -132,13 +132,14 @@ public class CashFigureTests
 
     /// <summary>
     /// AND IT IS THE BOTTOM-RIGHT CORNER, which is what was asked for: its widest form ends
-    /// exactly on the Dialog's own right edge, and it sits on the first row below DONE.
+    /// exactly on the Dialog's own right edge, and it sits two rows below DONE — close enough
+    /// to read as that corner's figure, far enough not to read as that button's caption.
     /// </summary>
     [Fact]
     public void TheCashSlotIsTheDialogsBottomRightCorner()
     {
         Assert.Equal(184, StoreLayout.CashLeft + StoreLayout.CashWidth);
-        Assert.Equal(StoreLayout.ExitTop + ButtonH, StoreLayout.CashTop);
+        Assert.Equal(StoreLayout.ExitTop + ButtonH + 2, StoreLayout.CashTop);
     }
 
     /// <summary>

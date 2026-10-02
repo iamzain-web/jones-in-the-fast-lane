@@ -162,31 +162,66 @@ public class PanelScaleTests
     }
 
     /// <summary>
-    /// THE WHOLE GROUP, INCLUDING THE CASH FIGURE, COVERS NOTHING at the chosen scale - and
-    /// the margin is thin on purpose, so a change to the scale or to the figure's slot has to
-    /// be looked at rather than slipping through. The figure's bottom edge lands 0.33 of a
-    /// pixel above the University's first row.
+    /// WHAT THE CASH FIGURE COSTS AT THE CHOSEN SCALE, to the pixel, so that the two rows
+    /// spent on its gap from DONE stay a decision somebody took rather than a drift nobody
+    /// noticed. It clips the UNIVERSITY'S ROOF and nothing else; the dialog itself still
+    /// covers nothing at all.
     /// </summary>
     [Fact]
-    public void AtTheRequestedScaleTheCashFigureCoversNothingEither()
+    public void AtTheRequestedScaleOnlyTheCashFigureTouchesABuilding()
     {
         var s = PanelScale.Requested;
         var t = new PanelTransform(s,
                                    PanelScale.FreeLeft - PanelScale.DialogLeft * s,
                                    PanelScale.FreeTop - PanelScale.DialogTop * s);
 
-        var cash = (t.MapX(PanelScale.DialogLeft + StoreLayout.CashLeft),
-                    t.MapY(PanelScale.DialogTop + StoreLayout.CashTop),
-                    t.Size(StoreLayout.CashWidth), t.Size(StoreLayout.CashHeight));
+        var cash = (X: t.MapX(PanelScale.DialogLeft + StoreLayout.CashLeft),
+                    Y: t.MapY(PanelScale.DialogTop + StoreLayout.CashTop),
+                    W: t.Size(StoreLayout.CashWidth), H: t.Size(StoreLayout.CashHeight));
 
-        Assert.False(CoversAnyBuilding(cash));
-        Assert.False(CoversAnyBuilding(Group(s)));
+        // The Dialog's own box - everything the player presses or reads - is still clear.
+        Assert.False(CoversAnyBuilding((t.MapX(PanelScale.DialogLeft),
+                                        t.MapY(PanelScale.DialogTop),
+                                        t.Size(184), t.Size(119))));
 
-        // Where the margin actually is, named so a regression reads as a number.
-        var bottom = cash.Item2 + cash.Item4;
-        Assert.InRange(bottom, 157.0, 158.0);          // the University's first row is 158
-        var right = cash.Item1 + cash.Item3;
-        Assert.InRange(right, 230.0, 251.0);           // Socket City's first column is 251
+        // The figure is not, and this is exactly which building and exactly how much.
+        var hit = new List<(string Name, double Area)>();
+        foreach (var place in Board.All)
+        {
+            var w = Math.Min(cash.X + cash.W, place.Left + place.Width) - Math.Max(cash.X, place.Left);
+            var h = Math.Min(cash.Y + cash.H, place.Top + place.Height) - Math.Max(cash.Y, place.Top);
+            if (w > 0 && h > 0) hit.Add((place.Name, w * h));
+        }
+
+        Assert.Single(hit);
+        Assert.Equal("University", hit[0].Name);
+        Assert.InRange(hit[0].Area, 40, 55);        // about 47 px^2 of its roof
+
+        // Still clear of Socket City, which is what removing the calculator bought.
+        Assert.True(cash.X + cash.W < 251);
+    }
+
+    /// <summary>
+    /// AND THE ROW ABOVE IT IS FREE, which is the number the choice was made against: at
+    /// `CashTop` 117 the whole interior covers nothing. Two rows of gap from DONE cost 47 px²
+    /// of roof, and this says so rather than leaving it to a commit message.
+    /// </summary>
+    [Fact]
+    public void TheGapFromDoneIsWhatCostsTheLastOfTheCoverage()
+    {
+        var s = PanelScale.Requested;
+        var t = new PanelTransform(s,
+                                   PanelScale.FreeLeft - PanelScale.DialogLeft * s,
+                                   PanelScale.FreeTop - PanelScale.DialogTop * s);
+
+        // 117 - hard against the bottom of `exitButton` - covers nothing.
+        Assert.False(CoversAnyBuilding(
+            (t.MapX(PanelScale.DialogLeft + StoreLayout.CashLeft),
+             t.MapY(PanelScale.DialogTop + 117),
+             t.Size(StoreLayout.CashWidth), t.Size(StoreLayout.CashHeight))));
+
+        // The chosen row does not, and it is the first row clear of the button plus two.
+        Assert.Equal(StoreLayout.ExitTop + 9 + 2, StoreLayout.CashTop);
     }
 
     /// <summary>

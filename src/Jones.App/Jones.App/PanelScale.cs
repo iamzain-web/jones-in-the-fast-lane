@@ -40,9 +40,11 @@ namespace Jones.App;
 ///
 /// <para>
 /// SO THE LARGEST THE GROUP CAN BE WITHOUT TOUCHING A BUILDING is 183/184 = 0.995 by width
-/// and 114/124 = 0.919 by height; HEIGHT binds — <see cref="LargestWithNoCoverage"/>. The
-/// chosen <see cref="Requested"/> of 11/12 = 0.9167 is just inside it, so the interior as
-/// this port draws it covers no building at all.
+/// and 114/126 = 0.905 by height; HEIGHT binds — <see cref="LargestWithNoCoverage"/>. The
+/// chosen <see cref="Requested"/> of 11/12 = 0.9167 is just outside it: the DIALOG covers
+/// nothing, and the only thing that touches a building anywhere in the interior is the cash
+/// figure's bottom edge, which clips about 47 px² of the University's ROOF. See
+/// <see cref="LargestWithNoCoverage"/> for why those two rows were spent.
 /// </para>
 ///
 /// <para>
@@ -61,7 +63,8 @@ namespace Jones.App;
 /// SO THE SCALE IS A TRADE, NOT AN OPTIMUM, and <see cref="Requested"/> is where it was
 /// settled: <b>11/12</b>. The bare edge is 13 columns and 7 rows rather than the 44 and 26 of
 /// the first attempt, which reads as a border instead of a void; the Employment Office and
-/// University roofs come out from under it completely; and nothing is covered.
+/// University roofs come out from under it completely; and the only thing left touching a
+/// building anywhere is 47 px² of the University's roof under the cash figure.
 /// </para>
 ///
 /// <para>
@@ -151,9 +154,9 @@ public static class PanelScale
 
     /// <summary>
     /// The group's true extent from the dialog's origin, WITH the calculator body gone: the
-    /// 184x119 box, deepened to 124 by the cash figure, which sits at dialog-relative
-    /// (150,117) and is 34x7 at its widest — so 150+34 = 184 is the box's own right edge and
-    /// 117+7 = 124 is five rows below its floor.
+    /// 184x119 box, deepened to 126 by the cash figure, which sits at dialog-relative
+    /// (150,119) and is 34x7 at its widest — so 150+34 = 184 is the box's own right edge and
+    /// 119+7 = 126 is seven rows below its floor.
     ///
     /// <para>
     /// It was 244x150 while `gCalc` was drawn, because that cel hung out to (244,150) from
@@ -163,7 +166,7 @@ public static class PanelScale
     /// </para>
     /// </summary>
     public const int GroupWidth = 184;
-    public const int GroupHeight = 124;
+    public const int GroupHeight = 126;
 
     /// <summary>
     /// The largest rectangle on the board that no <c>Place</c> rectangle touches: columns
@@ -193,18 +196,26 @@ public static class PanelScale
 
     /// <summary>
     /// The largest scale at which the interior touches none of the thirteen <c>Place</c>
-    /// rectangles. With the group at 184x124 in a 183x114 hole it is the HEIGHT that binds —
-    /// 114/124 = 0.9194, against 183/184 = 0.9946 by width.
+    /// rectangles. With the group at 184x126 in a 183x114 hole it is the HEIGHT that binds —
+    /// 114/126 = 0.9048, against 183/184 = 0.9946 by width.
     ///
     /// <para>
     /// IT WAS 0.75 while the calculator body was drawn (183/244, width-bound), and that
     /// number is the whole reason the first attempt looked ridiculous: it left 44 columns and
     /// 26 rows of blank #F8F8F0 board showing. Removing the body bought back everything
-    /// between 0.75 and 0.919, and <see cref="Requested"/> at 11/12 = 0.9167 now sits just
-    /// INSIDE it — so the chosen scale covers no building at all, which it did not before.
+    /// between 0.75 and 0.919.
+    /// </para>
+    ///
+    /// <para>
+    /// <see cref="Requested"/> AT 11/12 = 0.9167 IS JUST OUTSIDE IT, and that is a choice
+    /// taken with the number in front of it rather than an oversight. The ceiling was 0.919
+    /// while the cash figure sat at dialog row 117 — butted straight against DONE, where it
+    /// read as a caption of that button rather than as the cash. Moving it down two rows to
+    /// 119 costs 10 pixels of ceiling and clips about 47 px² of the University's ROOF, which
+    /// is a cheaper thing to lose than a control that is misread.
     /// </para>
     /// </summary>
-    public const double LargestWithNoCoverage = 114.0 / 124.0;
+    public const double LargestWithNoCoverage = 114.0 / 126.0;
 
     /// <summary>
     /// <c>JONES_PANEL_SCALE</c>, which overrides <see cref="Requested"/> without a rebuild

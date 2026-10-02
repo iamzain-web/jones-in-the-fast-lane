@@ -373,13 +373,23 @@ public static class StoreLayout
     /// it scales and moves with the panel like every other part of the room.
     ///
     /// <para>
-    /// (150,117), AND THERE IS NOWHERE ELSE. The figure is 34x7 at its widest (font 14, see
-    /// below), and a search of all 184x119 of the Dialog against every control in all
-    /// thirteen layouts returns **2040 positions clear of every control and not one of them
-    /// below row 23** - the interior is full, which is unsurprising since Sierra laid it out.
-    /// The bottom-right corner belongs to `exitButton`, nsLeft 143 nsTop 108 and 32x9, so
-    /// rows 108..116 of columns 143..174 are spoken for; the first row below it is 117, and
-    /// 184 - 34 = 150 puts the figure's widest form flush with the Dialog's own right edge.
+    /// (150,119), AND THERE IS NOWHERE ELSE IN THE BOX. The figure is 34x7 at its widest
+    /// (font 14, see below), and a search of all 184x119 of the Dialog against every control
+    /// in all thirteen layouts returns **2040 positions clear of every control and not one of
+    /// them below row 23** - the interior is full, which is unsurprising since Sierra laid it
+    /// out. The bottom-right corner belongs to `exitButton`, nsLeft 143 nsTop 108 and 32x9,
+    /// so rows 108..116 of columns 143..174 are spoken for, and 184 - 34 = 150 puts the
+    /// figure's widest form flush with the Dialog's own right edge.
+    /// </para>
+    ///
+    /// <para>
+    /// THE TWO-ROW GAP IS DELIBERATE AND IT IS NOT FREE. 117 is the first row clear of
+    /// `exitButton` and is the only row at which the whole interior covers no building at
+    /// all; at 119 the figure's bottom edge falls 1.5 scaled rows past the University's first
+    /// row and clips **about 47 px² of its roof**, and at 118 about 18. The gap is worth it:
+    /// butted straight up against DONE the figure reads as a caption of that button rather
+    /// than as the cash. A roof is cheaper than a misread control, and the choice was taken
+    /// with both numbers in front of it.
     /// </para>
     ///
     /// <para>
@@ -391,12 +401,21 @@ public static class StoreLayout
     /// </para>
     ///
     /// <para>
-    /// Rows 120..123 fall below the Dialog's declared `nsBottom 119`. So did the calculator,
-    /// by a great deal more: it sat at the absolute (252,160), which is dialog-relative
-    /// (183,116) and 61x34, reaching to (244,150).
+    /// Rows 119..125 fall at and below the Dialog's declared `nsBottom 119`. So did the
+    /// calculator, by a great deal more: it sat at the absolute (252,160), which is
+    /// dialog-relative (183,116) and 61x34, reaching to (244,150).
+    /// </para>
+    ///
+    /// <para>
+    /// THERE IS ONE WAY TO HAVE BOTH THE GAP AND NO COVERAGE, and it is recorded rather than
+    /// taken: columns 129..189 of the board are free of every `Place` rectangle all the way
+    /// down - it is the strip the clock and `Week #N` sit in - so a `CashLeft` of about 95
+    /// would put the figure in it and cost nothing at any `CashTop`. It is bottom-CENTRE
+    /// rather than the bottom-right corner that was asked for, which is why it is a note and
+    /// not the value.
     /// </para>
     /// </summary>
-    public const int CashLeft = 150, CashTop = 117;
+    public const int CashLeft = 150, CashTop = 119;
 
     /// <summary>
     /// The figure's widest form, measured off `assets/raw/font/14.font` across every digit
