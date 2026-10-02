@@ -313,6 +313,54 @@ def silhouette_matte(rgb, cel, tol, soft, core=0.06, reach=0.055, reach_up=0.30,
         d = np.abs(im[band][:, None, :] - cent[None, :, :]).max(axis=2).min(axis=1)
         a[band] = np.clip((d - tol) / max(1e-3, soft), 0.0, 1.0)
 
+    # THE CORE IS NOT A GUARANTEE THAT THERE IS A FIGURE THERE, AND ASSUMING IT WAS PUT
+    # OPAQUE BACKGROUND INTO THE GAME.
+    #
+    # `a[inner] = 1.0` says: inside the 1990 silhouette, eroded, trust the outline and keep
+    # the pixel whatever colour it is. That holds while the new figure FILLS the old
+    # outline. It stops holding the moment the new figure is NARROWER than Sierra's in some
+    # place - then background falls inside the core and is forced opaque, and what the
+    # player sees is a slab of backdrop welded to the man.
+    #
+    # It shipped. The warped cels came through with 19-22% of view 282's pixels near-black
+    # against a clean baseline of 5%, and 48% of view 281's. Compositing the same cut-outs
+    # over the generator's green field instead removed every black slab and left GREEN ones
+    # of the same shape, about 20% of the sprite - two differently coloured symptoms of this
+    # one line. That is also why the fix is here and not at the backdrop: changing what
+    # colour the background happens to be only changes what colour the defect is.
+    #
+    # THE FIX IS NOT A COLOUR TEST, AND TWO ATTEMPTS AT ONE BOTH ATE THE FIGURE.
+    #
+    # The obvious repair is "a core pixel that looks like background, and is reachable from
+    # outside without crossing anything that doesn't, is background". It is wrong, and
+    # wrong in a way that is worth leaving written down because it looks so reasonable:
+    #
+    #   * Against a BLACK backdrop every background cluster lands on black, so a black
+    #     blazer IS background-coloured and it touches the real background at the figure's
+    #     edge. The flood walked in and took the blazer, a shoulder and most of a face.
+    #   * Capping it - refusing the removal when it claims more than a quarter of the core -
+    #     saved view 281 and did nothing for view 282, where the dark things are only the
+    #     HAIR and one sunglass lens. Those are a few per cent of the core, so the cap never
+    #     tripped, and the man came out bald with one lens missing.
+    #   * Both passed the install gate. Eating dark pixels makes the near-black percentage
+    #     go DOWN, and a few per cent of area lost does not move a coverage floor. A check
+    #     for too-much-background cannot see too-little-figure, however many halves it has.
+    #
+    # There is no threshold that separates "backdrop that has intruded into the core" from
+    # "dark part of the person touching the edge" on colour alone, because against a dark
+    # backdrop they are the same measurement. The information needed is not in the pixels.
+    #
+    # It IS in the alpha channel the producer already attached - see `key`, which used to
+    # throw it away. Where the input says a pixel is transparent, it is, exactly, with no
+    # inference; and hair at alpha 255 can never be mistaken for the field behind it. So the
+    # core is corrected there, from ground truth, and this function does no colour reasoning
+    # about the core at all.
+    #
+    # The residual, stated rather than hidden: an input with NO alpha - the generator's own
+    # frames - still has `a[inner] = 1.0` taken on trust. Those frames are generated to the
+    # pose and have always filled the outline, which is why they have always been clean, but
+    # it is an assumption and not a guarantee.
+
     # AND IT MUST BE ATTACHED TO THE FIGURE. A pixel in the band that looks nothing like
     # the background is not necessarily part of the person - it is just as likely a corner
     # of the armchair the generator drew beside them. Keeping only what is connected to
@@ -338,7 +386,26 @@ def key(path, tol, soft, cel=None):
     """(alpha, rgb) for a generated frame, chroma if it is on a green field and the flood
     key if it is not. Decided by looking: a green screen leaves a third of the frame
     strongly green, and nothing else does."""
-    rgb = np.asarray(Image.open(path).convert("RGB"))
+    # AN ALPHA CHANNEL ON THE INPUT IS GROUND TRUTH AND USED TO BE DISCARDED HERE.
+    #
+    # `convert("RGB")` silently drops it. That is fine for the generator's own frames, which
+    # are opaque and carry a green field. It is not fine for a WARPED cut-out, which is RGBA
+    # with its transparent region written as (0,0,0) - dropping the alpha handed the matte a
+    # BLACK backdrop it had never been designed for, and the matte's colour clustering then
+    # could not tell a navy suit from the field behind it. That is how opaque black slabs
+    # reached the game.
+    #
+    # The producer already knows which pixels are background. Taking its word for it costs
+    # nothing, removes the whole class of problem, and - unlike compositing over some chosen
+    # colour - does not depend on picking a backdrop that happens to contrast with whatever
+    # the character is wearing.
+    src = Image.open(path)
+    known_bg = None
+    if src.mode in ("RGBA", "LA") or "transparency" in src.info:
+        al = np.asarray(src.convert("RGBA"))[:, :, 3]
+        if (al < 8).mean() > 0.02:
+            known_bg = al < 8
+    rgb = np.asarray(src.convert("RGB"))
     im = rgb.astype(np.float32)
 
     # THE SILHOUETTE MATTE WINS WHENEVER THERE IS A SILHOUETTE. This used to sniff for a
@@ -349,7 +416,10 @@ def key(path, tol, soft, cel=None):
     # 295 and 297 all came back as a figure in a full box of texture, and their boil went
     # to 16-18 against a baseline of 0.7. The chroma key is still here, but only on request.
     if cel is not None:
-        return silhouette_matte(rgb, cel, tol, soft)
+        al, imf = silhouette_matte(rgb, cel, tol, soft)
+        if known_bg is not None:
+            al = al * (~known_bg).astype(np.float32)
+        return al, imf
     greenish = ((im[:, :, 1] - np.maximum(im[:, :, 0], im[:, :, 2])) > 30).mean()
     if greenish > 0.15:
         return chroma_key(rgb, tol, soft)

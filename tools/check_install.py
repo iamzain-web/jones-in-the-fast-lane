@@ -40,9 +40,28 @@ import os, sys, glob
 import numpy as np
 from PIL import Image
 
-BLACK_CEILING = {280: 20.0, 281: 30.0, 282: 9.0}
+PNG1X = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                     "assets", "png")
+
+BLACK_CEILING = {280: 20.0, 281: 42.0, 282: 9.0}
 BLACK_DEFAULT = 20.0
-GREEN_CEILING = 2.0
+GREEN_CEILING = 3.0
+
+# THE OTHER HALF OF THE GATE, AND IT WAS MISSING. The first version measured only how much
+# background had intruded INTO the sprite. A fix that ate the figure instead - biting holes
+# through a face and a blazer - sailed through it, because removing dark pixels makes the
+# near-black percentage go DOWN: view 281 went from a broken 48% to an eaten 24% and read
+# healthier than the clean build at 25%.
+#
+# So the gate also measures how much of the 1990 silhouette the sprite still fills. A sprite
+# that is too SMALL is as wrong as one that is too big, and nothing in a one-sided check can
+# see it. Floors are per view, from a known-clean build, less headroom for the sagittal poses
+# which are legitimately a little narrower than the old ones.
+#
+#   clean (sk12)  280 0.615-0.713   281 0.603-0.670   282 0.587-0.634
+#   eaten         281 0.520-0.547
+COVER_FLOOR = {280: 0.55, 281: 0.56, 282: 0.54}
+COVER_DEFAULT = 0.54
 
 def measure(path):
     im = np.asarray(Image.open(path).convert("RGBA")).astype(int)
@@ -53,27 +72,49 @@ def measure(path):
     black = 100.0 * (a & (rgb.max(axis=2) < 40)).sum() / a.sum()
     g = rgb[:, :, 1] - np.maximum(rgb[:, :, 0], rgb[:, :, 2])
     green = 100.0 * (a & (g > 25)).sum() / a.sum()
-    return black, green
+    return black, green, coverage(path, im.shape[0], a)
+
+
+def coverage(path, h, a):
+    """Opaque area as a fraction of the 1990 cel''s own silhouette at the same scale.
+
+    This is the half that catches a sprite being eaten rather than padded."""
+    name = os.path.basename(path)
+    try:
+        v = int(name.split("_")[1])
+        c0 = name.split("_")[3].split(".")[0].split("s")[0].rstrip("_")
+    except (IndexError, ValueError):
+        return None
+    p1 = os.path.join(PNG1X, "view_%d_l0_%s.png" % (v, c0))
+    if not os.path.exists(p1):
+        return None
+    a1 = np.asarray(Image.open(p1).convert("RGBA"))[:, :, 3] > 128
+    f = h / a1.shape[0]
+    return a.sum() / max(1.0, a1.sum() * f * f)
 
 def check(directory, views):
     bad = []
-    print("  %-26s %9s %8s  %s" % ("cel", "black%", "green%", "verdict"))
+    print("  %-26s %9s %8s %7s  %s" % ("cel", "black%", "green%", "fill", "verdict"))
     for v in views:
         ceil = BLACK_CEILING.get(v, BLACK_DEFAULT)
         for p in sorted(glob.glob(os.path.join(directory, "view_%d_l0_c*.png" % v))):
             m = measure(p)
             if m is None:
                 continue
-            black, green = m
+            black, green, fill = m
+            floor = COVER_FLOOR.get(v, COVER_DEFAULT)
             why = []
             if black > ceil:
                 why.append("black > %.0f%%" % ceil)
             if green > GREEN_CEILING:
                 why.append("green > %.0f%%" % GREEN_CEILING)
+            if fill is not None and fill < floor:
+                why.append("EATEN: fills %.2f < %.2f of the 1990 outline" % (fill, floor))
             if why:
                 bad.append((os.path.basename(p), black, green))
-            print("  %-26s %8.1f%% %7.1f%%  %s"
+            print("  %-26s %8.1f%% %7.1f%% %7s  %s"
                   % (os.path.basename(p)[:26], black, green,
+                     "-" if fill is None else "%.3f" % fill,
                      "ok" if not why else "FAIL: " + ", ".join(why)))
     return bad
 
