@@ -67,6 +67,9 @@ public partial class MainView : UserControl
 
         Hook(Vm);
 
+        // The tap scale, measured rather than assumed — see MeasureTouchScale.
+        GameCanvas.LayoutUpdated += (_, _) => MeasureTouchScale();
+
         if (!string.IsNullOrEmpty(System.Environment.GetEnvironmentVariable("JONES_DEBUG_HITTEST")))
         {
             // Waits for the screen to exist and for the shopkeeper's greeting to finish: a
@@ -122,9 +125,64 @@ public partial class MainView : UserControl
     /// because it is modal and correctly covers everything underneath it.
     /// </para>
     /// </summary>
+    /// <summary>
+    /// HOW BIG A GAME PIXEL ACTUALLY IS ON THIS SCREEN, which is what
+    /// <see cref="TouchTargets"/> grows the tap rectangles from.
+    ///
+    /// <para>
+    /// MEASURED, NOT ASSUMED FROM THE PLATFORM. The canvas is <c>RenderScale.Factor</c> times
+    /// the original's 320x200 and the Viewbox then fits it to whatever the window or the phone
+    /// gives it, so the only honest source is the transform the layout has actually settled
+    /// on. <c>M11</c> of the canvas-to-top-level matrix is canvas units per Avalonia unit;
+    /// multiplying by the art factor gives Avalonia units per GAME pixel, and an Avalonia unit
+    /// is 1/96 inch on every head — which is what makes a 48 dp (1/160 inch) comparison
+    /// meaningful without asking what sort of device this is.
+    /// </para>
+    ///
+    /// <para>
+    /// Re-measured on every layout pass, because the window can be resized and a phone can be
+    /// rotated. It only ever sets a number; the growth is recomputed on the next screen build.
+    /// </para>
+    /// </summary>
+    private void MeasureTouchScale()
+    {
+        // `JONES_TOUCH_UNITS` pretends the screen is a different size, so the grown
+        // rectangles can be exercised and probed on a desktop. 2.025 is a 1080-wide phone in
+        // portrait with no upscaled art (3.375 game pixels per device pixel, 0.6 Avalonia
+        // units per dp); 3.24 is the same phone in landscape. Without it nothing here is
+        // guessed at — the scale is measured.
+        if (double.TryParse(System.Environment.GetEnvironmentVariable("JONES_TOUCH_UNITS"),
+                            System.Globalization.NumberStyles.Float,
+                            System.Globalization.CultureInfo.InvariantCulture, out var forced)
+            && forced > 0)
+        {
+            TouchTargets.UnitsPerGamePixel = forced;
+            return;
+        }
+
+        if (TopLevel.GetTopLevel(this) is not { } top) return;
+        if (GameCanvas.TransformToVisual(top) is not { } m) return;
+        if (m.M11 <= 0) return;
+
+        TouchTargets.UnitsPerGamePixel = m.M11 * RenderScale.Factor;
+    }
+
     private int ProbeHitTesting()
     {
         if (Vm is not { } vm) return 0;
+
+        // What the tap rectangles are actually working against on this screen, in the units
+        // the 48 dp rule is stated in. Printed before the probe so a miss can be read against
+        // it rather than guessed at.
+        MeasureTouchScale();
+        var upx = TouchTargets.UnitsPerGamePixel;
+        var scaling = TopLevel.GetTopLevel(this)?.RenderScaling ?? 0;
+        System.Console.WriteLine(
+            $"TOUCH RenderScaling {scaling:0.###}; {upx:0.###} Avalonia units per game pixel; " +
+            $"48 dp = {TouchTargets.MinimumGamePixels:0.##} game px; " +
+            $"a 32x9 button is {32 * upx / 0.6:0.#} x {9 * upx / 0.6:0.#} dp at panel scale 1, " +
+            $"{32 * upx * PanelScale.Factor / 0.6:0.#} x {9 * upx * PanelScale.Factor / 0.6:0.#} dp " +
+            $"at {PanelScale.Factor:0.####}");
 
         var f = RenderScale.Factor;
         int pass = 0, fail = 0;
@@ -144,13 +202,43 @@ public partial class MainView : UserControl
             misses.Add($"HITTEST MISS {what} at game ({x:0.##},{y:0.##}) {w:0.##}x{h:0.##} -> {what2}");
         }
 
+        // THE DRAWN CENTRE, which is the invariant that matters: a control must answer where
+        // it is painted. Then the four corners of the GROWN rectangle, which is what proves
+        // the expanded area responds and that no neighbour has taken it — on a desktop the
+        // two rectangles are the same and this is simply the same check five times.
+        var grown = 0;
+
         foreach (var s in vm.Sprites)
-            if (s.IsClickable)
-                Probe(s, s.DrawX, s.DrawY, s.DrawW, s.DrawH, $"sprite v{s.View} l{s.Loop} c{s.Cel}");
+        {
+            if (!s.IsClickable) continue;
+            Probe(s, s.DrawX, s.DrawY, s.DrawW, s.DrawH, $"sprite v{s.View} l{s.Loop} c{s.Cel}");
+            if (s.HitW > s.DrawW || s.HitH > s.DrawH) grown++;
+            Corners(s, s.HitLeft, s.HitTop, s.HitW, s.HitH,
+                    $"sprite v{s.View} l{s.Loop} c{s.Cel} GROWN");
+        }
 
         foreach (var m in vm.MenuLines)
-            if (m.Enabled)
-                Probe(m, m.DrawX, m.DrawY, m.DrawW, m.DrawH, $"line \"{m.Tooltip}\"");
+        {
+            if (!m.Enabled) continue;
+            Probe(m, m.DrawX, m.DrawY, m.DrawW, m.DrawH, $"line \"{m.Tooltip}\"");
+            if (m.HitW > m.DrawW || m.HitH > m.DrawH) grown++;
+            Corners(m, m.HitLeft, m.HitTop, m.HitW, m.HitH,
+                    $"line \"{m.Tooltip}\" GROWN");
+        }
+
+        void Corners(object model, double x, double y, double w, double h, string what)
+        {
+            // A game pixel in from each corner. Probe() takes a RECTANGLE and tests its
+            // centre, so these are 2x2 boxes whose centres land one pixel inside the
+            // rectangle's corners — on the boundary itself a hit is undefined, and an
+            // earlier version of this probed exactly there and reported false misses.
+            foreach (var (cx, cy) in new[]
+                     {
+                         (x, y), (x + w - 2, y),
+                         (x, y + h - 2), (x + w - 2, y + h - 2),
+                     })
+                Probe(model, cx, cy, 2, 2, what);
+        }
 
         foreach (var b in vm.BalloonButtons)
             Probe(b, b.DrawX, b.DrawY, b.DrawW, b.DrawH, $"balloon button \"{b.Text}\"");
@@ -161,7 +249,7 @@ public partial class MainView : UserControl
         if (pass == 0) return 0;   // nothing realised yet; the caller tries again
 
         foreach (var m in misses) System.Console.WriteLine(m);
-        System.Console.WriteLine($"HITTEST {pass} hit, {fail} missed");
+        System.Console.WriteLine($"HITTEST {pass} hit, {fail} missed, {grown} controls grown");
         return pass;
     }
 

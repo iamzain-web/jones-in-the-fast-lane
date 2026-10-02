@@ -29,6 +29,18 @@ public sealed class SpriteVm
         Tooltip = tooltip;
         Image = SciArt.SubCel(view, loop, cel, sub);
         if (onClick is not null) Command = Net.InputGate.Command(onClick);
+
+        _touch = Register();
+    }
+
+    /// <summary>
+    /// Puts this control into the screen's tap layout, if it takes clicks and there is one.
+    /// </summary>
+    private TouchLayout? Register()
+    {
+        if (Command is null || TouchTargets.Current is not { } layout) return null;
+        layout.Add(this, X, Y, W, H);
+        return layout;
     }
 
     /// <summary>Wraps an already-loaded bitmap, for backgrounds taken from a pic.</summary>
@@ -39,6 +51,8 @@ public sealed class SpriteVm
         Image = image;
         Tooltip = tooltip;
         if (onClick is not null) Command = Net.InputGate.Command(onClick);
+
+        _touch = Register();
     }
 
     public int View { get; }
@@ -71,6 +85,35 @@ public sealed class SpriteVm
     public double DrawY => T.MapY(Y);
     public double DrawW => T.Size(W);
     public double DrawH => T.Size(H);
+
+    /// <summary>
+    /// The tap layout this control belongs to, or null everywhere outside a building's
+    /// interior. See <see cref="TouchTargets"/>; registration happens here rather than at the
+    /// call site so that every clickable icon in the panel is in it with no call site edited.
+    /// </summary>
+    private readonly TouchLayout? _touch;
+
+    private HitGrowth Growth => _touch?.For(this) ?? HitGrowth.None;
+
+    /// <summary>
+    /// THE TAP RECTANGLE, which is the drawn one on every screen that already clears 48 dp
+    /// and is grown outwards into the free space on one that does not. Offsets are relative
+    /// to the drawn origin, so the view puts the button in a zero-sized canvas beside the
+    /// art rather than moving the art.
+    /// </summary>
+    public double HitW => T.Size(W + Growth.Left + Growth.Right);
+    public double HitH => T.Size(H + Growth.Top + Growth.Bottom);
+
+    /// <summary>
+    /// The grown rectangle's own corner, which is where the canvas puts the container. The
+    /// ART is then placed back inside it by <see cref="ArtDx"/>, so nothing drawn moves.
+    /// </summary>
+    public double HitLeft => T.MapX(X) - T.Size(Growth.Left);
+    public double HitTop => T.MapY(Y) - T.Size(Growth.Top);
+
+    /// <summary>Where the cel sits inside the grown button. Zero on any screen that needs no growth.</summary>
+    public double ArtDx => T.Size(Growth.Left);
+    public double ArtDy => T.Size(Growth.Top);
 }
 
 /// <summary>
@@ -194,7 +237,21 @@ public sealed class MenuLineVm
 
         ImageW = (Normal?.PixelSize.Width ?? 0) / (double)(outline ? UiFont.TextScale : 1);
         ImageH = (Normal?.PixelSize.Height ?? 0) / (double)(outline ? UiFont.TextScale : 1);
+
+        // A shop line is about 72x6 game pixels and the 6 is as short as the buttons' 9, so
+        // the lines go into the tap layout too — they are what a player actually aims at.
+        // A disabled line does not: `Item::handleEvent` drops every event on it anyway, and
+        // a dead control must not take space from a live neighbour.
+        if (enabled && TouchTargets.Current is { } layout)
+        {
+            _touch = layout;
+            layout.Add(this, X, Y, W, H);
+        }
     }
+
+    private readonly TouchLayout? _touch;
+
+    private HitGrowth Growth => _touch?.For(this) ?? HitGrowth.None;
 
     public double X { get; }
     public double Y { get; }
@@ -256,6 +313,34 @@ public sealed class MenuLineVm
     public double DrawImageDy => T.Size(ImageDy);
     public double DrawImageW => T.Size(ImageW);
     public double DrawImageH => T.Size(ImageH);
+
+    /// <summary>
+    /// THE TAP RECTANGLE. Identical to the drawn one wherever the line already clears 48 dp,
+    /// which is every desktop; grown into the free space between the lines on a screen where
+    /// it does not. See <see cref="TouchTargets"/>. Nothing drawn moves: the glyphs are still
+    /// placed by <see cref="DrawImageDx"/> relative to the line's own coordinate.
+    /// </summary>
+    public double HitW => T.Size(W + Growth.Left + Growth.Right);
+    public double HitH => T.Size(H + Growth.Top + Growth.Bottom);
+
+    /// <summary>
+    /// THE BUTTON IS THE POSITIONED ELEMENT, so the canvas puts the container here — at the
+    /// grown rectangle's own corner — and the glyphs come back inside it by
+    /// <see cref="HitImageDx"/>. An earlier attempt kept the container on the line's own
+    /// coordinate and pushed the button out of a zero-sized canvas; the extra area DREW but
+    /// did not take clicks, which the probe caught.
+    /// </summary>
+    public double HitLeft => T.MapX(X) - T.Size(Growth.Left);
+    public double HitTop => T.MapY(Y) - T.Size(Growth.Top);
+
+    /// <summary>
+    /// Where the glyphs go INSIDE the grown button: back by exactly what the button reached
+    /// out, so the line is still drawn on the coordinate the script gives it. Zero growth
+    /// leaves these equal to <see cref="DrawImageDx"/>/<see cref="DrawImageDy"/>, which is
+    /// the desktop case and the one that must be unchanged.
+    /// </summary>
+    public double HitImageDx => DrawImageDx + T.Size(Growth.Left);
+    public double HitImageDy => DrawImageDy + T.Size(Growth.Top);
 }
 
 /// <summary>

@@ -284,9 +284,13 @@
              Button below binds the SAME pair as the Image, which is what keeps a scaled
              control responding where it is drawn. -->
         <ItemsControl.Styles>
+          <!-- HitLeft/HitTop, not DrawX/DrawY: the container is the BUTTON's rectangle, which
+               is the drawn one on every screen that already clears 48 dp and is grown into the
+               free space on one that does not (TouchTargets). The art is put back on the
+               script's own coordinate inside it, by ArtDx/ArtDy, so nothing drawn moves. -->
           <Style Selector="ContentPresenter" x:DataType="vm:SpriteVm">
-            <Setter Property="Canvas.Left" Value="{Binding DrawX, Converter={x:Static app:RenderScale.Scale}}" />
-            <Setter Property="Canvas.Top" Value="{Binding DrawY, Converter={x:Static app:RenderScale.Scale}}" />
+            <Setter Property="Canvas.Left" Value="{Binding HitLeft, Converter={x:Static app:RenderScale.Scale}}" />
+            <Setter Property="Canvas.Top" Value="{Binding HitTop, Converter={x:Static app:RenderScale.Scale}}" />
           </Style>
         </ItemsControl.Styles>
         <ItemsControl.ItemsPanel>
@@ -294,17 +298,43 @@
         </ItemsControl.ItemsPanel>
         <ItemsControl.ItemTemplate>
           <DataTemplate x:DataType="vm:SpriteVm">
-            <Panel>
-              <Image Source="{Binding Image, Converter={x:Static app:RenderScale.HighRes}}"
-                     Width="{Binding DrawW, Converter={x:Static app:RenderScale.Scale}}"
-                     Height="{Binding DrawH, Converter={x:Static app:RenderScale.Scale}}"
-                     RenderOptions.BitmapInterpolationMode="{x:Static app:RenderScale.ArtInterpolation}" />
-              <Button Classes="bare" Command="{Binding Command}"
-                      IsVisible="{Binding IsClickable}"
-                      Width="{Binding DrawW, Converter={x:Static app:RenderScale.Scale}}"
-                      Height="{Binding DrawH, Converter={x:Static app:RenderScale.Scale}}"
-                      ToolTip.Tip="{Binding Tooltip}" />
-            </Panel>
+            <!-- THE BUTTON IS THE TEMPLATE ROOT and the art is its content, exactly as the
+                 clickable text lines below are built.
+
+                 It was a SIBLING of the art inside a Panel until the hit-test probe showed
+                 what that really meant: the clicks were landing on the IMAGE, whose data
+                 context is the same view model, and the button underneath was never reached.
+                 That worked for as long as the two rectangles were identical — and they stop
+                 being identical the moment TouchTargets grows one of them.
+
+                 IsHitTestVisible rather than IsVisible, so a cel with no command still DRAWS
+                 and simply takes no input. The art inside is never hit-testable, because art
+                 is not a control: cels are painted in `add:` order and a later one lies over
+                 an earlier one, so a hit-testable image takes the taps belonging to a button
+                 beneath it. Nothing is lost by that — the only layer under the sprites is the
+                 board picture, while the board's hotspots, the balloon's dismiss layer and
+                 every control sit ABOVE them.
+
+                 HitW/HitH are the drawn size on every screen that already clears 48 dp, which
+                 is every desktop; on a phone they reach into the free space around the art, by
+                 at most half the gap to the nearest neighbour. ArtDx/ArtDy put the cel back on
+                 the script's own coordinate inside the grown button, so nothing drawn moves. -->
+            <Button Classes="bare" Command="{Binding Command}"
+                    Background="Transparent"
+                    IsHitTestVisible="{Binding IsClickable}"
+                    HorizontalContentAlignment="Left" VerticalContentAlignment="Top"
+                    Width="{Binding HitW, Converter={x:Static app:RenderScale.Scale}}"
+                    Height="{Binding HitH, Converter={x:Static app:RenderScale.Scale}}"
+                    ToolTip.Tip="{Binding Tooltip}">
+              <Canvas Width="0" Height="0" ClipToBounds="False" IsHitTestVisible="False">
+                <Image Source="{Binding Image, Converter={x:Static app:RenderScale.HighRes}}"
+                       Canvas.Left="{Binding ArtDx, Converter={x:Static app:RenderScale.Scale}}"
+                       Canvas.Top="{Binding ArtDy, Converter={x:Static app:RenderScale.Scale}}"
+                       Width="{Binding DrawW, Converter={x:Static app:RenderScale.Scale}}"
+                       Height="{Binding DrawH, Converter={x:Static app:RenderScale.Scale}}"
+                       RenderOptions.BitmapInterpolationMode="{x:Static app:RenderScale.ArtInterpolation}" />
+              </Canvas>
+            </Button>
           </DataTemplate>
         </ItemsControl.ItemTemplate>
       </ItemsControl>
@@ -371,10 +401,11 @@
                     Width="{x:Static app:RenderScale.CanvasWidth}"
                     Height="{x:Static app:RenderScale.CanvasHeight}">
         <ItemsControl.Styles>
-          <!-- Draw*, as the sprite layer above: the panel transform, identity off it. -->
+          <!-- HitLeft/HitTop, as the sprite layer above: the panel transform, then the grown
+               tap rectangle - both of which are the identity on a desktop. -->
           <Style Selector="ContentPresenter" x:DataType="vm:MenuLineVm">
-            <Setter Property="Canvas.Left" Value="{Binding DrawX, Converter={x:Static app:RenderScale.Scale}}" />
-            <Setter Property="Canvas.Top" Value="{Binding DrawY, Converter={x:Static app:RenderScale.Scale}}" />
+            <Setter Property="Canvas.Left" Value="{Binding HitLeft, Converter={x:Static app:RenderScale.Scale}}" />
+            <Setter Property="Canvas.Top" Value="{Binding HitTop, Converter={x:Static app:RenderScale.Scale}}" />
           </Style>
         </ItemsControl.Styles>
         <ItemsControl.ItemsPanel>
@@ -400,13 +431,18 @@
                  taller than the button, because an outline face has ascenders above font
                  10's capital line and descenders below its six-row box. With the bitmap face
                  the offsets are zero and the two rectangles coincide, as they always did. -->
+            <!-- THE BUTTON IS THE TAP RECTANGLE, and HitW/HitH are the drawn size exactly
+                 wherever the line already clears 48 dp - every desktop - and reach into the
+                 gaps between the lines on a phone, by at most half of each gap. See
+                 TouchTargets. The glyphs are put back on the line's own coordinate by
+                 HitImageDx, so nothing drawn moves. -->
             <Button Classes="line bare" Command="{Binding Command}"
                     ToolTip.Tip="{Binding Tooltip}"
                     Background="Transparent"
                     IsHitTestVisible="{Binding Enabled}"
                     HorizontalContentAlignment="Left" VerticalContentAlignment="Top"
-                    Width="{Binding DrawW, Converter={x:Static app:RenderScale.Scale}}"
-                    Height="{Binding DrawH, Converter={x:Static app:RenderScale.Scale}}">
+                    Width="{Binding HitW, Converter={x:Static app:RenderScale.Scale}}"
+                    Height="{Binding HitH, Converter={x:Static app:RenderScale.Scale}}">
               <!-- TWO PANELS, ONE PER SAMPLING MODE, and only one of them is ever visible.
 
                    This wants to be one Image with its interpolation bound, and it cannot be:
@@ -425,9 +461,14 @@
                    TextScale), which is the one place in this port where resampling is right,
                    and the only thing that makes it legible on Android, where the playfield
                    is nearest-enlarged 3.375x from 320x200. -->
-              <Canvas Width="0" Height="0" ClipToBounds="False">
-                <Panel Canvas.Left="{Binding DrawImageDx, Converter={x:Static app:RenderScale.Scale}}"
-                       Canvas.Top="{Binding DrawImageDy, Converter={x:Static app:RenderScale.Scale}}"
+              <!-- IsHitTestVisible FALSE: the glyphs are decoration inside the button, and the
+                   button is the control. They are drawn out of a zero-sized canvas, so an
+                   outline face's ascender can reach over the NEXT line's rectangle - and on a
+                   phone, where that rectangle has grown into the gap, it was taking the tap.
+                   Caught by the hit-test probe with JONES_TOUCH_UNITS set to a phone's scale. -->
+              <Canvas Width="0" Height="0" ClipToBounds="False" IsHitTestVisible="False">
+                <Panel Canvas.Left="{Binding HitImageDx, Converter={x:Static app:RenderScale.Scale}}"
+                       Canvas.Top="{Binding HitImageDy, Converter={x:Static app:RenderScale.Scale}}"
                        Width="{Binding DrawImageW, Converter={x:Static app:RenderScale.Scale}}"
                        Height="{Binding DrawImageH, Converter={x:Static app:RenderScale.Scale}}"
                        IsVisible="{Binding !Smooth}"
@@ -437,8 +478,8 @@
                   <Image Source="{Binding Pressed, Converter={x:Static app:RenderScale.HighRes}}"
                          IsVisible="{Binding $parent[Button].IsPressed}" />
                 </Panel>
-                <Panel Canvas.Left="{Binding DrawImageDx, Converter={x:Static app:RenderScale.Scale}}"
-                       Canvas.Top="{Binding DrawImageDy, Converter={x:Static app:RenderScale.Scale}}"
+                <Panel Canvas.Left="{Binding HitImageDx, Converter={x:Static app:RenderScale.Scale}}"
+                       Canvas.Top="{Binding HitImageDy, Converter={x:Static app:RenderScale.Scale}}"
                        Width="{Binding DrawImageW, Converter={x:Static app:RenderScale.Scale}}"
                        Height="{Binding DrawImageH, Converter={x:Static app:RenderScale.Scale}}"
                        IsVisible="{Binding Smooth}"

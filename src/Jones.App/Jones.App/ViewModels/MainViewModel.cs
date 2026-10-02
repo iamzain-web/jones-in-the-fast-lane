@@ -2129,7 +2129,41 @@ public sealed partial class MainViewModel : ViewModelBase
         // start of every turn and after every building visit. `proc0_16` is literally
         // `DrawCel 0 0 whichBody 69 45 1` Ã¢â‚¬â€ view 0 loop 0, one flat 181x110 cel per
         // character body, at an absolute top-left of (69,45).
-        Sprites.Add(new SpriteVm(0, 0, body, 69, 45));
+        // WHAT THE FULL-SIZE INTERIOR USED TO COVER.
+        //
+        // Three of the things room1 draws sit entirely under the 183x112 backdrop a building's
+        // dialog puts at (69,44), so the 1990 game NEVER shows them with an interior open.
+        // Shrinking the interior (PanelScale) reveals them through a hole that has never
+        // existed, and they read as a rendering fault rather than as the board. Suppressing
+        // them is therefore not a second deviation: it preserves the original's appearance
+        // under the one already made.
+        //
+        // THE LIST IS DERIVED FROM THIS METHOD, not from what somebody noticed on screen. The
+        // backdrop paints columns 69..251 of rows 44..155; against that:
+        //
+        //   covered outright   the centre colour panel (69..249 x 45..154), the four corner
+        //                      badges (67..92 and 225..250, rows 44..67 and 132..155 - the
+        //                      two left ones keep a 1px sliver), and the walker, whose cel is
+        //                      43x95 base-centred at (160,146), i.e. 138..181 x 51..146.
+        //   NOT covered        `picPatch` (68..250 x 138..162) - rows 156..162 and column 68
+        //                      show, and 130 of its 2071 opaque pixels differ from pic 11, so
+        //                      it is not a redundant copy and is still drawn;
+        //                      the door - every one of the thirteen is on the perimeter, the
+        //                      nearest being the Employment Office's at (97,183);
+        //                      the marble - checked against all 170 points of `marblePath`,
+        //                      none of which puts its 9x8 cel inside that rectangle;
+        //                      the clock (150..167 x 166..180) and `Week #N` (140,184), both
+        //                      of which sit BELOW the dialog and are visible in the original.
+        //
+        // Gated on the panel actually being SCALED, so that turning the switch off restores
+        // the original exactly - including the 1px slivers of the two left-hand badges.
+        var interiorCovers = _screen == Screen.LocationPanel && PanelScale.Factor < 1;
+
+        // NOTE FOR WHOEVER JUDGES THE RESULT: pic 11 has NO TOWN under the cel below. The
+        // board picture's centre is a flat #F8F8F0 hole, columns 70..248 of rows 45..153,
+        // which is what this cel exists to fill. Suppressing it does not reveal more town -
+        // it reveals the blank hole. Measured off the shipped pic, not assumed.
+        if (!interiorCovers) Sprites.Add(new SpriteVm(0, 0, body, 69, 45));
 
         // `picPatch` (view 0 loop 1, 183x25 with a +7 displacement) repaints the strip
         // the panel would otherwise paint over Ã¢â‚¬â€ the roofs of the Employment Office and
@@ -2140,14 +2174,15 @@ public sealed partial class MainViewModel : ViewModelBase
         // The four corner badges, cel = whatNum: the player's seat number, or 4 for
         // Jones. Positioned by SCI's bottom-centre anchoring from (80,67) etc.
         var badge = _demoMode ? 4 : _game.CurrentPlayerIndex;
-        foreach (var (bx, by) in new[] { (80, 67), (238, 67), (80, 155), (238, 155) })
-        {
-            var cel = SciArt.Cel(0, 3, badge);
-            if (cel is null) continue;
-            Sprites.Add(new SpriteVm(0, 3, badge,
-                bx - cel.PixelSize.Width / 2.0,
-                by - cel.PixelSize.Height + 1));
-        }
+        if (!interiorCovers)
+            foreach (var (bx, by) in new[] { (80, 67), (238, 67), (80, 155), (238, 155) })
+            {
+                var cel = SciArt.Cel(0, 3, badge);
+                if (cel is null) continue;
+                Sprites.Add(new SpriteVm(0, 3, badge,
+                    bx - cel.PixelSize.Width / 2.0,
+                    by - cel.PixelSize.Height + 1));
+            }
 
         // `door` Ã¢â‚¬â€ one Prop for all thirteen buildings, `(door init: setPri: 6)` at
         // room1.sc:1224, so it is over the board pic and under the walker. See
@@ -2157,7 +2192,11 @@ public sealed partial class MainViewModel : ViewModelBase
         // The walker stands at x 160, y 146 and cycles its frames while travelling.
         // `(gTheWalker hide:)` at `winnerScript.sc:36` takes him off for the podium.
         var (walkerCel, walkerSub) = WalkerFrame();
-        var walker = _screen == Screen.Winner
+        // `(gTheWalker hide:)` for the podium, and the same for an open interior: his cel is
+        // 43x95 base-centred at (160,146), which is 138..181 x 51..146 and squarely under the
+        // backdrop. With the interior shrunk his legs hang out below it, which is the single
+        // worst of the three revealed elements - it reads as a broken sprite.
+        var walker = _screen == Screen.Winner || interiorCovers
             ? null
             : SciArt.SubCel(view, 0, walkerCel, walkerSub) ?? SciArt.Cel(view, 0, 0);
         if (walker is not null)
@@ -2296,6 +2335,13 @@ public sealed partial class MainViewModel : ViewModelBase
         if (_screen == Screen.LocationPanel)
         {
             using var panel = PanelScale.Open();
+
+            // THE TAP LAYOUT, one per rebuild: every clickable icon and line in the interior
+            // registers itself as it is built, and the growth is worked out lazily once the
+            // screen is finished. See TouchTargets. On a desktop it comes out as no growth at
+            // all, so this changes nothing there.
+            using var touch = TouchTargets.Open(TouchTargets.NewLayout());
+
             BuildLocationPanel();
         }
 

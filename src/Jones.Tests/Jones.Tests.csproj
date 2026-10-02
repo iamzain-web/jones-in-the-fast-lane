@@ -51,6 +51,13 @@
       someone changed the real one. It uses only System types.
     -->
     <Compile Include="..\Jones.App\Jones.App\PanelScale.cs" Link="Ported\PanelScale.cs" />
+
+    <!--
+      `TouchTargets` likewise: it decides how big a tap rectangle is, the case it exists for
+      is a phone, and the machine this is built on is not one - so `TouchTargetTests` holds it
+      to arithmetic over the scripts' own button coordinates instead of to a screenshot.
+    -->
+    <Compile Include="..\Jones.App\Jones.App\TouchTargets.cs" Link="Ported\TouchTargets.cs" />
   </ItemGroup>
 
 </Project>
