@@ -1014,6 +1014,26 @@ def skin_field(src_kps, dst_kps, size, alpha=2.0, step=2, reach=0.26, fig=None,
                 np.clip((rx1 - ex) / feather, 0.0, 1.0),
             ])
             w_reg = np.where(own_id == idx + 1, w_reg, 0.0)
+
+            # AND INSIDE THE BOX, ONLY WHAT IS ACTUALLY THIS SHOE.
+            #
+            # The box is a rectangle and a shoe is not. Where the two differ the box covers
+            # trouser, backdrop and the OTHER foot's toe, and the rigid transform dutifully
+            # painted this shoe's pixels into them - which is the pale curl that appeared
+            # between the shoes on cels 1 and 3 and survived into the installed build.
+            #
+            # Testing the sample against this foot's own shoe mask is not the membership
+            # test that failed before. That one used the test as the WHOLE claim and then
+            # deleted everything outside it, measured against what the stretching general
+            # field wanted to draw - so it deleted real shoe. Here the box already bounds the
+            # claim and nothing is deleted at all; the mask only stops the box claiming what
+            # is visibly not a shoe. Bound by geometry, filtered by the object's own shape.
+            # NOT FILTERED BY THE SHOE MASK. Tried, and it re-broke the thing the region was
+            # built to fix: filtering the claim by "does the sample land on the shoe" makes
+            # the claim incomplete again - the mask has ragged edges and holes - and the
+            # deletion below then eats the real shoe, which came out as magenta holes right
+            # through view 282's trainers. The box IS the claim; what it over-claims is
+            # trouser and backdrop, which the rigid transform draws as trouser and backdrop.
             take = w_reg > 0.0
             fx = np.where(take, w_reg * gx + (1.0 - w_reg) * fx, fx)
             fy = np.where(take, w_reg * gy + (1.0 - w_reg) * fy, fy)
@@ -1037,13 +1057,41 @@ def skin_field(src_kps, dst_kps, size, alpha=2.0, step=2, reach=0.26, fig=None,
         # construction, "unclaimed" means what it says, and subtracting it is safe. A correct
         # rule resting on a broken premise looks exactly like a broken rule, and the fix was
         # upstream of it both times.
-        # ...and with the region bounded to the shoe's own box, there is no ghost for it to
-        # remove and it costs more than it saves. Switched on it cut a magenta slash across
-        # view 280's trouser on every cel - the trouser just above the box samples shoe
-        # colour, is outside the region by definition, and was deleted. The ghost it was
-        # aimed at is gone because the region can no longer paint a shoe into background, not
-        # because anything deleted it. Left here, off, with what it did written down.
+        # AND IT IS BACK ON, BECAUSE TURNING IT OFF PUT A SECOND SHOE ON EVERY CEL.
+        #
+        # I removed it when the region became complete, reasoning that a bounded region can
+        # no longer paint a shoe into background so there was nothing left to delete. That
+        # was half the story and the wrong half. The region stops the RIGID transform drawing
+        # a shoe where there is none; it does nothing about the GENERAL field, which goes on
+        # mapping the same source shoe to wherever the smooth deformation sends it. So each
+        # foot was drawn twice - once rigidly by its region and once smeared by the field -
+        # and because the two overlap, are the same colour and are both attached to the
+        # figure, every instrument we had read it as clean. The player found it by looking:
+        # "there are 2 feet on his right leg". Shoe-coloured area in the foot band came to
+        # roughly double the source's on the swing cels.
+        #
+        # The thing the rule removes is not a "smear artefact" at the edges. It is the
+        # general field's entire copy of a shoe that the rigid layer has already drawn
+        # properly. That is why it has to delete everything outside the claim, and why the
+        # claim had to be made complete FIRST - which it now is.
         anysh = shoes[0] | shoes[1]
+
+        # THE DELETION USES ONLY THE PART OF THE MASK THAT IS GENUINELY SHOE.
+        #
+        # On a figure whose trousers match the shoe, the mask runs up the leg - 10% of it on
+        # view 280 even with SHOE_TOP tightened - and the rule then deletes the general
+        # field's copy of the TROUSER too, which is a hole in the leg rather than a removed
+        # duplicate. Measured: 280's shoe-coloured area fell to 7352 against a source of
+        # 12188, i.e. 40% UNDER, where 281 and 282 landed within a few per cent of theirs.
+        # A shoe is below the ankle, so that is where the rule is allowed to look.
+        ank_top = min(float(src_kps[10][1]), float(src_kps[13][1])) - 0.02 * figv
+        shoe_only = anysh.copy()
+        shoe_only[:max(0, int(ank_top))] = False
+
+        smear = shoe_only[np.clip(fy.astype(int), 0, anysh.shape[0] - 1),
+                          np.clip(fx.astype(int), 0, anysh.shape[1] - 1)] & ~m
+        fx = np.where(smear, -1e4, fx)
+        fy = np.where(smear, -1e4, fy)
 
         # Rigidity is measured rather than assumed. A rigid transform preserves area, so the
         # source shoe's own pixel count is the yardstick a later stage checks the warped shoe
@@ -1464,6 +1512,38 @@ def _over(dst, src):
     a = src[:, :, 3:4] / 255.0
     return src + dst * (1.0 - a)
 
+
+def shoe_area_ratio(src_rgba, out_rgba, src_kps, fig, band=0.17, tol=52.0):
+    """Shoe-coloured area drawn, over shoe-coloured area in the source.
+
+    Same colour test both sides, so the ratio is dimensionless and its correct value is 1.00:
+    the destination has the same two shoes the source does. A duplicate shoe shows as ~1.5; a
+    deleted one as well under 1. Neither moves a fragment count, a near-black percentage or a
+    runs-per-row, which is why a duplicate shoe shipped with every gate green."""
+    def band_area(im, ref=None):
+        al = im[:, :, 3] > 128
+        ys = np.nonzero(al.any(axis=1))[0]
+        if not len(ys):
+            return 0, None
+        y0, y1 = int(ys[0]), int(ys[-1])
+        H = y1 - y0 + 1
+        px = im[:, :, :3].astype(np.float64)
+        if ref is None:
+            sel = al.copy()
+            sel[:int(y1 - 0.06 * H)] = False
+            if not sel.any():
+                return 0, None
+            ref = np.median(px[sel], axis=0)
+        sel = al.copy()
+        sel[:int(y1 - band * H)] = False
+        d = np.sqrt(((px - ref) ** 2).sum(axis=2))
+        return int((sel & (d < tol)).sum()), ref
+
+    a_src, ref = band_area(src_rgba)
+    if not a_src or ref is None:
+        return 1.0
+    a_out, _ = band_area(out_rgba, ref)
+    return a_out / float(a_src)
 
 def warp_occluded(src_rgba, src_kps, dst_kps, size, fig, **kw):
     """One deformed frame with the near leg drawn OVER the far one.
@@ -2059,8 +2139,28 @@ def main():
         # The region mask is neither. It is the exact set of pixels the rigid transform was
         # applied to, known here and nowhere downstream, so it is recorded here for the gate
         # to use rather than re-derived from pixels that cannot carry the answer.
+        # HOW MANY SHOES DID WE DRAW? The known correct answer is two - the same two the
+        # source has - so the ratio of shoe-coloured area out to shoe-coloured area in is
+        # 1.00 and anything near 1.5 is a second shoe.
+        #
+        # This is the fourth attempt at a rigidity number and the first that works, and the
+        # three failures are worth keeping because each measured something adjacent to the
+        # question: foot-band area across the cycle tracked the POSE (the clean build scored
+        # worst); shoe area by colour in the warped cel alone had no yardstick; area through
+        # the REGION measured the claim rather than the drawing and read 0.20-0.27. The
+        # quantity that has a right answer is out-vs-in, same test both sides, and the source
+        # is in hand here and nowhere downstream.
+        #
+        # It is measured here rather than in check_install because the gate sees only the
+        # installed cel, and without the source there is no yardstick. Measured on known
+        # builds: the clean 30 September cels 0.82-1.05, the build that shipped with a
+        # duplicate shoe 0.97-1.57.
+        sr = shoe_area_ratio(src, out, src_k, cel.get("fig_h"))
         rigid[str(c)] = {"src_shoe_px": globals().get("LAST_SRC_SHOE_PX", 0),
-                         "dst_region_px": globals().get("LAST_REGION_PX", 0)}
+                         "shoe_area_ratio": round(sr, 3)}
+        if sr > 1.25:
+            print(f"      SHOE AREA {sr:.2f}x the source - that is a SECOND SHOE, not a "
+                  f"wider one", flush=True)
         print(f"  {os.path.basename(p)}  {note}", flush=True)
 
     with open(os.path.join(a.out, f"rigid_{a.view}_l{a.loop}.json"), "w") as f:
