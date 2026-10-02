@@ -1,4 +1,4 @@
-"""Builds a walk cycle by DEFORMING one generated photograph, instead of generating four.
+﻿"""Builds a walk cycle by DEFORMING one generated photograph, instead of generating four.
 
 WHY THIS EXISTS
 ---------------
@@ -67,11 +67,20 @@ from PIL import Image, ImageFilter
 # was carried by the forearm's transform without ever being shortened by it. Solving the
 # realised range back for the length actually foreshortening gave a flat L_eff of 0.313 at
 # 30, 35, 40 and 45 degrees, between shoulder-to-wrist (0.277) and shoulder-to-fingertip
-# (0.382) and not moving with the knob. See §7o.
+# (0.382) and not moving with the knob. See Â§7o.
 #
 # pose_author appends 18 and 19; every COCO-18 index keeps its meaning, and
 # sprite_pose.draw_pose is pinned to the first eighteen so the ControlNet image - and
 # therefore every generated frame - is untouched.
+# How far ABOVE the ankle the shoe window reaches, as a fraction of figure height.
+#
+# The ankle keypoint sits in the middle of a shoe's height, so the window has to reach above
+# it - but on a figure whose trousers are the same tone as the shoe, the colour test inside
+# that window has nothing to stop it and the mask swallows the hem. Measured on view 280 at
+# 0.07: the mask began 75 px ABOVE the ankle, which is the window's own limit, so the "rigid
+# shoe" was a rigid shoe-and-trouser and it tore away from the leg above it.
+SHOE_TOP = 0.030
+
 BONES = [(1, 2), (2, 3), (3, 4), (4, 18), (1, 5), (5, 6), (6, 7), (7, 19),
          (1, 8), (8, 9), (9, 10), (1, 11), (11, 12), (12, 13), (1, 0)]
 
@@ -177,7 +186,7 @@ def shoe_mask(rgb, alpha, src_ankles, fig, tol=52.0, grow=7):
     #
     # The window is +-0.09 of figure height, which is 92 px here, and that was safe only
     # because every pose it had been run on had the feet far apart. A source generated at a
-    # NEUTRAL stance (§0b) puts the ankles 62 px apart, so both windows contain BOTH shoes:
+    # NEUTRAL stance (Â§0b) puts the ankles 62 px apart, so both windows contain BOTH shoes:
     # measured on the mid-swing frame, the two masks came out 150 and 132 px wide against 64
     # and 67 on the old source, overlapping almost completely. Each foot's rigid translation
     # was then applied to a region holding the other foot's shoe as well, and the pair shredded
@@ -213,7 +222,7 @@ def shoe_mask(rgb, alpha, src_ankles, fig, tol=52.0, grow=7):
             masks.append(np.zeros(op.shape, bool))
             continue
         ref = np.median(cols, axis=0)
-        y0, y1 = int(max(0, ay - 0.07 * fig)), int(min(op.shape[0], ay + 0.10 * fig))
+        y0, y1 = int(max(0, ay - SHOE_TOP * fig)), int(min(op.shape[0], ay + 0.10 * fig))
         sub = rgb[y0:y1, x0:x1]
         d = np.sqrt(((sub - ref) ** 2).sum(axis=2))
         one = np.zeros(op.shape, bool)
@@ -635,11 +644,11 @@ def skin_field(src_kps, dst_kps, size, alpha=2.0, step=2, reach=0.26, fig=None,
     #
     # Weight falls as 1/(d^2+1)^alpha, so a bone keeps a say over everything nearer to it than
     # any other bone - and a hanging forearm is simply closer to the hip than the thigh or the
-    # pelvis is. §7h already measured the same thing one storey up, the arm bones reaching
+    # pelvis is. Â§7h already measured the same thing one storey up, the arm bones reaching
     # into the ribcage with 23.6% against 12.6%, and the rigid plate was built to answer it
     # THERE. Below the plate nothing answered it at all.
     #
-    # The sleeve hem is measured at 54-62% of shoulder-to-elbow (§7h), so below the elbow
+    # The sleeve hem is measured at 54-62% of shoulder-to-elbow (Â§7h), so below the elbow
     # there is no cloth on the arm whatever: a forearm bone that is influencing cloth is
     # influencing something that is not attached to it. Its reach is therefore capped at a
     # forearm's own half-width plus a margin - 0.050 of figure height against the 0.0166
@@ -651,7 +660,7 @@ def skin_field(src_kps, dst_kps, size, alpha=2.0, step=2, reach=0.26, fig=None,
     # THE GARMENT IS NOT ATTACHED TO THE ARM, so no arm bone may move a garment pixel.
     #
     # A player, after four rounds of this: "THE SHIRT IS NOT ATTACHED TO THE ARM!". He is
-    # right by construction and §7h had already proved it without anyone noticing: the sleeve
+    # right by construction and Â§7h had already proved it without anyone noticing: the sleeve
     # hem is at 54-62% of shoulder-to-elbow, so below the elbow there is no cloth on the arm
     # IN ANY POSE. A garment pixel weighted to a forearm or a wrist is weighted to a bone it
     # is not attached to, including in the cels that happen to look fine.
@@ -661,7 +670,7 @@ def skin_field(src_kps, dst_kps, size, alpha=2.0, step=2, reach=0.26, fig=None,
     # responsibility - the bones that take over move the cloth the same way". The bones that
     # took over were the UPPER ARM and the clavicle, which are also arm bones and also swing
     # with the arm. The experiment could not have produced a different answer whatever the
-    # truth was - §0a's rule applied to one's own test instead of to a metric.
+    # truth was - Â§0a's rule applied to one's own test instead of to a metric.
     #
     # So this is an exclusion of the WHOLE CHAIN - clavicle, upper arm, forearm - not a reach
     # cap with a falloff. Garment pixels are driven by the torso and hip bones alone.
@@ -670,7 +679,7 @@ def skin_field(src_kps, dst_kps, size, alpha=2.0, step=2, reach=0.26, fig=None,
     # is done in two passes: accumulate once with every bone, ask which destination pixels
     # landed on shirt, then accumulate again with the arm bones switched off there. One extra
     # field evaluation, which is cheap beside the three the occlusion layers already cost.
-    # THE HAND BONES BELONG IN HERE TOO. This set is what keeps the garment off the arm —
+    # THE HAND BONES BELONG IN HERE TOO. This set is what keeps the garment off the arm â€”
     # the shirt is the one result already fixed, and a new bone the cloth could be dragged by
     # is the single most likely way to undo it. Adding (4,18) and (7,19) to BONES without
     # adding them here would have given the hem two new neighbours at exactly hip height,
@@ -687,7 +696,7 @@ def skin_field(src_kps, dst_kps, size, alpha=2.0, step=2, reach=0.26, fig=None,
         with a hard `~cloth` removed the hem lobe on all four cels - the thing it was built
         for - and tore every arm into a doubled, ghosted limb trailing a smear past the hip,
         because a sharp boundary between two fields that disagree is a tear wherever they
-        disagree. That is the same lesson as the rigid plate's own edge (§7h), arrived at
+        disagree. That is the same lesson as the rigid plate's own edge (Â§7h), arrived at
         from the other side."""
         ax = np.zeros_like(VX)
         ay = np.zeros_like(VY)
@@ -868,25 +877,23 @@ def skin_field(src_kps, dst_kps, size, alpha=2.0, step=2, reach=0.26, fig=None,
         # downstream step - ownership, the "own translation onto own shoe" test, the smear
         # deletion - is reasoning about a partition that does not exist.
         #
-        # That is now the NORMAL case, not an edge case: §0b made mid-swing the generation
+        # That is now the NORMAL case, not an edge case: Â§0b made mid-swing the generation
         # rule, and a mid-swing stance is precisely one with the feet close together. The
         # source here measures 62 px between the ankles against a 184 px pair of windows.
         #
-        # Measured, view by view, warping the same sources both ways:
+        # AND THE ANSWER IS NOT TO TURN THE BLOCK OFF, WHICH WAS TRIED AND SHIPPED AND WRONG.
         #
-        #            rigid path on          rigid path off
-        #   280      2/5 0/6 0/4 0/6        1/3 0/4 0/3 0/4     (detached fragments / runs)
-        #   281      0/4 0/4 0/4 1/4        0/3 0/3 0/3 0/4
-        #   282      2/11 3/8 0/5 1/8       0/6 0/5 0/4 0/5
+        # Disabling it hands the feet to the general skinning field, and that field deforms
+        # what it moves - which is exactly the defect this block exists to prevent. The
+        # shoes stopped tearing and started STRETCHING, and the player saw it within minutes
+        # of the build going in: "why do his shoes stretch and warp as he walks".
         #
-        # With it on, the shoes tore: hems in blocks, one shoe reduced to a stump, fragments
-        # detached below the foot, on all three characters, and it reached the player. With
-        # it off the general skinning field draws the feet and they come out solid. The cost
-        # the block was added to avoid - a shoe sheared into a spike - was measured on the
-        # OLD cycle, whose extreme keys move a foot much further than a sagittal swing does.
+        # A rigid thing needs a rigid transform (Â§7ab). Falling back to the smooth field is
+        # not a neutral default; it is the original bug. The overlap has to be SOLVED, and
+        # the two pieces that solve it are nearest-ankle ownership in two dimensions (so the
+        # partition exists and never cuts along a column) and keeping the smear rule away
+        # from the feet themselves.
         sep = abs(float(src_kps[10][0]) - float(src_kps[13][0]))
-        if sep < 0.12 * figv:
-            hard_foot = 0.0
 
     if hard_foot and rgb_src is not None:
         shoes = shoe_mask(rgb_src, alpha_src, [src_kps[10], src_kps[13]], figv)
@@ -955,17 +962,16 @@ def skin_field(src_kps, dst_kps, size, alpha=2.0, step=2, reach=0.26, fig=None,
         # Walked down: 0.90 let view 280 through on three cels of four and it came out
         # damaged; 0.98 still let two cels through with two detached fragments each. The
         # rigid path is only safe when it covers the shoe OUTRIGHT, so the bar says that.
+        # REPORTED, NOT ACTED ON. An earlier version fell back to the general field when the
+        # rigid claim was incomplete, and that is how a build shipped with the feet drawn by
+        # a deforming transform - tears traded for stretch. Coverage is a useful thing to see
+        # in the log while this is being worked on; it is not a licence to stop being rigid.
         cover = m.sum() / max(1, want.sum())
         if cover < 0.995:
-            # NOT a return: the ribcage block below is the shirt fix and must still run.
-            print(f"      foot: rigid region covers only {cover*100:.0f}% of the shoe - "
-                  f"leaving the feet to the general field", flush=True)
-            fx, fy = fx_gen, fy_gen
-            smear = np.zeros(VX.shape, bool)
-        else:
-            anysh = shoes[0] | shoes[1]
-            smear = anysh[np.clip(fy.astype(int), 0, anysh.shape[0] - 1),
-                          np.clip(fx.astype(int), 0, anysh.shape[1] - 1)] & ~m
+            print(f"      foot: rigid claim {cover*100:.0f}% of the shoe", flush=True)
+        anysh = shoes[0] | shoes[1]
+        smear = anysh[np.clip(fy.astype(int), 0, anysh.shape[0] - 1),
+                      np.clip(fx.astype(int), 0, anysh.shape[1] - 1)] & ~m
 
         # BUT NOT AT THE FOOT ITSELF, OR IT DELETES THE SHOE IT IS PROTECTING.
         #
@@ -1311,7 +1317,7 @@ def clamp_limbs(src_kps, dst_kps):
     the order a human ranked them by eye, cel 0 clean and cel 2 worst.
 
     `across` is 1.0 so a limb keeps its WIDTH while its length is free, which is what makes a
-    foreshortened shin read as a bent knee in a front view (§7aa). Applied to a bone that gets
+    foreshortened shin read as a bent knee in a front view (Â§7aa). Applied to a bone that gets
     LONGER it does the opposite and draws the limb out into a ribbon at constant width, with
     the hand at the end smeared off it and the cloth beside it dragged into a bell over the
     hip. The shirt was never the problem; it was downstream of the arm.
@@ -1335,7 +1341,7 @@ def clamp_limbs(src_kps, dst_kps):
     # hand bone's two ends stopped agreeing. The hand was then dragged rather than
     # foreshortened, the predicted projected range did not arrive, and the measured effective
     # arm length stayed at 0.311 - the exact number that said the hand was not in the chain in
-    # the first place. §0a: the code that DEFENDS a design decision is the part that does not
+    # the first place. Â§0a: the code that DEFENDS a design decision is the part that does not
     # notice when the decision changes.
     for chain in ((2, 3, 4, 18), (5, 6, 7, 19), (8, 9, 10), (11, 12, 13)):
         for a_, b_ in zip(chain[:-1], chain[1:]):
@@ -1419,8 +1425,8 @@ def warp_occluded(src_rgba, src_kps, dst_kps, size, fig, **kw):
     occlusion is between two copies of the same motion.
 
     WHICH LEG IS NEAR IS A CYCLE FACT, NOT A PIXEL FACT. It is read from the destination
-    ankles' heights: §7ac established that with the camera above the ground plane a nearer
-    foot appears LOWER, and the ±0.010 depth offset in `pose_author.CYCLE` is precisely what
+    ankles' heights: Â§7ac established that with the camera above the ground plane a nearer
+    foot appears LOWER, and the Â±0.010 depth offset in `pose_author.CYCLE` is precisely what
     puts it there. So the ordering comes from the authored phase, exactly as the foot flex's
     weight comes from the authored shin.
     """
@@ -1624,8 +1630,8 @@ def plate_stats(rgb, alpha, kps, fig):
     SOURCE photograph and never opens a warped cel: it asks whether the mask covers the
     garment at the point of DEFINITION and can say nothing about what the warp then does to
     those pixels at the point of USE. Cel 0 is the one cel that is essentially the source, so
-    a defect that is a function of POSE is invisible to it by construction. §1's CLIP guard
-    covered one of two identical inputs; §8's GPU lock guarded one tool against itself; §7h's
+    a defect that is a function of POSE is invisible to it by construction. Â§1's CLIP guard
+    covered one of two identical inputs; Â§8's GPU lock guarded one tool against itself; Â§7h's
     forearm probe was positioned by the same wrong assumption as the fix. Same shape each
     time: the check was not aimed at the thing that varies.
 
@@ -1773,7 +1779,7 @@ def report_shirt(a):
         print("THE PLATE AT THE POINT OF USE - warped cels, not the mask")
         print("%-6s %-5s %9s %10s %14s %s"
               % ("view", "cel", "area", "area/med", "arm narrowest", "verdict"))
-        # THE REFERENCE IS THE LOOP'S MEDIAN, NOT CEL 0, and §7a records why in almost these
+        # THE REFERENCE IS THE LOOP'S MEDIAN, NOT CEL 0, and Â§7a records why in almost these
         # words for the drift checker: comparing to cel 0 assumes cel 0 is correct, and on a
         # loop there is no reason it should be. It bit again here, on the very experiment it
         # was needed for. Winding the arm swing to zero moved the defect ONTO cel 0 - its
