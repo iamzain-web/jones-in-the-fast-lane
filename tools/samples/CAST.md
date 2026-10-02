@@ -157,6 +157,62 @@ the right syntax and had been silently truncated away for a session; and as §0d
 `hands in pockets` was a sentence in a comment that *measured* the pockets and worked around
 them. Three ways for a thing to look handled while doing nothing.
 
+### The init has TWO blurs, and four defects were blamed on the wrong one
+
+**`init_field` blurs the colour palette by `soft = 18` and the island MASK by `blur = 62`.**
+The mask is a *composite* mask between the init and the flat backdrop. So the rule this file
+carried for four rounds — *the init cannot express a feature smaller than its 62px blur* —
+was **wrong**, and it was used to explain the hand, the wristwatch, the shoe and the hair. An
+18px blur expresses a hand perfectly well.
+
+What actually happens is that **the mask fades at the figure's extremities, and where the
+mask fades the backdrop shows through whatever the palette painted.** Measured down view
+282's centre line:
+
+```
+torso centre              0.98     the init is essentially all the model sees
+nose                      0.69
+hair band                 0.33 - 0.62
+hand, past the wrist      0.40 - 0.60
+```
+
+At the hair and the hands, between a third and two thirds of what the model was shown was
+**flat green field**. It painted the strongest nearby signal — on a green backdrop, a green
+cap — and the chroma key then removed the cap and the skull with it.
+
+> **A palette feature only survives where the island mask is still opaque. Any feature at the
+> figure's margin needs the island extended to cover it.**
+
+That is narrower than the rule it replaces and it is actionable: extend the island where the
+feature lives. It costs nothing elsewhere, where lowering the blur would sharpen every view's
+silhouette against the backdrop for no benefit.
+
+**The second half of a feature is SEPARATION.** With the island extended, the head had room
+for hair and the model stopped drawing the sunglasses — because the hair band ran to 0.010
+above the nose and the lens bar sits 0.005–0.031 above it, so the two overlapped and the 18px
+blur merged them into one dark mass from crown to cheekbone. Raising the hairline to leave a
+skin-coloured forehead between them brings the glasses back. And a mass has to be big enough
+that **its centre survives near the colour it was painted**: at 43px the lens bar's surviving
+value was 73 — mid grey — and the model matched that mid grey with dark frames and *clear*
+lenses. Spectacles, not sunglasses. At 57px and a darker paint it survives at 48.
+
+### A solved problem that was never generalised is worse than an unsolved one
+
+The fix was **already in this file**, for the feet, with the reasoning written out:
+
+> the authored ankle is the JOINT; the shoe is another 4cm below it … and if the island stops
+> at the joint then the only thing under the ankle is flat backdrop - which is what the model
+> then paints there
+
+Someone found exactly this mechanism, fixed it for shoes, and wrote down why. It was never
+applied to the head or to the hands, and we paid for it twice in one day — a green cap that
+cost a skull, and months of a man with his hands in his pockets.
+
+**The file read as though the ground was covered.** An unsolved problem at least looks like
+one; a solved one that was never generalised looks like safety. The three places the island
+now has to reach past a joint are **the ankles, the head, and the wrists** — and the next
+feature at a margin will need it too.
+
 ### Two corollaries, each earned twice
 
 **If the probe is positioned by the thing you are varying, the experiment measures the probe.**

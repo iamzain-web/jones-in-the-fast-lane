@@ -1320,8 +1320,21 @@ def init_field(cel, size, bg, blur=62, grain=8, bands=None, soft=18, glasses=Fal
                             an[0] + fig * 0.050, sole_y], fill=bands["feet"])
         pd.ellipse([k[0][0] - fig * 0.055, k[0][1] - fig * 0.070,
                     k[0][0] + fig * 0.055, k[0][1] + fig * 0.055], fill=bands["face"])
+        # THE HAIR STOPS ABOVE THE BROW, so there is a forehead between it and the glasses.
+        #
+        # It used to run to 0.010 above the nose, and the sunglasses bar sits 0.005-0.031
+        # above the nose - so the two overlapped. Both are dark, and after the palette's
+        # 18 px blur they merged into a single dark mass from the crown to the cheekbones.
+        # The model resolved that mass as one object, hair, and drew no glasses at all once
+        # the island was large enough to give it room for a full head of it.
+        #
+        # Measured down the eye line before the change: every row from 0.040 above the brow
+        # to the brow itself read 76-91, i.e. uniformly dark, with no lighter band anywhere
+        # between the hair and the lenses. The briefcase lesson, a fourth time: big enough
+        # AND separated enough. The gap is skin-coloured by construction - it is whatever
+        # the face ellipse underneath has already painted there.
         pd.ellipse([k[0][0] - fig * 0.058, k[0][1] - fig * 0.085,
-                    k[0][0] + fig * 0.058, k[0][1] - fig * 0.010], fill=bands["hair"])
+                    k[0][0] + fig * 0.058, k[0][1] - fig * 0.048], fill=bands["hair"])
 
         # SUNGLASSES GO IN THE INIT, NOT ONLY IN THE PROMPT. View 282 wears them and they
         # are a strong silhouette feature at 39 pixels wide, but "dark sunglasses" is four
@@ -1329,8 +1342,18 @@ def init_field(cel, size, bg, blur=62, grain=8, bands=None, soft=18, glasses=Fal
         # is that the init wins. A dark bar across the eye line is unambiguous.
         if glasses:
             ey = (k[14][1] + k[15][1]) / 2.0
-            pd.rectangle([k[16][0] - fig * 0.004, ey - fig * 0.013,
-                          k[17][0] + fig * 0.004, ey + fig * 0.013], fill=(34, 34, 40))
+            # TALLER THAN THE BLUR. At 0.013 either side the bar is 27 px on this figure
+            # against an 18 px palette blur, so it survives only as a smudge and merges with
+            # whatever dark thing is next to it. At 0.021 it is 43 px - more than twice the
+            # blur - and reads as its own mass. Widened to the ear keypoints plus a margin
+            # for the same reason: a feature has to be bigger than the blur in BOTH axes.
+            # AND DARK ENOUGH AFTER THE BLUR, NOT JUST IN THE PAINT. At 43 px the bar's
+            # surviving centre value was 73 - mid grey - and the model matched the mid grey
+            # it was shown: dark FRAMES with clear lenses. Spectacles, not sunglasses. What
+            # reaches the model is the BLURRED value, so a mass has to be large enough that
+            # its centre survives near the colour it was painted.
+            pd.rectangle([k[16][0] - fig * 0.014, ey - fig * 0.028,
+                          k[17][0] + fig * 0.014, ey + fig * 0.028], fill=(8, 8, 12))
 
         pal = pal.filter(ImageFilter.GaussianBlur(soft))
         island = Image.blend(island, pal, 0.82)
