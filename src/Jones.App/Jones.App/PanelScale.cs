@@ -40,11 +40,10 @@ namespace Jones.App;
 ///
 /// <para>
 /// SO THE LARGEST THE GROUP CAN BE WITHOUT TOUCHING A BUILDING is 183/184 = 0.995 by width
-/// and 114/126 = 0.905 by height; HEIGHT binds — <see cref="LargestWithNoCoverage"/>. The
-/// chosen <see cref="Requested"/> of 11/12 = 0.9167 is just outside it: the DIALOG covers
-/// nothing, and the only thing that touches a building anywhere in the interior is the cash
-/// figure's bottom edge, which clips about 47 px² of the University's ROOF. See
-/// <see cref="LargestWithNoCoverage"/> for why those two rows were spent.
+/// and 114/126 = 0.905 by height; HEIGHT binds — <see cref="LargestWithNoCoverage"/>. That
+/// number is kept and pinned, but it is NOT what this port draws:
+/// <see cref="Requested"/> is 1, because the margin any smaller panel opens is blank board
+/// rather than town. See <see cref="Requested"/>.
 /// </para>
 ///
 /// <para>
@@ -60,19 +59,19 @@ namespace Jones.App;
 /// </para>
 ///
 /// <para>
-/// SO THE SCALE IS A TRADE, NOT AN OPTIMUM, and <see cref="Requested"/> is where it was
-/// settled: <b>11/12</b>. The bare edge is 13 columns and 7 rows rather than the 44 and 26 of
-/// the first attempt, which reads as a border instead of a void; the Employment Office and
-/// University roofs come out from under it completely; and the only thing left touching a
-/// building anywhere is 47 px² of the University's roof under the cash figure.
+/// SO THE SCALE IS A TRADE, NOT AN OPTIMUM — and on today's board every rung of it loses.
+/// 0.75 leaves 44 bare columns and 26 bare rows; <see cref="TriedElevenTwelfths"/> leaves 13
+/// and 7. Both are #F8F8F0 and nothing else, and the second shipped and came straight back:
+/// <i>"I DO NOT LIKE THE UGLY WHITE BARS ON THE RIGHT AND BOTTOM"</i>. The port therefore
+/// draws the interior at FULL SIZE.
 /// </para>
 ///
 /// <para>
-/// HOLD IT THERE FOR NOW. The board's blank middle is being filled with generated town, and
-/// once there is something under the dialog the trade changes — shrinking would start buying
-/// back real buildings instead of cream. 11/12 is the right answer to the board as it is
-/// today and should be revisited against the board as it becomes, with the new picture
-/// measured the way this one was.
+/// HOLD IT THERE. The board's blank middle is being filled with generated town, and once
+/// there is something under the dialog the trade changes completely — shrinking would start
+/// buying back real buildings instead of cream. The right order was always to fill the hole
+/// first and decide the scale against what is behind it; this file keeps every number needed
+/// to decide it then, and none of them should be acted on before.
 /// </para>
 ///
 /// <para>
@@ -188,11 +187,64 @@ public static class PanelScale
     public const int HoleHeight = 109;
 
     /// <summary>
-    /// THE SWITCH. 11/12 is the default; 1 is Sierra's own full-size interior, and nothing
-    /// else in the port changes when it is 1. See the class remarks for why it is a trade
-    /// rather than an optimum, and why it is a twelfth rather than a round 0.9.
+    /// THE SWITCH, AND IT IS BACK AT 1 — Sierra's own full-size interior.
+    ///
+    /// <para>
+    /// 11/12 was tried and WITHDRAWN. It was a reasonable trade against the arithmetic and a
+    /// bad one against the screen: the margin a smaller panel opens up is `pic 11`'s
+    /// <b>#F8F8F0 hole</b> and nothing else, so at 11/12 the player sees two plain cream bars,
+    /// 13 columns down the right and 7 rows along the bottom. Shrinking buys nothing until
+    /// there is a town behind the panel to buy.
+    /// </para>
+    ///
+    /// <para>
+    /// AND FULL SIZE IS NOW NEARLY FREE, which is what makes the revert easy rather than a
+    /// retreat. With <see cref="CalculatorBody"/> gone the interior is the Dialog alone: the
+    /// 60x33 of Socket City and the 1626 px² the group cost at 11/12 both went with the
+    /// calculator. What is left at 1 is Sierra's own footprint — a 1-pixel column of Monolith,
+    /// QT Clothing and Socket City where the backdrop's right edge lands, and the button row
+    /// clipping the Employment Office's and the University's roofs — which is not a cost of
+    /// this port at all. It is what the 1990 game draws.
+    /// </para>
+    ///
+    /// <para>
+    /// THE DECISION IS TO BE RE-MADE ONCE THE BOARD'S CENTRE IS FILLED, against what is
+    /// actually behind the panel then, and not before. Everything needed to re-make it is
+    /// still here: <see cref="TriedElevenTwelfths"/>, <see cref="LargestWithNoCoverage"/> and
+    /// the twelfths argument below.
+    /// </para>
     /// </summary>
-    public const double Requested = 11.0 / 12.0;
+    public const double Requested = 1.0;
+
+    /// <summary>
+    /// THE SCALE THAT WAS TRIED AND WITHDRAWN, kept because the arithmetic behind it is still
+    /// the arithmetic and the question is still open.
+    ///
+    /// <para>
+    /// 11/12 rather than a round 0.9 for sharpness: a scale whose product with
+    /// <see cref="RenderScale.Factor"/> is whole keeps every coordinate and bitmap on an exact
+    /// device pixel, which matters most for the game's own 6-pixel font 10 and its one-pixel
+    /// stems. Whole at ALL of 4, 8 and 12 needs 4s to be an integer, so between 0.75 and 1
+    /// there is nothing; this build runs at 12, where 11/12 gives a whole 11 device pixels per
+    /// game pixel against 0.9's 10.8 and 0.875's 10.5. (0.875 is exact only at factor 8.)
+    /// </para>
+    ///
+    /// <para>
+    /// At this scale the DIALOG covers no building at all and the only thing that touches one
+    /// is the cash figure's bottom edge, on about 47 px² of the University's roof — see
+    /// <c>PanelScaleTests</c>, which still pins both.
+    /// </para>
+    /// </summary>
+    public const double TriedElevenTwelfths = 11.0 / 12.0;
+
+    /// <summary>
+    /// Whether the panel is drawn at anything other than full size, and therefore whether the
+    /// chrome switch has anything to switch. False while <see cref="Requested"/> is 1 and
+    /// <c>JONES_PANEL_SCALE</c> is unset, which hides the control — a visible toggle that does
+    /// nothing is worse than no toggle, and this is the same gate
+    /// <c>MainViewModel.QuicksandFontAvailable</c> puts on the font switch beside it.
+    /// </summary>
+    public static bool Scalable => Wanted < 1.0;
 
     /// <summary>
     /// The largest scale at which the interior touches none of the thirteen <c>Place</c>
@@ -207,12 +259,13 @@ public static class PanelScale
     /// </para>
     ///
     /// <para>
-    /// <see cref="Requested"/> AT 11/12 = 0.9167 IS JUST OUTSIDE IT, and that is a choice
-    /// taken with the number in front of it rather than an oversight. The ceiling was 0.919
-    /// while the cash figure sat at dialog row 117 — butted straight against DONE, where it
-    /// read as a caption of that button rather than as the cash. Moving it down two rows to
-    /// 119 costs 10 pixels of ceiling and clips about 47 px² of the University's ROOF, which
-    /// is a cheaper thing to lose than a control that is misread.
+    /// <see cref="TriedElevenTwelfths"/> SITS JUST OUTSIDE IT, and that was a choice taken
+    /// with the number in front of it rather than an oversight. The ceiling was 0.919 while
+    /// the cash figure sat at dialog row 117 — butted straight against DONE, where it read as
+    /// a caption of that button rather than as the cash. Moving it down two rows to 119 costs
+    /// 10 pixels of ceiling and clips about 47 px² of the University's ROOF, which is a
+    /// cheaper thing to lose than a control that is misread. That reasoning is unaffected by
+    /// the revert to full size and the two rows stay.
     /// </para>
     /// </summary>
     public const double LargestWithNoCoverage = 114.0 / 126.0;

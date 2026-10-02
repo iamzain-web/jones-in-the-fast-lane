@@ -2321,9 +2321,9 @@ public sealed partial class MainViewModel : ViewModelBase
             // right-alignment hid that.
             // WHERE THE FIGURE GOES. With the body drawn it keeps the script's own offsets
             // from the cel; without it, the Dialog's bottom-right corner - nsLeft 150, nsTop
-            // 117, which is 184-34 (the figure's widest form flush with the Dialog's right
-            // edge) on the first row clear of `exitButton`. See StoreLayout.CashLeft for the
-            // search that establishes there is nowhere else.
+            // 119, which is 184-34 (the figure's widest form flush with the Dialog's right
+            // edge) two rows below `exitButton`. See StoreLayout.CashLeft for the search that
+            // establishes there is nowhere else and for what those two rows cost.
             //
             // EVERYTHING ELSE IS THE SCRIPT'S AND UNCHANGED: text 1[3] `"%6s "`, font 14,
             // colour index 0, and the opaque band of index 101 - which is `dsBACKGROUND`,
@@ -2341,13 +2341,29 @@ public sealed partial class MainViewModel : ViewModelBase
                                  background: StoreLayout.CalcBackground));
         }
 
-        // Building hotspots, at the Place instances' own rectangles.
-        foreach (var loc in Board.All)
-        {
-            var target = loc;
-            Hotspots.Add(new HotspotVm(loc.Left, loc.Top, loc.Width, loc.Height,
-                () => GoTo(target.Id), loc.Name));
-        }
+        // Building hotspots, at the Place instances' own rectangles - AND ONLY WHILE THE
+        // BOARD IS THE SCREEN.
+        //
+        // A DIALOG IS MODAL OVER THE ROOM. `Dialog::handleEvent` (`Interface.sc:1008-1125`)
+        // is given the event before room1's cast ever sees it, so with a building's interior
+        // open the thirteen `Place` instances cannot be clicked - you leave through DONE.
+        // The port had them live underneath, and because the hotspot layer is declared AFTER
+        // the sprite layer so that it sits over the board art, they were live ON TOP: at full
+        // size the University's rectangle (190..250 x 158..192) covers the bottom three rows
+        // of the DONE button at (212,152) and the Employment Office's covers the same three
+        // rows of RELAX at (78,152), so clicking there walked you to Hi-Tech U and charged
+        // the hours instead of closing the room.
+        //
+        // Found by the hit-test probe the moment PanelScale went back to 1 - at 11/12 the
+        // whole panel sat inside the free rectangle and nothing overlapped, which is exactly
+        // the kind of fault a scale change uncovers rather than causes.
+        if (_screen == Screen.Board)
+            foreach (var loc in Board.All)
+            {
+                var target = loc;
+                Hotspots.Add(new HotspotVm(loc.Left, loc.Top, loc.Width, loc.Height,
+                    () => GoTo(target.Id), loc.Name));
+            }
 
         // THE WHOLE INTERIOR IS BUILT INSIDE ONE SCOPE, which is what makes the deviation
         // safe: nothing in BuildLocationPanel or anything it calls has to know about the
@@ -3430,6 +3446,14 @@ public sealed partial class MainViewModel : ViewModelBase
     /// non-Sierra controls are — and reachable on Android, which has no keyboard.
     /// </para>
     /// </summary>
+    /// <summary>
+    /// Whether the switch is worth showing at all. False while <see cref="PanelScale"/> is
+    /// drawing the interior at full size, which it is by default — a toggle with the same
+    /// picture on both sides is a lie about what the game can do, and the font switch beside
+    /// it already hides itself the same way when its face is missing.
+    /// </summary>
+    public static bool SmallLocationViewAvailable => PanelScale.Scalable;
+
     public bool SmallLocationView
     {
         get => PanelScale.Enabled;

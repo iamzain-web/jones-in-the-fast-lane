@@ -791,6 +791,7 @@
 
            The glyph is a small rectangle inside a larger one: the panel inside the board. -->
       <ToggleButton Classes="snd" IsChecked="{Binding SmallLocationView, Mode=TwoWay}"
+                    IsVisible="{x:Static vm:MainViewModel.SmallLocationViewAvailable}"
                     ToolTip.Tip="Shop interiors: fitted inside the board, or Sierra's full size">
         <Panel Width="26" Height="26">
           <Path Stroke="#F0F0F0" StrokeThickness="1.6" Data="M3,4 L23,4 L23,22 L3,22 Z" />

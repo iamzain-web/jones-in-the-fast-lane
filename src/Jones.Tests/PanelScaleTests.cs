@@ -7,13 +7,19 @@ namespace Jones.Tests;
 /// THE IN-LOCATION PANEL SIZE, checked against the board it has to fit inside.
 ///
 /// <para>
-/// This is the guard on a DELIBERATE DEVIATION. The whole justification for
-/// <see cref="PanelScale.Requested"/> being 0.75 is that it is the largest scale at which a
-/// building's interior covers none of the thirteen <c>Place</c> rectangles in
-/// <c>room1.sc:294</c>. That claim is arithmetic over <see cref="Board.All"/> and over the
-/// calculator's position in <see cref="StoreLayout"/>, so it is checked here rather than
-/// eyeballed on a screenshot — and it will fail the day someone edits either table or
-/// nudges the scale, which is exactly when somebody needs to be told.
+/// <b><see cref="PanelScale.Requested"/> IS 1 AND THE PORT DRAWS SIERRA'S OWN INTERIOR.</b>
+/// A smaller panel was tried at 11/12 and withdrawn: the margin it opens is `pic 11`'s flat
+/// #F8F8F0 hole, not town, so it bought two cream bars and nothing else. THE ARITHMETIC IS
+/// KEPT ANYWAY, and that is the point of this file — the zero-coverage ceiling, the twelfths
+/// sharpness argument and what 11/12 would cost are all still pinned, because the question
+/// re-opens the moment the board's centre is filled and whoever re-opens it should find
+/// measurements rather than a story.
+/// </para>
+///
+/// <para>
+/// Every claim here is arithmetic over <see cref="Board.All"/> and the coordinates in
+/// <see cref="StoreLayout"/> rather than anything eyeballed on a screenshot, so it fails the
+/// day somebody edits either table — which is exactly when they need to be told.
 /// </para>
 /// </summary>
 public class PanelScaleTests
@@ -137,19 +143,48 @@ public class PanelScaleTests
         Assert.InRange(needWidth, 0.98, 0.995);
         Assert.InRange(needHeight, 0.97, 0.99);
 
-        // So the chosen scale cannot cover it, and that is the accepted cost.
-        Assert.True(PanelScale.Requested < needWidth);
+        // AND THIS IS WHY THE DEFAULT IS 1. Anything below `needWidth` leaves part of that
+        // hole showing, and what shows is flat cream - not town. The scale that was tried
+        // and withdrawn is below it; full size is not.
+        Assert.True(PanelScale.TriedElevenTwelfths < needWidth);
+        Assert.False(PanelScale.Requested < needWidth);
     }
 
     /// <summary>
-    /// THE CLAIM THE DEFAULT RESTS ON: at <see cref="PanelScale.Requested"/> the DIALOG
-    /// covers no building at all. Everything that is covered is covered by the calculator,
-    /// which is a separate decision about where `gCalc` lives.
+    /// THE DEFAULT IS SIERRA'S OWN INTERIOR. At 1 the transform is exactly the identity, so
+    /// the panel work costs the shipped game nothing at all: every coordinate is the number
+    /// the script gives, and the board elements the full-size dialog covers are drawn, since
+    /// their suppression is gated on the panel being scaled.
     /// </summary>
     [Fact]
-    public void AtTheRequestedScaleTheDialogItselfCoversNoBuilding()
+    public void TheDefaultIsFullSizeAndTheTransformIsTheIdentity()
     {
-        var s = PanelScale.Requested;
+        Assert.Equal(1.0, PanelScale.Requested);
+
+        var was = PanelScale.Enabled;
+        try
+        {
+            PanelScale.Enabled = true;
+            Assert.Equal(PanelTransform.None, PanelScale.Of());
+            Assert.Equal(1.0, PanelScale.Factor);
+
+            // And the chrome switch hides itself, because it would have nothing to switch.
+            Assert.False(PanelScale.Scalable);
+        }
+        finally
+        {
+            PanelScale.Enabled = was;
+        }
+    }
+
+    /// <summary>
+    /// WHAT 11/12 WOULD COVER, kept because the question is still open and this is the number
+    /// it will be re-decided against: the DIALOG covers no building at all there.
+    /// </summary>
+    [Fact]
+    public void AtElevenTwelfthsTheDialogItselfCoversNoBuilding()
+    {
+        var s = PanelScale.TriedElevenTwelfths;
         var t = new PanelTransform(s,
                                    PanelScale.FreeLeft - PanelScale.DialogLeft * s,
                                    PanelScale.FreeTop - PanelScale.DialogTop * s);
@@ -162,15 +197,14 @@ public class PanelScaleTests
     }
 
     /// <summary>
-    /// WHAT THE CASH FIGURE COSTS AT THE CHOSEN SCALE, to the pixel, so that the two rows
-    /// spent on its gap from DONE stay a decision somebody took rather than a drift nobody
-    /// noticed. It clips the UNIVERSITY'S ROOF and nothing else; the dialog itself still
-    /// covers nothing at all.
+    /// WHAT THE CASH FIGURE COSTS AT 11/12, to the pixel, so that the two rows spent on its
+    /// gap from DONE stay a decision somebody took rather than a drift nobody noticed. It
+    /// clips the UNIVERSITY'S ROOF and nothing else.
     /// </summary>
     [Fact]
-    public void AtTheRequestedScaleOnlyTheCashFigureTouchesABuilding()
+    public void AtElevenTwelfthsOnlyTheCashFigureTouchesABuilding()
     {
-        var s = PanelScale.Requested;
+        var s = PanelScale.TriedElevenTwelfths;
         var t = new PanelTransform(s,
                                    PanelScale.FreeLeft - PanelScale.DialogLeft * s,
                                    PanelScale.FreeTop - PanelScale.DialogTop * s);
@@ -209,7 +243,7 @@ public class PanelScaleTests
     [Fact]
     public void TheGapFromDoneIsWhatCostsTheLastOfTheCoverage()
     {
-        var s = PanelScale.Requested;
+        var s = PanelScale.TriedElevenTwelfths;
         var t = new PanelTransform(s,
                                    PanelScale.FreeLeft - PanelScale.DialogLeft * s,
                                    PanelScale.FreeTop - PanelScale.DialogTop * s);
@@ -230,13 +264,16 @@ public class PanelScaleTests
     /// pixel, so font 10's one-pixel stems are nearest-neighboured rather than resampled.
     /// </summary>
     [Fact]
-    public void TheRequestedScaleIsWholeAtTheArtFactorThisBuildRuns()
+    public void TheWithdrawnScaleIsWholeAtTheArtFactorThisBuildRuns()
     {
         // 12 is `RenderScale.Requested`, quoted rather than referenced because RenderScale
         // pulls Avalonia in and this project deliberately does not.
         const int artFactor = 12;
-        var product = PanelScale.Requested * artFactor;
-        Assert.Equal(11.0, product, 10);
+        Assert.Equal(11.0, PanelScale.TriedElevenTwelfths * artFactor, 10);
+
+        // And the default is trivially whole at every factor, being 1.
+        foreach (var f in new[] { 4, 8, 12 })
+            Assert.Equal(f, PanelScale.Requested * f, 10);
     }
 
     /// <summary>
@@ -292,36 +329,66 @@ public class PanelScaleTests
     }
 
     /// <summary>
-    /// With it on, the dialog's origin lands on the free rectangle's corner and the DONE
-    /// button — view 250 at nsLeft 143, nsTop 108 in every location — comes with it.
+    /// WHY THE BOARD'S HOTSPOTS MUST BE DEAD WHILE AN INTERIOR IS OPEN, and it is not a
+    /// matter of taste: AT FULL SIZE THEY OVERLAP THE BUTTON ROW. `exitButton` is at the
+    /// absolute (212,152) and 32x9; the University's rectangle starts at row 158 and runs
+    /// from column 190, so it covers DONE's bottom three rows. `relaxButton` at (78,152) is
+    /// under the Employment Office's in exactly the same way.
+    ///
+    /// <para>
+    /// The hotspot layer is declared AFTER the sprite layer so that it sits over the board
+    /// art, which means those three rows answered to the hotspot and walked the player to
+    /// Hi-Tech U instead of closing the room. `Dialog::handleEvent` (`Interface.sc:1008-1125`)
+    /// is given the event before room1's cast ever sees it, so the fix is the original's own
+    /// behaviour; this test is here so that nobody puts the hotspots back unconditionally
+    /// without discovering why they were gated.
+    /// </para>
+    /// </summary>
+    [Theory]
+    [InlineData(143, "University")]        // exitButton, nsLeft 143
+    [InlineData(9, "Employment Office")]   // relaxButton, nsLeft 9
+    public void AtFullSizeTheBoardsHotspotsReachIntoTheButtonRow(int nsLeft, string place)
+    {
+        var x = PanelScale.DialogLeft + nsLeft;
+        var y = PanelScale.DialogTop + StoreLayout.ExitTop;   // the whole row is nsTop 108
+        const int w = 32, h = 9;
+
+        var p = Board.All.Single(b => b.Name == place);
+        var overlapX = x < p.Left + p.Width && p.Left < x + w;
+        var overlapY = y < p.Top + p.Height && p.Top < y + h;
+
+        Assert.True(overlapX && overlapY,
+                    $"{place} no longer reaches the button at nsLeft {nsLeft} - if the board " +
+                    "or the buttons moved, re-check whether the hotspot gate is still needed");
+    }
+
+    /// <summary>
+    /// THE TRANSFORM ITSELF, which outlives whatever the default happens to be: under a
+    /// scaled panel the dialog's origin lands on the free rectangle's corner and everything
+    /// positioned from that origin — the DONE button at (143,108), the cash figure at
+    /// (150,119) — comes with it. Tested at <see cref="PanelScale.TriedElevenTwelfths"/>,
+    /// because the shipping default is 1 and the identity would prove nothing.
     /// </summary>
     [Fact]
     public void EverythingDialogRelativeMovesWithTheOrigin()
     {
-        var was = PanelScale.Enabled;
-        try
-        {
-            PanelScale.Enabled = true;
-            var t = PanelScale.Of();
+        var s = PanelScale.TriedElevenTwelfths;
+        var t = new PanelTransform(s,
+                                   PanelScale.FreeLeft - PanelScale.DialogLeft * s,
+                                   PanelScale.FreeTop - PanelScale.DialogTop * s);
 
-            Assert.Equal(PanelScale.FreeLeft, t.MapX(PanelScale.DialogLeft), 10);
-            Assert.Equal(PanelScale.FreeTop, t.MapY(PanelScale.DialogTop), 10);
+        Assert.Equal(PanelScale.FreeLeft, t.MapX(PanelScale.DialogLeft), 10);
+        Assert.Equal(PanelScale.FreeTop, t.MapY(PanelScale.DialogTop), 10);
 
-            // The exit button, at the dialog's own (143,108).
-            var exitX = t.MapX(PanelScale.DialogLeft + StoreLayout.ExitLeft);
-            var exitY = t.MapY(PanelScale.DialogTop + StoreLayout.ExitTop);
-            Assert.Equal(PanelScale.FreeLeft + StoreLayout.ExitLeft * PanelScale.Requested, exitX, 10);
-            Assert.Equal(PanelScale.FreeTop + StoreLayout.ExitTop * PanelScale.Requested, exitY, 10);
+        // The exit button, at the dialog's own (143,108).
+        Assert.Equal(PanelScale.FreeLeft + StoreLayout.ExitLeft * s,
+                     t.MapX(PanelScale.DialogLeft + StoreLayout.ExitLeft), 10);
+        Assert.Equal(PanelScale.FreeTop + StoreLayout.ExitTop * s,
+                     t.MapY(PanelScale.DialogTop + StoreLayout.ExitTop), 10);
 
-            // And the cash figure, which replaced the calculator and is dialog-relative like
-            // everything else, so it needs no special case at all.
-            var cash = t.MapX(PanelScale.DialogLeft + StoreLayout.CashLeft);
-            Assert.Equal(PanelScale.FreeLeft + StoreLayout.CashLeft * PanelScale.Requested,
-                         cash, 10);
-        }
-        finally
-        {
-            PanelScale.Enabled = was;
-        }
+        // And the cash figure, which replaced the calculator and is dialog-relative like
+        // everything else, so it needs no special case at all.
+        Assert.Equal(PanelScale.FreeLeft + StoreLayout.CashLeft * s,
+                     t.MapX(PanelScale.DialogLeft + StoreLayout.CashLeft), 10);
     }
 }
