@@ -327,6 +327,11 @@ ARM_DEPTH = 0.003
 # 10.5-11% of stature), and the same constant gen_cast.HAND_LEN uses to draw the hand into
 # the init, so the rigging joint and the painted hand agree.
 HAND_LEN = 0.105
+# Stride scale. The authored ank_x spread gives 0.045-0.064 of figure height between the
+# ankles; walkref.mp4 measures 0.0952-0.1397, median 0.1229. 2.28 takes the authored median
+# of about 0.054 to the measured 0.1229. Reported as a realised figure after authoring, not
+# assumed from the constant.
+STRIDE = 2.28
 
 
 def _leg(ank_x, ank_dy, knee_x, knee_dy):
@@ -472,8 +477,22 @@ def skeleton(build, frame):
     # anisotropic bone in warp_walk.skin_field the shoe keeps its width and 0.085 is safe.
     lift_r, lift_k_r = -leg_r["ank_dy"], -leg_r["knee_dy"]
     lift_l, lift_k_l = -leg_l["ank_dy"], -leg_l["knee_dy"]
-    an_r, an_l = leg_r["ank_x"], leg_l["ank_x"]
-    kn_r, kn_l = leg_r["knee_x"], leg_l["knee_x"]
+    # THE STRIDE, SCALED TO THE MEASURED ONE.
+    #
+    # The authored cycle separated the ankles by 0.045-0.064 of figure height. Measured off
+    # walkref.mp4 by the two feet's own silhouette runs, a real front-view stride separates
+    # them by 0.0952-0.1397, median 0.1229 on the toward-camera set. The authored stride was
+    # two to three times too small, and that is what both a player and the coordinator saw
+    # independently: "the feet barely separate", "it reads as a man shifting his feet".
+    #
+    # Scaled to the measured MEDIAN rather than the top of the range - the clip's maximum is
+    # one frame of one stride and the median is what the walk spends its time doing.
+    #
+    # The depth cue is NOT touched. It is already right: 0.0995 authored against a measured
+    # maximum of 0.1047, and it is the thing that makes a front view read as forward motion
+    # at all (§7ac).
+    an_r, an_l = leg_r["ank_x"] * STRIDE, leg_l["ank_x"] * STRIDE
+    kn_r, kn_l = leg_r["knee_x"] * STRIDE, leg_l["knee_x"] * STRIDE
 
     # ARMS OPPOSE THE LEGS. Front-on, a forward-swung arm reads as the hand drifting in
     # towards the hip and rising slightly; the trailing one drifts out and drops. The
