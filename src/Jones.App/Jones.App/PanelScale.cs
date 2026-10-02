@@ -36,20 +36,42 @@ namespace Jones.App;
 /// </para>
 ///
 /// <para>
-/// SO THE LARGEST THE GROUP CAN BE is 183/244 = <b>0.75</b> by width and 114/150 = 0.76 by
-/// height; width binds, and three quarters is exact. At 0.75 the group is 183 x 112.5,
-/// which placed at (68,44) covers columns 68..250 and rows 44..156 and touches no building
-/// rectangle at all. That is <see cref="Requested"/>.
+/// SO THE LARGEST THE GROUP CAN BE WITHOUT TOUCHING A BUILDING is 183/244 = 0.75 by width
+/// and 114/150 = 0.76 by height; width binds, and three quarters is exact. That figure is
+/// <see cref="LargestWithNoCoverage"/> and it is NOT what this port draws, for the reason
+/// below.
 /// </para>
 ///
 /// <para>
-/// THREE QUARTERS IS ALSO THE ONLY FRACTION THAT COSTS NOTHING IN SHARPNESS, which is why
-/// it is not rounded off to a friendlier-looking 0.7. <see cref="RenderScale.Factor"/> is 4,
-/// 8 or 12, and 0.75 times every one of those is a whole number — 3, 6 and 9 — so every
-/// coordinate and every bitmap in the panel still lands on an exact device pixel, and the
-/// game's own 6-pixel font 10 is still drawn at a whole-number nearest-neighbour scale
-/// rather than resampled into grey. Pick any other value and the interface text turns to
-/// mush at the one size the player reads it at.
+/// BECAUSE THERE IS NO TOWN UNDER THE DIALOG. `pic 11` has a flat #F8F8F0 HOLE in the middle
+/// — columns 70..248 of rows 45..153, measured off the shipped picture and 93.4% a single
+/// colour — and the backdrop is sized to fill it: it takes 0.9891 of the width and 0.9821 of
+/// the height to cover that hole. So shrinking the interior does not uncover buildings, it
+/// uncovers BLANK BOARD, and at 0.75 that is 44 bare columns to the right of the panel and
+/// 26 bare rows below it. The thirteen buildings were never behind the dialog in the first
+/// place: at full size it covers a 2-pixel column of Monolith, QT Clothing and Socket City,
+/// five rows off the Employment Office's and the University's roofs, and — by far the
+/// largest, and by the CALCULATOR rather than the dialog — 60x33 of Socket City.
+/// </para>
+///
+/// <para>
+/// SO THE SCALE IS A TRADE, NOT AN OPTIMUM, and <see cref="Requested"/> is where it was
+/// settled: <b>11/12</b>. The bare edge is 13 columns and 7 rows rather than 44 and 26, which
+/// reads as a border instead of a void; the Employment Office and University roofs come out
+/// from under it completely; and the calculator still clips Socket City's top-left corner by
+/// 41x31 instead of 60x33. Between 0.75 and 0.958 the DIALOG covers nothing at all and every
+/// pixel of Socket City uncovered costs a pixel of blank board — they are the same move.
+/// </para>
+///
+/// <para>
+/// ELEVENTH TWELFTHS, NOT 0.9, AND THE REASON IS SHARPNESS. <see cref="RenderScale.Factor"/>
+/// is 4, 8 or 12, and a scale whose product with the factor is a whole number keeps every
+/// coordinate and every bitmap on an exact device pixel — which matters most for the game's
+/// own 6-pixel font 10, whose one-pixel stems turn to uneven grey the moment they are
+/// resampled. Whole at ALL THREE factors needs 4s to be an integer, so between 0.75 and 1
+/// there is nothing. This build runs at 12 (`RenderScale.Requested`), where the exact
+/// fractions are twelfths: 11/12 gives 11 device pixels per game pixel, where 0.9 gives 10.8
+/// and 0.875 gives 10.5. 0.875 is exact only at factor 8, which this build does not use.
 /// </para>
 ///
 /// <para>
@@ -94,10 +116,35 @@ public static class PanelScale
     public const int FreeHeight = 114;
 
     /// <summary>
-    /// THE SWITCH. 0.75 is the new default Zain asked for; 1 is Sierra's own full-size
-    /// interior, and nothing else in the port changes when it is 1.
+    /// `pic 11`'s blank middle: a flat #F8F8F0 rectangle at columns 70..248 of rows 45..153,
+    /// which is 93.4% one colour. This is what the dialog exists to fill and what any smaller
+    /// dialog leaves showing. Measured off the shipped picture, not assumed.
     /// </summary>
-    public const double Requested = 0.75;
+    public const int HoleLeft = 70;
+    public const int HoleTop = 45;
+    public const int HoleWidth = 179;
+    public const int HoleHeight = 109;
+
+    /// <summary>
+    /// THE SWITCH. 11/12 is the default; 1 is Sierra's own full-size interior, and nothing
+    /// else in the port changes when it is 1. See the class remarks for why it is a trade
+    /// rather than an optimum, and why it is a twelfth rather than a round 0.9.
+    /// </summary>
+    public const double Requested = 11.0 / 12.0;
+
+    /// <summary>
+    /// The largest scale at which the interior — INCLUDING the calculator — touches none of
+    /// the thirteen <c>Place</c> rectangles: 183/244, exactly three quarters.
+    ///
+    /// <para>
+    /// IT IS NOT THE DEFAULT, and the reason is the whole of the class remarks: at 0.75 the
+    /// panel covers no building and leaves 44 columns and 26 rows of blank #F8F8F0 board
+    /// showing, because there is no town under the dialog to uncover. It is kept as a named
+    /// constant because the arithmetic is worth not losing — it is the point at which the
+    /// trade bottoms out — and because `PanelScaleTests` pins it.
+    /// </para>
+    /// </summary>
+    public const double LargestWithNoCoverage = 0.75;
 
     /// <summary>
     /// <c>JONES_PANEL_SCALE</c>, which overrides <see cref="Requested"/> without a rebuild

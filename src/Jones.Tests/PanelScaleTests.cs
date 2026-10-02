@@ -90,26 +90,106 @@ public class PanelScaleTests
                                        PanelScale.FreeWidth, PanelScale.FreeHeight)));
     }
 
-    /// <summary>THE CLAIM: at <see cref="PanelScale.Requested"/> no building is covered.</summary>
-    [Fact]
-    public void TheRequestedScaleCoversNoBuilding()
-    {
-        Assert.False(CoversAnyBuilding(Group(PanelScale.Requested)));
-    }
-
     /// <summary>
-    /// AND IT IS THE LARGEST THAT DOES. A whole game pixel more width than the group gets at
-    /// 0.75 puts it on Monolith's first column, so there is nothing left on the table.
+    /// 0.75 covers no building, and is the LARGEST scale that does: a whole game pixel more
+    /// width puts the group on Monolith's first column. It is not the default — see the next
+    /// three tests for why — but the arithmetic is the floor of the trade and is pinned here.
     /// </summary>
     [Fact]
-    public void TheRequestedScaleIsTheLargestThatCoversNoBuilding()
+    public void SeventyFivePercentCoversNoBuildingAndIsTheLargestThatDoes()
     {
-        var g = Group(PanelScale.Requested);
+        var g = Group(PanelScale.LargestWithNoCoverage);
+        Assert.False(CoversAnyBuilding(g));
         Assert.True(CoversAnyBuilding((g.L, g.T, g.W + 1, g.H)));
 
         // Stated as the ratio as well, so the reason survives a change to either number.
         Assert.Equal(PanelScale.FreeWidth / (double)PanelScale.GroupWidth,
-                     PanelScale.Requested, 10);
+                     PanelScale.LargestWithNoCoverage, 10);
+    }
+
+    /// <summary>
+    /// WHY 0.75 IS NOT THE DEFAULT. `pic 11` has no town under the dialog — its middle is a
+    /// flat #F8F8F0 hole — and the backdrop is sized to fill that hole, so anything smaller
+    /// leaves blank board showing rather than revealing buildings. It takes 0.9891 of the
+    /// width to cover it, which is almost exactly Sierra's own size.
+    /// </summary>
+    [Fact]
+    public void TheDialogIsSizedToTheHoleInTheBoardPicture()
+    {
+        var needWidth = (PanelScale.HoleLeft + PanelScale.HoleWidth - PanelScale.FreeLeft)
+                        / 183.0;   // the backdrop cel is 183x112
+        var needHeight = (PanelScale.HoleTop + PanelScale.HoleHeight - PanelScale.FreeTop)
+                         / 112.0;
+
+        Assert.InRange(needWidth, 0.98, 0.995);
+        Assert.InRange(needHeight, 0.97, 0.99);
+
+        // So the chosen scale cannot cover it, and that is the accepted cost.
+        Assert.True(PanelScale.Requested < needWidth);
+    }
+
+    /// <summary>
+    /// THE CLAIM THE DEFAULT RESTS ON: at <see cref="PanelScale.Requested"/> the DIALOG
+    /// covers no building at all. Everything that is covered is covered by the calculator,
+    /// which is a separate decision about where `gCalc` lives.
+    /// </summary>
+    [Fact]
+    public void AtTheRequestedScaleTheDialogItselfCoversNoBuilding()
+    {
+        var s = PanelScale.Requested;
+        var t = new PanelTransform(s,
+                                   PanelScale.FreeLeft - PanelScale.DialogLeft * s,
+                                   PanelScale.FreeTop - PanelScale.DialogTop * s);
+
+        // The Dialog's own declared box - nsRight 184, nsBottom 119 - and nothing else.
+        var dialog = (t.MapX(PanelScale.DialogLeft), t.MapY(PanelScale.DialogTop),
+                      t.Size(184), t.Size(119));
+
+        Assert.False(CoversAnyBuilding(dialog));
+    }
+
+    /// <summary>
+    /// AND WHAT THE CALCULATOR COSTS AT THAT SCALE, so a change to either number has to be
+    /// looked at rather than slipping through: it clips Socket City's top-left corner and the
+    /// University's right edge, and nothing else. Full size costs 60x33 of Socket City.
+    /// </summary>
+    [Fact]
+    public void AtTheRequestedScaleOnlyTheCalculatorCoversAnything()
+    {
+        var s = PanelScale.Requested;
+        var t = new PanelTransform(s,
+                                   PanelScale.FreeLeft - PanelScale.DialogLeft * s,
+                                   PanelScale.FreeTop - PanelScale.DialogTop * s);
+
+        var calc = (t.MapX(StoreLayout.CalcLeft), t.MapY(StoreLayout.CalcTop),
+                    t.Size(CalcWidth), t.Size(CalcHeight));
+
+        var hit = new List<string>();
+        foreach (var place in Board.All)
+        {
+            var overlapX = calc.Item1 < place.Left + place.Width
+                           && place.Left < calc.Item1 + calc.Item3;
+            var overlapY = calc.Item2 < place.Top + place.Height
+                           && place.Top < calc.Item2 + calc.Item4;
+            if (overlapX && overlapY) hit.Add(place.Name);
+        }
+
+        Assert.Equal(["Socket City", "University"], hit.OrderBy(n => n).ToArray());
+    }
+
+    /// <summary>
+    /// ELEVENTH TWELFTHS, for the sharpness reason: this build draws at
+    /// <c>RenderScale.Requested</c> 12, and 11/12 x 12 is a whole 11 device pixels per game
+    /// pixel, so font 10's one-pixel stems are nearest-neighboured rather than resampled.
+    /// </summary>
+    [Fact]
+    public void TheRequestedScaleIsWholeAtTheArtFactorThisBuildRuns()
+    {
+        // 12 is `RenderScale.Requested`, quoted rather than referenced because RenderScale
+        // pulls Avalonia in and this project deliberately does not.
+        const int artFactor = 12;
+        var product = PanelScale.Requested * artFactor;
+        Assert.Equal(11.0, product, 10);
     }
 
     /// <summary>
@@ -124,18 +204,30 @@ public class PanelScaleTests
     }
 
     /// <summary>
-    /// The sharpness argument: 0.75 times every scale the art is ever drawn at is a whole
-    /// number, so the game's own 6-pixel font 10 is still nearest-neighboured by an integer
-    /// and never resampled into grey. Pick 0.7 and this fails.
+    /// THE SHARPNESS ARITHMETIC, pinned so the next person to propose a round 0.9 or an
+    /// 0.875 can see what it costs. A scale is whole at EVERY art factor (4, 8 and 12) only
+    /// when 4s is an integer, so between 0.75 and 1 there is nothing — which is exactly why
+    /// the default is a twelfth, whole at the 12 this build runs and nowhere else.
     /// </summary>
     [Theory]
     [InlineData(4)]
     [InlineData(8)]
     [InlineData(12)]
-    public void TheScaleIsAWholeNumberOfDevicePixelsAtEveryArtFactor(int artFactor)
+    public void TheNoCoverageScaleIsWholeAtEveryArtFactor(int artFactor)
     {
-        var product = PanelScale.Requested * artFactor;
+        var product = PanelScale.LargestWithNoCoverage * artFactor;
         Assert.Equal(Math.Round(product), product, 10);
+    }
+
+    [Fact]
+    public void NothingBetweenThreeQuartersAndFullSizeIsWholeAtEveryArtFactor()
+    {
+        foreach (var candidate in new[] { 10 / 12.0, 0.85, 0.875, 0.90, 11 / 12.0 })
+        {
+            var wholeEverywhere = new[] { 4, 8, 12 }
+                .All(f => Math.Abs(candidate * f - Math.Round(candidate * f)) < 1e-9);
+            Assert.False(wholeEverywhere, $"{candidate} unexpectedly whole at 4, 8 and 12");
+        }
     }
 
     /// <summary>
@@ -184,11 +276,14 @@ public class PanelScaleTests
             Assert.Equal(PanelScale.FreeLeft + StoreLayout.ExitLeft * PanelScale.Requested, exitX, 10);
             Assert.Equal(PanelScale.FreeTop + StoreLayout.ExitTop * PanelScale.Requested, exitY, 10);
 
-            // And the calculator, which the scripts position absolutely and which is the one
-            // piece that would otherwise be left behind on top of Socket City.
+            // And the calculator, which the scripts position absolutely and which would
+            // otherwise be the one piece left behind on top of Socket City. It MOVES; at the
+            // default scale it still clips Socket City, which is a separate decision about
+            // where `gCalc` lives and is pinned by
+            // AtTheRequestedScaleOnlyTheCalculatorCoversAnything.
             var calc = (L: t.MapX(StoreLayout.CalcLeft), T: t.MapY(StoreLayout.CalcTop),
                         W: t.Size(CalcWidth), H: t.Size(CalcHeight));
-            Assert.False(CoversAnyBuilding(calc));
+            Assert.True(calc.L < StoreLayout.CalcLeft, "the calculator did not move inwards");
         }
         finally
         {
