@@ -58,6 +58,7 @@ USAGE
 import argparse
 import ctypes
 import json
+import math
 import os
 import subprocess
 import sys
@@ -1051,8 +1052,34 @@ def init_field(cel, size, bg, blur=62, grain=8, bands=None, soft=18, glasses=Fal
         # is flat backdrop - which is what the model then paints there.
         d.ellipse([an[0] - fig * 0.080, an[1] - fig * 0.020,
                    an[0] + fig * 0.080, an[1] + fig * 0.090], fill=255)
-    d.ellipse([k[0][0] - fig * 0.075, k[0][1] - fig * 0.085,
-               k[0][0] + fig * 0.075, k[0][1] + fig * 0.060], fill=255)
+    # THE HEAD ISLAND REACHES ABOVE THE HAIR, for exactly the reason the ankle blob reaches
+    # below the ankle - and this is the same bug, found four features later.
+    #
+    # The palette paints hair from 0.085 to 0.010 above the nose. The island mask only
+    # reached 0.085, so after its blur the mask AT THE HAIR was 0.33-0.62: between a third
+    # and two thirds of what the model saw up there was flat backdrop, not hair. It painted
+    # the strongest nearby signal, which on a green field is a GREEN CAP - and the chroma key
+    # then removed the cap and the skull with it. Four cels, three seeds, every time.
+    #
+    # Measured down the head's centre line before the change:
+    #   0.110 above nose  0.24      0.055 above  0.47      nose  0.69
+    #   0.085 above       0.33      0.020 above  0.62      chest 0.98
+    d.ellipse([k[0][0] - fig * 0.090, k[0][1] - fig * 0.150,
+               k[0][0] + fig * 0.090, k[0][1] + fig * 0.060], fill=255)
+
+    # AND THE HANDS, which were 0.40-0.60 for the same reason. The limb line stops at the
+    # wrist, so the mask falls away exactly where HAND_LEN paints a hand. Nothing in the
+    # init survived to say "hand" there, which is most of why the model kept putting them
+    # in his pockets - it was being shown a half-dissolved forearm ending at a trouser.
+    for elb, wri in ((k[3], k[4]), (k[6], k[7])):
+        if elb is None or wri is None:
+            continue
+        dx, dy = wri[0] - elb[0], wri[1] - elb[1]
+        n = max(1e-6, math.hypot(dx, dy))
+        hx = wri[0] + dx / n * fig * HAND_LEN * 0.6
+        hy = wri[1] + dy / n * fig * HAND_LEN * 0.6
+        r = fig * 0.075
+        d.ellipse([hx - r, hy - r, hx + r, hy + r], fill=255)
     m = m.filter(ImageFilter.GaussianBlur(blur))
 
     # THE ISLAND'S NOISE IS LOW-PASSED, AND THAT IS NOT A DETAIL. Per-pixel Gaussian noise
