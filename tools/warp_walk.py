@@ -1,4 +1,4 @@
-﻿"""Builds a walk cycle by DEFORMING one generated photograph, instead of generating four.
+"""Builds a walk cycle by DEFORMING one generated photograph, instead of generating four.
 
 WHY THIS EXISTS
 ---------------
@@ -906,7 +906,43 @@ def skin_field(src_kps, dst_kps, size, alpha=2.0, step=2, reach=0.26, fig=None,
                       np.clip(fx_gen.astype(int), 0, anysh0.shape[1] - 1)]
 
         m = np.zeros(VX.shape, bool)
-        for ank, kne, sh in zip((10, 13), (9, 12), shoes):
+        # THE CLAIM IS A REGION BY CONSTRUCTION. There is no membership test and nothing to
+        # delete afterwards.
+        #
+        # It used to ask, of every destination pixel, "does this foot's own translation land
+        # on this foot's own shoe in the SOURCE?" - and then the smear rule deleted whatever
+        # said no. That test can only claim the part of the destination foot that has a
+        # counterpart inside the source shoe MASK, and the two differ in extent, so it
+        # claimed 49% of the foot on one cel and 70% on another and the remainder was
+        # deleted. A partial claim is not a tuning error; it is what a membership test does
+        # when the regions differ. The shoes came apart, on all three characters, twice.
+        #
+        # So the question is asked the other way round. Each foot owns a REGION of the
+        # DESTINATION - the pixels nearest its own ankle, between the top of a shoe and the
+        # ground - and that whole region is drawn by its foot's rigid transform. The region
+        # is defined geometrically, so it cannot be partial, and because nothing is ever
+        # unclaimed there is no deletion step to get wrong.
+        #
+        # It also stops asking the picture what a pixel IS. The mask-based test inherited
+        # every colour failure underneath it: on view 280 a black shoe and black trousers do
+        # not separate, so the mask ran 75 px up the leg and the "rigid shoe" was a rigid
+        # shoe-and-trouser that tore away from the leg above it. Geometry does not ask.
+        #
+        # The handover at the top is FEATHERED, for the same reason the torso plate's is: a
+        # region boundary is a straight line across a leg, and a hard switch between two
+        # fields draws it as a seam. The shoe masks are still computed, but only to place
+        # the region's top edge and to measure rigidity - not to decide ownership.
+        top_f = np.full(VX.shape, 1e9)
+        own_id = np.zeros(VX.shape, np.int32)
+        for i, ankj in enumerate((10, 13)):
+            t = np.asarray(dst_kps[ankj], np.float64)
+            d2 = (VX - t[0]) ** 2 + (VY - t[1]) ** 2
+            closer = d2 < top_f
+            top_f = np.where(closer, d2, top_f)
+            own_id = np.where(closer, i + 1, own_id)
+
+        feather = max(1.0, 0.025 * figv)
+        for idx, (ank, kne, sh) in enumerate(zip((10, 13), (9, 12), shoes)):
             t0f = np.asarray(dst_kps[ank], np.float64)
             s0f = np.asarray(src_kps[ank], np.float64)
             dx, dy = VX - t0f[0], VY - t0f[1]
@@ -927,77 +963,78 @@ def skin_field(src_kps, dst_kps, size, alpha=2.0, step=2, reach=0.26, fig=None,
             else:
                 gx = s0f[0] + dx
                 gy = s0f[1] + dy
-            own = sh[np.clip(gy.astype(int), 0, sh.shape[0] - 1),
-                     np.clip(gx.astype(int), 0, sh.shape[1] - 1)]
-            take = own & ~m
-            fx = np.where(take, gx, fx)
-            fy = np.where(take, gy, fy)
-            m |= own
+            # The region: nearest this ankle, and no higher than the top of a shoe. The top
+            # is taken from where this foot's own shoe mask begins relative to its ankle,
+            # so a boot and a trainer each get their own height rather than a shared guess,
+            # and it falls back to SHOE_TOP when the mask found nothing.
+            # THE REGION IS THE SHOE'S OWN MEASURED EXTENT, PLACED AT THE DESTINATION ANKLE.
+            #
+            # An unbounded nearest-ankle region claims background as well as foot, and the
+            # rigid transform then paints shoe colour into it - which came out as a thin dark
+            # spike trailing off the rear heel on half the cels. Bounding it by the shoe's own
+            # bounding box, measured in the source and offset to the destination ankle, keeps
+            # the region complete over the shoe (so there is nothing to delete) while giving
+            # it nowhere to invent one. The box travels with the foot because the transform
+            # is rigid; that is the whole point of it being rigid.
+            ys_sh = np.nonzero(sh.any(axis=1))[0]
+            xs_sh = np.nonzero(sh.any(axis=0))[0]
+            if len(ys_sh) and len(xs_sh):
+                sa = np.asarray(src_kps[ank], np.float64)
+                ry0 = min(float(ys_sh[0]) - sa[1], -SHOE_TOP * figv)
+                ry1 = float(ys_sh[-1]) - sa[1]
+                rx0 = float(xs_sh[0]) - sa[0]
+                rx1 = float(xs_sh[-1]) - sa[0]
+            else:
+                ry0, ry1 = -SHOE_TOP * figv, 0.10 * figv
+                rx0, rx1 = -0.09 * figv, 0.09 * figv
 
-        # Anything OUTSIDE the rigid region that still reads shoe pixels is a smear of the
-        # shoe rather than the shoe. Send it off-frame; `sample` resolves that to background
-        # rather than to an edge-clamped colour.
-        # DOES THE RIGID PATH ACTUALLY COVER THE FOOT? IF NOT, DO NOT USE IT.
+            ex, ey_ = VX - t0f[0], VY - t0f[1]
+            w_reg = np.minimum.reduce([
+                np.clip((ey_ - ry0) / feather, 0.0, 1.0),
+                np.clip((ry1 - ey_) / feather, 0.0, 1.0),
+                np.clip((ex - rx0) / feather, 0.0, 1.0),
+                np.clip((rx1 - ex) / feather, 0.0, 1.0),
+            ])
+            w_reg = np.where(own_id == idx + 1, w_reg, 0.0)
+            take = w_reg > 0.0
+            fx = np.where(take, w_reg * gx + (1.0 - w_reg) * fx, fx)
+            fy = np.where(take, w_reg * gy + (1.0 - w_reg) * fy, fy)
+            # The WHOLE region, feathered edge included. Using the core (> 0.5) left the
+            # feather band counting as unclaimed, so the smear rule below deleted it and the
+            # shoes grew fragments again - the same "incomplete claim feeding a deletion"
+            # failure, one layer finer.
+            m |= w_reg > 0.0
+
+        # AND THE SMEAR RULE COMES BACK, BECAUSE IT WAS NEVER THE PROBLEM.
         #
-        # The rigid region claims a destination pixel only when that foot's OWN translation
-        # lands on that foot's OWN shoe. That is a strict test and it is what makes the
-        # method safe - but when it fails to claim most of the foot, what follows is not a
-        # slightly worse shoe, it is a deleted one: the smear rule below removes every
-        # unclaimed pixel that samples shoe, so a partial claim comes out as a shoe with
-        # pieces missing. That shipped. Torn hems, a shoe reduced to a stump and fragments
-        # detached below the foot, on all three characters, and the player saw it.
+        # It deletes destination pixels that sample a shoe but belong to no foot - the ghost
+        # the general field drags off a heel when it stretches shoe colour across the gap
+        # between the legs. Removing the rule along with the membership test duly brought the
+        # ghost back: a thin dark spike trailing below the rear foot, on cels 1 and 3 of all
+        # three views.
         #
-        # The premise is a stance where the two shoes are separable. At mid-swing they are
-        # not: 62 px between the ankles against a +-92 px window, one foot raised 102 px.
-        # Rather than guess a pose threshold, the block checks its own work - if it cannot
-        # claim the foot, the general skinning field is left to draw it, which is what
-        # `--hard-foot 0` does and which produces solid shoes on every cel of this cycle.
-        #
-        # Measured on view 282: rigid claim covers 0.46-0.71 of the foot here, against the
-        # old cycle where it covers essentially all of it.
-        # 0.98, NOT 0.90. At 0.90 view 280 passed the test on three cels of four and came out
-        # damaged anyway - a rigid region that misses a tenth of the shoe still has the smear
-        # rule delete that tenth. The bar is "covers the foot", not "covers most of it",
-        # because the consequence of a near miss here is a hole rather than a blur.
-        # Walked down: 0.90 let view 280 through on three cels of four and it came out
-        # damaged; 0.98 still let two cels through with two detached fragments each. The
-        # rigid path is only safe when it covers the shoe OUTRIGHT, so the bar says that.
-        # REPORTED, NOT ACTED ON. An earlier version fell back to the general field when the
-        # rigid claim was incomplete, and that is how a build shipped with the feet drawn by
-        # a deforming transform - tears traded for stretch. Coverage is a useful thing to see
-        # in the log while this is being worked on; it is not a licence to stop being rigid.
-        cover = m.sum() / max(1, want.sum())
-        if cover < 0.995:
-            print(f"      foot: rigid claim {cover*100:.0f}% of the shoe", flush=True)
+        # What was wrong was never this rule. It was that "unclaimed" used to mean "the
+        # membership test did not reach it", which included half of a real shoe - so the rule
+        # deleted the shoe along with the ghost. Now the claim is a REGION and is complete by
+        # construction, "unclaimed" means what it says, and subtracting it is safe. A correct
+        # rule resting on a broken premise looks exactly like a broken rule, and the fix was
+        # upstream of it both times.
+        # ...and with the region bounded to the shoe's own box, there is no ghost for it to
+        # remove and it costs more than it saves. Switched on it cut a magenta slash across
+        # view 280's trouser on every cel - the trouser just above the box samples shoe
+        # colour, is outside the region by definition, and was deleted. The ghost it was
+        # aimed at is gone because the region can no longer paint a shoe into background, not
+        # because anything deleted it. Left here, off, with what it did written down.
         anysh = shoes[0] | shoes[1]
-        smear = anysh[np.clip(fy.astype(int), 0, anysh.shape[0] - 1),
-                      np.clip(fx.astype(int), 0, anysh.shape[1] - 1)] & ~m
 
-        # BUT NOT AT THE FOOT ITSELF, OR IT DELETES THE SHOE IT IS PROTECTING.
-        #
-        # This rule removes a GHOST - shoe colour smeared somewhere a shoe is not, up a shin
-        # or out into the backdrop - and it does it by deleting every pixel that samples shoe
-        # and was not claimed by the rigid region. That is safe only while the rigid region
-        # claims the whole destination shoe. At mid-swing it does not: the ankles are 62 px
-        # apart against a +-92 px window, one foot is raised 102 px, and the two feet's
-        # transforms differ enough that part of each destination shoe fails the "own
-        # translation onto own shoe" test. Those pixels are then deleted, and the shoe comes
-        # apart - torn hems, a shoe reduced to a stump, fragments below the foot, on all
-        # three characters. It reached the player.
-        #
-        # Measured: with this whole block off (`--hard-foot 0`) the warp produces ZERO
-        # detached fragments on every cel; with it on, three to five.
-        #
-        # A ghost is by definition somewhere the foot is not, so the rule has no business
-        # within a shoe's reach of a destination ankle. Outside that it still fires.
-        for ankj in (10, 13):
-            t = np.asarray(dst_kps[ankj], np.float64)
-            near = ((VX - t[0]) ** 2 + (VY - t[1]) ** 2) <= (0.13 * figv) ** 2
-            smear &= ~near
-
-        fx = np.where(smear, -1e4, fx)
-        fy = np.where(smear, -1e4, fy)
-
+        # Rigidity is measured rather than assumed. A rigid transform preserves area, so the
+        # source shoe's own pixel count is the yardstick a later stage checks the warped shoe
+        # against: the correct value is 1.00 and any drift is deformation by definition.
+        globals()["LAST_SRC_SHOE_PX"] = int(anysh.sum())
+        cover = m.sum() / max(1, want.sum())
+        if cover < 0.90:
+            print(f"      foot: region claim {cover*100:.0f}% of what the field draws as "
+                  f"shoe", flush=True)
     # ===================================================================================
     # THE RIBCAGE IS ONE RIGID BODY
     # ===================================================================================
