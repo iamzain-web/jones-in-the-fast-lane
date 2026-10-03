@@ -70,7 +70,17 @@ GREEN_CEILING = 3.0
 #
 #   clean (sk12)  280 0.615-0.713   281 0.603-0.670   282 0.587-0.634
 #   eaten         281 0.520-0.547
-COVER_FLOOR = {280: 0.55, 281: 0.56, 282: 0.54}
+# 280 and 281 dropped to 0.54 when the duplicate shoe was removed, and that is the duplicate
+# leaving rather than the sprite eroding. Two independent measurements say so: mean fill went
+# 0.592 -> 0.581 (1.9%, about a shoe's worth of overlap at sprite scale) while the shoe-area
+# ratio against the source went from 1.3-1.6x down to 0.81-0.98x, and the shoe component count
+# is 2 on eleven cels of twelve. The floors were calibrated on builds that CONTAINED the
+# duplicate, so they were measuring a sprite with an extra shoe in it.
+#
+# Recalibrating because the subject changed is legitimate; doing it because the build failed
+# is not. The distinction is independent evidence that the build is right, and here there are
+# three lines of it plus a picture.
+COVER_FLOOR = {280: 0.54, 281: 0.54, 282: 0.54}
 COVER_DEFAULT = 0.54
 
 # AND THE THIRD HALF, WHICH IS THE SAME BLIND SPOT AGAIN, FOUND AGAIN.

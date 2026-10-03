@@ -1096,6 +1096,13 @@ def skin_field(src_kps, dst_kps, size, alpha=2.0, step=2, reach=0.26, fig=None,
         # Rigidity is measured rather than assumed. A rigid transform preserves area, so the
         # source shoe's own pixel count is the yardstick a later stage checks the warped shoe
         # against: the correct value is 1.00 and any drift is deformation by definition.
+        # The rigid region itself, so the caller can sample the ORIGINAL source inside it and
+        # the de-shoed source everywhere else. That split is what lets the general field be
+        # given a shoeless picture without the rigid layer losing its shoe too.
+        # Resized to the OUTPUT grid, because skin_field works on a decimated one (`step`)
+        # and the caller samples at full resolution. Nearest, because it is a mask.
+        globals()["LAST_FOOT_REGION"] = np.asarray(
+            Image.fromarray((m * 255).astype(np.uint8)).resize(size, Image.NEAREST)) > 127
         globals()["LAST_SRC_SHOE_PX"] = int(anysh.sum())
         # The DRAWN shoe: pixels inside the rigid region whose sample lands on the source
         # shoe. That is the warped shoe's own area, found through the region rather than by
@@ -1545,6 +1552,75 @@ def shoe_area_ratio(src_rgba, out_rgba, src_kps, fig, band=0.17, tol=52.0):
     a_out, _ = band_area(out_rgba, ref)
     return a_out / float(a_src)
 
+def deshoe(src_rgba, shoes, fig, src_kps_y=None, grow=3):
+    """The source with the shoes REMOVED and the trouser continued down over them.
+
+    The general skinning field cannot draw a second shoe out of pixels it was never given.
+    Every earlier attempt at the duplicate was downstream - a membership test, a smear rule,
+    a shape filter, a bounding box, an exemption - and all five let the field draw a shoe and
+    then argued about which copy to keep, using a colour mask that fails differently for a
+    black brogue, a brown loafer and a white trainer. This removes the question instead.
+
+    It is the body layer's own trick, one level down: the body does not draw the legs and
+    then erase them, its source has no legs in it. Here each layer's source keeps its leg and
+    loses its shoe, and the rigid foot layer supplies the only shoe in the frame.
+
+    The hole is filled by continuing the trouser downward - for every column the mask covers,
+    the colour a few pixels above the topmost shoe pixel is extended to the bottom. The field
+    then draws leg where the shoe was, and the rigid layer covers that area with the real
+    shoe. Alpha is untouched, so the silhouette does not change.
+
+    BIASED TO OVER-ERASE, deliberately, because the two failure modes are not symmetric.
+    Erasing a little trouser costs nothing - the rigid layer draws over that area anyway -
+    while leaving a sliver of shoe behind puts a second shoe back in the picture, which is
+    the whole defect. Hence `grow`, which dilates the mask before the fill.
+    """
+    # THE ERASE IS GEOMETRIC, NOT COLOUR-DERIVED, and that is the whole point of it.
+    #
+    # Using `shoes` - the colour mask - left white patches of trainer behind on every cel:
+    # laces, tongue and toe highlights that the mask never covered, which the field then
+    # drew as the second shoe we were trying to remove. That mask has now failed on a black
+    # brogue, a brown loafer and a white trainer, in three different ways.
+    #
+    # A shoe is BELOW THE ANKLE. That is true of every character without asking the picture
+    # anything, and erasing a little shin above it costs nothing because the rigid foot layer
+    # draws over that area anyway. This is the over-erase bias stated as geometry.
+    out = src_rgba.copy()
+    op0 = out[:, :, 3] > 100
+    yy = np.mgrid[0:out.shape[0], 0:out.shape[1]][0]
+    ank = min(float(src_kps_y[0]), float(src_kps_y[1])) if src_kps_y else None
+    if ank is None:
+        m = shoes[0] | shoes[1]
+    else:
+        m = op0 & (yy >= ank - 0.035 * (fig if fig else out.shape[0]))
+    if not m.any():
+        return src_rgba
+
+    rgb = out[:, :, :3]
+    op = out[:, :, 3] > 100
+    lift = max(2, int(round(0.010 * (fig if fig else src_rgba.shape[0]))))
+
+    # FILLED FROM A TROUSER REFERENCE, NOT FROM THE PIXEL ABOVE.
+    #
+    # Copying each column down from whatever sat above it looked obvious and was wrong: the
+    # shoe mask is colour-derived and misses pixels, so where it missed a bright patch of
+    # trainer the fill copied THAT down the column and painted a white streak the length of
+    # the shoe. The de-shoed source came out with the shoe half-erased and half-smeared, and
+    # the field drew exactly that.
+    #
+    # A median over the trouser band above the feet cannot do it: one missed pixel cannot
+    # move a median, and the colour is the right one by construction.
+    ys_m = np.nonzero(m.any(axis=1))[0]
+    top = int(ys_m[0])
+    band = np.zeros_like(m)
+    band[max(0, top - 6 * lift):max(1, top - lift)] = True
+    band &= op & ~m
+    if not band.any():
+        return src_rgba
+    rgb[m] = np.median(rgb[band], axis=0)
+    return out
+
+
 def warp_occluded(src_rgba, src_kps, dst_kps, size, fig, **kw):
     """One deformed frame with the near leg drawn OVER the far one.
 
@@ -1585,11 +1661,29 @@ def warp_occluded(src_rgba, src_kps, dst_kps, size, fig, **kw):
         out *= m[:, :, None]
         return out
 
-    body = pre.copy()
-    body *= (~(legs[0] | legs[1]))[:, :, None]
+    # THE FIELD IS GIVEN A SHOELESS PICTURE. Inside the rigid foot region the ORIGINAL is
+    # sampled, so the shoe is drawn exactly once, by the layer that carries it rigidly.
+    # Outside it the de-shoed source is sampled, so the smooth field has no shoe pixels to
+    # stretch into a second one. Nothing is deleted and nothing has to be classified.
+    shoes_src = shoe_mask(src_rgba[:, :, :3].astype(np.float64), src_rgba[:, :, 3],
+                          [src_kps[10], src_kps[13]], figv)
+    nos = deshoe(src_rgba, shoes_src, figv,
+                 src_kps_y=(float(src_kps[10][1]), float(src_kps[13][1])))
+    a_n = nos[:, :, 3:4] / 255.0
+    pre_n = np.dstack([nos[:, :, :3] * a_n, nos[:, :, 3:4]]).astype(np.float64)
+
+    def split(layer_full, layer_nos, fx, fy):
+        out = sample(layer_nos, fx, fy)
+        reg = globals().get("LAST_FOOT_REGION")
+        if reg is None:
+            return out
+        return np.where(reg[:, :, None], sample(layer_full, fx, fy), out)
+
+    keep = (~(legs[0] | legs[1]))[:, :, None]
+    body, body_n = pre.copy() * keep, pre_n.copy() * keep
     mx, my = skin_field(src_kps, dst_kps, size, fig=fig,
                         alpha_src=src_rgba[:, :, 3], rgb_src=src_rgba[:, :, :3], **kw)
-    acc = sample(body, mx, my)
+    acc = split(body, body_n, mx, my)
 
     for which in (1 - near, near):
         frozen = np.array(dst_kps, np.float64, copy=True)
@@ -1597,7 +1691,8 @@ def warp_occluded(src_rgba, src_kps, dst_kps, size, fig, **kw):
             frozen[j] = src_kps[j]
         lx, ly = skin_field(src_kps, frozen, size, fig=fig,
                             alpha_src=src_rgba[:, :, 3], rgb_src=src_rgba[:, :, :3], **kw)
-        acc = _over(acc, sample(masked(legs[which]), lx, ly))
+        mk = legs[which][:, :, None]
+        acc = _over(acc, split(pre * mk, pre_n * mk, lx, ly))
 
     al = np.clip(acc[:, :, 3:4], 0, 255)
     rgb = np.where(al > 1e-3, acc[:, :, :3] / np.maximum(al / 255.0, 1e-3), 0.0)
