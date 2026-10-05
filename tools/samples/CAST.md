@@ -108,6 +108,52 @@ one.**
 Put first because it is the one that keeps paying, on problems that have nothing to do with
 each other. Every section below has an instance.
 
+### A CHECK MUST FAIL WHEN IT MEASURED NOTHING
+
+The purest instance of the whole family, and it sat in the acceptance gate itself.
+
+`check_install` printed **"GATE PASSED. Safe to install."** over an **empty directory**. The
+loop walks the cels it finds and appends a failure for each bad one; find no files, append no
+failures, report success. Nothing to report read as nothing wrong.
+
+It was found by accident — a build step silently produced zero cels and the gate blessed the
+result — and it would have waved through *any* build where a step produced nothing, which is
+the exact failure this project has hit over and over: a `-Filter` that matched no files while
+`Copy-Item` reported success, a string replace that silently did not match, a sheet quietly
+halved, an MSB3027 swallowed while the test passed against the previous build.
+
+> **A pass has two preconditions, not one: that nothing was wrong, AND that something was
+> examined.** Any check that aggregates over a collection must assert the collection is not
+> empty. "No failures" and "no evidence" are the same value in almost every implementation
+> and opposite conclusions in every interpretation.
+
+`check` now counts what it measured and fails with "it measured nothing, which is not the
+same as finding nothing wrong" when that count is zero.
+
+### A RECORD THAT IS NOT TRACKED IS NOT A RECORD
+
+`tools/install_walk.py --override` ships a build the gate rejects, and writes down who
+decided and why. The log was first put in `tools/samples/` next to this file — and `git add`
+refused it, because `/tools/samples/*` is in `.gitignore`.
+
+> **An untracked record of a deliberate exception is indistinguishable from the exception
+> never having been decided.** The waiver is the entire value of an override; if it lives
+> only on one disk, with no history, then what shipped and what was knowingly accepted are
+> unrecoverable the moment that disk is cleaned.
+
+It lives at `tools/INSTALL_OVERRIDES.md`, which is tracked. **This file is not**, and it is
+the accumulated reasoning of the whole project in exactly one place.
+
+And the matching rule for the instrument itself:
+
+> **Override the decision, never the instrument.** There is a real case for shipping a build
+> the gate rejects — when the defect it catches is smaller than the defect the build fixes.
+> The wrong way to take it is to move the threshold until the build passes, because a ceiling
+> raised to admit one known defect silently admits every other instance of it. Raising
+> `FOOT_FRAG_MAX` for 282's sheared sole would also have stopped reporting the fragment on
+> 280, which nobody had decided to accept. That is how a gate dies: not switched off, but
+> tuned until it only ever agrees.
+
 **Five parameter sweeps on the shoe went nowhere; one picture of the mask answered it in
 minutes.** Three sweeps of the shirt's colour tolerances moved nothing; one picture painting
 each pixel by *which gate rejected it* showed that saturation was discarding 53% of the
@@ -307,6 +353,72 @@ source photograph's own plate, which is what "rigid" is defined against in the f
 **And it was not a wash.** With the correct reference, cel 1 passes at 1.03 — it had been
 failing a bad yardstick for three rounds, and two of those were spent chasing it.
 
+## 0c-bis. A CALIBRATION IS A PROPERTY OF THE SUBJECT, NOT A CONSTANT
+
+Same shape as 0c, from the other end: there the yardstick was drawn from the population,
+here it was drawn from a DIFFERENT population and reused after the subject changed.
+
+The board's missing middle has no colour words in its prompt - the house rule - so the
+init's colours are the only colour instruction there is, and the question was how much of
+an authored palette survives a generation. It was measured: init saturation 0.283 ->
+output 0.309, a transfer of **x1.09**. The model *added* chroma.
+
+The roofs were then varied - slate, lead and flat asphalt over about a quarter of the
+region, where one saturated maroon had been - and the next lift was computed with that
+same x1.09. **It missed by a mile, and in the wrong direction.** Re-measured on the new
+init the transfer is **x0.864**: with greys in it the model *removes* chroma.
+
+Nothing was wrong with the first measurement. It was correct for the frame it was taken
+on, and that frame no longer existed.
+
+**The rule: a measured transfer, ratio or correction factor is valid for the content it
+was measured on. Change the subject and it is stale. Re-measure it in the same pass that
+changes the subject, or the prediction will be confidently wrong.**
+
+And the corollary that saved the round: **when a prediction misses, scan the lever before
+turning it again.** Sweeping the saturation multiplier across 1.00-1.70 and reading off
+the predicted output showed the target was unreachable at *any* setting - 0.317 against a
+0.340 target at k=1.70 - which turned four more generations into one measurement and a
+decision. The scan could not make the last call: k=1.50 reached 81% of her ring and put
+the pantile at 0xEF500B, traffic cone rather than roof tile. **A scan narrows the choice;
+an eye makes it.**
+
+## 0c-ter. A CORRECTION FITTED ACROSS AN OVERLAP MUST FIT INSIDE THAT OVERLAP
+
+A region too big for the card is generated in tiles that overlap, and each tile is pulled
+back onto its neighbours by a correction estimated from a neighbourhood - a blur, a local
+mean, a rolling window, a fitted gradient. **Any such estimate is unreliable within its own
+radius of a boundary**, because that is where the data it needs stops existing and the
+implementation clamps.
+
+So if the correction's radius is wider than the overlap, **it is least accurate exactly at
+the join, which is the only place it existed to help.** The town centre's low-frequency
+match used sigma = min(tile)/8, about 100 px, against an overlap of 72. It changed the
+measured seams by nothing at all - 8.08/10.83/10.52 before, the same after - and read as a
+working correction because it printed a non-zero number per tile.
+
+Narrow the kernel to fit inside the overlap, or widen the overlap to contain the kernel.
+Both, here: sigma to 2 cel px and the overlap from 6 to 10, which halved the worst seam and
+cost 117k pixels on the largest tile against a hard 810k ceiling.
+
+**And the fix that actually closed it, which is upstream of all of the above:** tiles that
+overlap must denoise from the SAME randomness in the overlap. Sample one latent noise
+tensor for the whole image and give each tile an aligned crop of it, and neighbours solve
+the same problem from the same start - they agree where they meet without anything being
+blended, feathered or corrected. Two of three seams became indistinguishable from their
+neighbours and the third fell inside its own stripe's variation.
+
+A latent pixel is eight image pixels, so **every tile's origin AND size must be a multiple
+of 8** or the crop is not aligned and the field is not shared. Pad the canvas to a multiple
+of 8 and crop back at the end. In diffusers 0.31 the hook is `randn_tensor` in the
+pipeline's own module, called once by `prepare_latents`; match on the tensor's trailing
+dimensions and fall through to the original for everything else.
+
+**And the corollary, which is the one that cost the GPU time:** before fixing a seam, check
+whether it scales with the thing you think causes it. Halving the denoise strength moved
+these seams by a tenth, which said the texture was not the cause - and that one measurement
+would have been cheaper than the two full passes spent assuming it was.
+
 ## 0d. A term you believe is active may be a COMMENT. Twice in one day.
 
 **Grepping the file is not evidence that the model was asked. Decode the tokeniser's output
@@ -417,6 +529,40 @@ So the rule is about **what kind of thing** is being specified, not about the in
 winning. Colour, position, extent and body *frame* live in the init. **Semantic category** —
 stocky versus fat, patterned versus plain, the era — is something only the prompt can say,
 and when the prompt names the wrong category no init will argue it back.
+
+### And there is a THIRD place to stand, for a detail below the init's reach
+
+The wristwatch was finally beaten, and not by the prompt or the init.
+
+The state it was beaten from: 282's source had to be regenerated with the feet further apart
+(§0b-bis), and **every** regenerated stance — 0.107, 0.123 and 0.137 of figure height, all at
+the one pinned seed — put a black watch on the wrist. `watch` was verified in the decoded
+negative, present for the base pass *and* the hand-refinement pass, and drawn anyway. Three
+poses at one seed is not an unlucky draw: a man standing with his arms hanging straight down
+against a plain backdrop **is a stock product photograph**, and that prior brings a watch with
+it.
+
+The init could not argue. It already paints that wrist as **bare skin** — which is the
+strongest statement it can make, and the watch is drawn *on top of* it. `SHOE_INIT` wins a
+shoe because a shoe is a large uniform mass the init dictates; a 40-pixel dark band on a limb
+the init is already colouring correctly is below the scale at which the init says anything at
+all.
+
+**The refinement pass is the third lever, and it is the one that operates at that scale.** The
+watch sat inside the hand crop the refiner was already working on, and it survived — because
+at the default `--hand-strength 0.50` the refiner *preserves* what it is handed. Raising it to
+**0.72** removed the watch from both wrists and took both hands out of the pockets with it, in
+one run.
+
+> **A prompt names what the picture should contain; an init dictates masses it can resolve; a
+> refinement pass is the only one of the three that can argue about a detail smaller than the
+> init's own brush — and only if it is given enough strength to redraw rather than preserve.**
+> When a term is verified present and the defect is small, do not conclude the term is
+> hopeless: ask which stage is capable of seeing something that size.
+
+The price is the one §7e already named and accepted: at 0.72 the fingers come out soft and
+indistinct. **A hand with vague fingers and no watch beats a crisp hand wearing the thing the
+player explicitly excluded** — the defect that was named is the defect that matters.
 
 ### Extent, category and identity are three different things
 

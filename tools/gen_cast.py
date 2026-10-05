@@ -818,6 +818,30 @@ HAND_LEN = 0.105
 HAND_R = 0.042
 HAND_OUT = 0.0
 
+# THE REFINEMENT STRENGTH THAT BEATS A WRISTWATCH, per view.
+#
+# The default 0.50 makes the refiner PRESERVE what it is handed, and on 282's regenerated
+# source what it was handed was a hand wearing a black watch - verified inside the refiner's
+# own crop, with "watch" verified in the decoded negative for the base pass and for this pass.
+# Three different stances at the one pinned seed all drew it: a man with his arms hanging
+# straight down against a plain backdrop is a stock product photograph and the prior comes
+# with a watch.
+#
+# The init cannot win this one. It already paints that wrist as bare skin, which is the
+# strongest thing it can say, and the watch is drawn on top of it; SHOE_INIT wins a shoe
+# because a shoe is a large uniform mass the init dictates, and a 40 px band on a correctly
+# coloured limb is below the scale the init speaks at. The refinement pass is the only stage
+# that works at that scale - but only at a strength that REDRAWS rather than preserves.
+#
+# 0.72 removes the watch from both wrists and takes both hands out of the pockets with it.
+# The cost is soft, indistinct fingers, which is the trade §7e already weighed: at the cel's
+# own resolution the fingers are below resolution anyway, and a hand with vague fingers beats
+# a hand wearing the thing the player explicitly excluded.
+#
+# Per view rather than as the global default, because this is a statement about 282's source
+# and nothing has measured it on the others.
+HAND_STRENGTH_VIEWS = {282: 0.72}
+
 
 def shoe_for(view, loop=0):
     s = _median_of_cels(_measure_shoe_cel, view, loop, ("top", "halfw", "colour"))
@@ -1723,7 +1747,8 @@ def refine(img_pipe, torch, base, cel, who, device, args):
                          "slightly apart and clearly separated, four fingers and one "
                          "thumb, anatomically correct hand, detailed knuckles, sharp "
                          "focus, photorealistic",
-                         args.hand_strength, args.hand_res))
+                         HAND_STRENGTH_VIEWS.get(cel["view"], args.hand_strength),
+                         args.hand_res))
     if args.refine_feet:
         fy = max(k[10][1], k[13][1])
         fx = (k[10][0] + k[13][0]) / 2.0
