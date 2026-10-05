@@ -130,6 +130,27 @@ halved, an MSB3027 swallowed while the test passed against the previous build.
 `check` now counts what it measured and fails with "it measured nothing, which is not the
 same as finding nothing wrong" when that count is zero.
 
+**A third instance, found by going to look rather than by it breaking.** `gen_cast.gpu_busy`
+asks `nvidia-smi` which processes hold a CUDA context. It returned a pid when the card was
+busy and `None` otherwise — where *otherwise* silently covered **two different things**:
+"asked the driver, nobody is there" and "could not ask the driver at all". The caller tests
+`if other:`, so a missing, renamed, timed-out or erroring `nvidia-smi` read as **the card is
+free**, and let through exactly the double-booking the guard exists to prevent — the one whose
+own docstring records it costing several hours, a base frame going from 354s to 2014s, and a
+CUDA failure that looks like dead hardware and is not.
+
+> **"I asked and the answer was no" and "I could not ask" must not be the same return value.**
+> Any probe of the outside world — a driver, a process table, a network, a file system — has
+> three outcomes, and collapsing the last two into the falsy one makes the guard fail *open*
+> at exactly the moment its subject is in an unusual state.
+
+Now three outcomes: a pid, `None`, or `GPU_UNKNOWN`, with the unknown case warning loudly
+instead of proceeding quietly. And note the shape of the fix, because it is its own trap:
+**`GPU_UNKNOWN` is a non-empty string and therefore truthy**, so the caller must test for it
+*before* the truthiness test or it reads as "busy, pid unknown" and refuses every run on a
+machine without `nvidia-smi`. That is the same trap, one layer down, as a helper returning
+`@('REFUSED: …', $false)` — a non-empty array — and being read as success.
+
 ### A CHECK THAT AVOIDS THE SUSPECT REGION IS A RUBBER STAMP. VERIFY IT CAN FAIL.
 
 The sibling of the rule above, and the harder one to catch, because the check does measure

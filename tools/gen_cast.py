@@ -1932,17 +1932,32 @@ LOCK = os.path.join(os.environ.get("LOCALAPPDATA", os.path.expanduser("~")),
                     "jones-upscale-models", "gpu.pid")
 
 
+GPU_UNKNOWN = "unknown"
+
+
 def gpu_busy():
     """Any OTHER python process currently holding a CUDA context, per nvidia-smi.
 
     The pid-file lock alone cannot see another TOOL - see claim_gpu - so this asks the
-    driver instead, which is the only authority that knows what is actually on the card."""
+    driver instead, which is the only authority that knows what is actually on the card.
+
+    THREE OUTCOMES, NOT TWO: a pid (busy), None (asked, nobody there), or GPU_UNKNOWN
+    (could not ask). It used to return None for both of the last two, and the caller tests
+    `if other:` - so a missing, renamed, or slow nvidia-smi read as "the card is free" and
+    let through exactly the double-booking this guard exists to prevent. The docstring below
+    records that double-booking costing several hours; the guard would have been silent
+    through all of it.
+
+    A check must fail when it measured nothing, and "the driver did not answer" is measuring
+    nothing. Note that GPU_UNKNOWN is a non-empty string and therefore TRUTHY: the caller has
+    to test for it BEFORE the truthiness test, which is the same trap that made a capture
+    helper return `@('REFUSED: ...', $false)` and read as success."""
     try:
         out = subprocess.run(
             ["nvidia-smi", "--query-compute-apps=pid", "--format=csv,noheader"],
             capture_output=True, text=True, timeout=30).stdout
     except (OSError, subprocess.SubprocessError):
-        return None
+        return GPU_UNKNOWN
     mine = os.getpid()
     for line in out.splitlines():
         line = line.strip()
@@ -1984,8 +1999,14 @@ def claim_gpu(out):
     # guard that does not guard is worse than none, because it is why everybody stopped
     # watching. So the file is now at one fixed path shared by every tool, AND the driver is
     # asked directly, since nvidia-smi is the only authority on what is actually on the card.
+    # GPU_UNKNOWN IS TRUTHY, SO IT IS TESTED FIRST. Written the other way round this reads
+    # as "busy, pid unknown" and refuses every run on a machine without nvidia-smi.
     other = gpu_busy()
-    if other:
+    if other == GPU_UNKNOWN:
+        print("  WARNING: could not ask the driver what is on the card (nvidia-smi did not "
+              "answer). Proceeding UNVERIFIED - if another run is live, both will crawl.",
+              flush=True)
+    elif other:
         raise SystemExit(f"another python process (pid {other}) is holding the GPU; "
                          f"wait for it rather than crawling beside it")
     os.makedirs(os.path.dirname(LOCK), exist_ok=True)
