@@ -252,7 +252,26 @@
 
   <Panel>
   <Viewbox Stretch="Uniform" RenderOptions.BitmapInterpolationMode="None">
+    <!-- THE OUTER CANVAS — the world plus its margins. See RenderScale.MarginColumns.
+         It is the SAME SIZE as the world while that is 0, which is the default and is why
+         the shipped render is unchanged down to the pixel.
+
+         THE WORLD IS A CLIPPED CHILD OF IT, and that is the whole design rather than an
+         implementation detail. Nothing inside GameCanvas learns a new coordinate: every
+         Canvas.Left, every Place rectangle, every MarblePath point, every dialog origin and
+         every pointer conversion stays in the original's 320x200 space, and GameCanvas's own
+         ClipToBounds is what makes the margin structurally unreachable — a control that
+         strayed past column 319 is clipped, so it is neither drawn nor hit-testable out
+         there. Putting something in the margin can only be done deliberately, by adding it
+         to THIS canvas, which is one reviewable place. -->
+    <Canvas x:Name="OuterCanvas"
+            Width="{x:Static app:RenderScale.OuterCanvasWidth}"
+            Height="{x:Static app:RenderScale.CanvasHeight}"
+            Background="{x:Static app:RenderScale.MarginFill}" ClipToBounds="True">
+
     <Canvas x:Name="GameCanvas"
+            Canvas.Left="{x:Static app:RenderScale.WorldLeft}"
+            Canvas.Top="0"
             Width="{x:Static app:RenderScale.CanvasWidth}"
             Height="{x:Static app:RenderScale.CanvasHeight}"
             Background="Black" ClipToBounds="True"
@@ -625,6 +644,12 @@
       <Button Classes="bare" Canvas.Left="0" Canvas.Top="0" Width="1" Height="1"
               Command="{Binding EndTurnCommand}" IsVisible="False" />
 
+    </Canvas>
+
+    <!-- AND NOTHING ELSE IS IN THE OUTER CANVAS. The scenery, if it is ever commissioned,
+         goes HERE, behind the world's canvas and in front of nothing - decoration only. The
+         moment anything clickable is added at this level the separation between world and
+         view is gone, so this is the one place to watch. -->
     </Canvas>
   </Viewbox>
 

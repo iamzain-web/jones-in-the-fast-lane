@@ -149,6 +149,73 @@ public static class RenderScale
     public static double CanvasWidth => ScreenWidth * Factor;
     public static double CanvasHeight => ScreenHeight * Factor;
 
+    // ------------------------------------------------------------------
+    // THE WIDE BOARD — a FEASIBILITY PROBE, off by default, with no art behind it.
+    // ------------------------------------------------------------------
+
+    /// <summary>
+    /// Columns of decorative scenery either side of the world, or 0 — the default — for the
+    /// board exactly as it has always been.
+    ///
+    /// <para>
+    /// WHAT IT IS FOR. The world is 320x200, which is 1.6:1, and a modern handset in
+    /// landscape is about 2.2:1, so the playfield is pillarboxed on black. The proposal is to
+    /// let the PAINTED SCENERY continue past the world either side while the world itself —
+    /// every coordinate, every <c>Place</c> rectangle, every <c>MarblePath</c> point, every
+    /// dialog origin — stays exactly 320 wide and completely unaware of it.
+    /// </para>
+    ///
+    /// <para>
+    /// HOW MANY, measured rather than guessed: a canvas of <c>320 + 2M</c> by 200 has aspect
+    /// <c>(320+2M)/200</c>, so M = 100A − 160. That is <b>18</b> columns per side for 16:9,
+    /// <b>40</b> for 18:9, <b>57</b> for 19.5:9, <b>63</b> for 20:9 and <b>74</b> for 21:9.
+    /// Anything NARROWER than 1.6 — every tablet at 4:3 or 3:2, and every phone in portrait —
+    /// does not want columns at all; it letterboxes top and bottom, and widening makes that
+    /// worse rather than better. See <c>WideBoardTests</c>.
+    /// </para>
+    ///
+    /// <para>
+    /// NOTHING IS DRAWN OUT THERE YET. This exists so the mechanism can be tested before any
+    /// art is commissioned: set <c>JONES_WIDE_BOARD=63</c> and the canvas widens, the world
+    /// is centred in it, and the margin is filled with a flat marker colour so that it can be
+    /// seen and probed. It is not a feature and it is not a deviation until there is scenery
+    /// and a decision to ship it.
+    /// </para>
+    /// </summary>
+    public static int MarginColumns
+    {
+        get
+        {
+            var env = Environment.GetEnvironmentVariable("JONES_WIDE_BOARD");
+            return int.TryParse(env, NumberStyles.Integer, CultureInfo.InvariantCulture, out var e)
+                   && e > 0 && e <= 200
+                ? e
+                : 0;
+        }
+    }
+
+    /// <summary>
+    /// The OUTER canvas: the world plus its margins. Identical to <see cref="CanvasWidth"/>
+    /// while <see cref="MarginColumns"/> is 0, which is why the default render is unchanged
+    /// down to the pixel.
+    /// </summary>
+    public static double OuterCanvasWidth => (ScreenWidth + 2 * MarginColumns) * Factor;
+
+    /// <summary>
+    /// Where the world's own canvas sits inside the outer one. THE WORLD IS A CLIPPED CHILD,
+    /// which is the whole point of the arrangement: nothing inside it has to learn a new
+    /// coordinate, and anything that strayed outside 0..319 would be clipped away rather than
+    /// drawn into the margin — so the margin cannot become a place where things happen by
+    /// accident. It can only be used deliberately, by adding something to the OUTER canvas.
+    /// </summary>
+    public static double WorldLeft => MarginColumns * Factor;
+
+    /// <summary>
+    /// The margin's fill while the probe is on: a flat colour so the extra space can be seen
+    /// and pointed at. Black — i.e. invisible, i.e. today's bars — when it is off.
+    /// </summary>
+    public static string MarginFill => MarginColumns > 0 ? "#201838" : "#000000";
+
     /// <summary>
     /// How the art is sampled. At 4x the bitmap is already at screen resolution, so this
     /// only matters when the window is not an exact multiple — and there a smooth

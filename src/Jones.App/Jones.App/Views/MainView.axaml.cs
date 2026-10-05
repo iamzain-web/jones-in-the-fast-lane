@@ -248,6 +248,44 @@ public partial class MainView : UserControl
 
         if (pass == 0) return 0;   // nothing realised yet; the caller tries again
 
+        // THE MARGIN MUST BE DEAD. With the wide-board probe on, points out in the scenery
+        // are hit-tested through the OUTER canvas; nothing there may resolve to a game view
+        // model, because the world's canvas clips at column 319 and the margin holds no
+        // controls. This is the claim the whole separation rests on, so it is measured.
+        if (RenderScale.MarginColumns > 0)
+        {
+            var m = RenderScale.MarginColumns * RenderScale.Factor;
+            var outerW = RenderScale.OuterCanvasWidth;
+            var live = 0;
+            foreach (var p in new[]
+                     {
+                         new Point(2, RenderScale.CanvasHeight / 2),
+                         new Point(m / 2, 4),
+                         new Point(m - 2, RenderScale.CanvasHeight - 4),
+                         new Point(outerW - 2, RenderScale.CanvasHeight / 2),
+                         new Point(outerW - m / 2, 4),
+                     })
+            {
+                var hit = OuterCanvas.InputHitTest(p) as Avalonia.Visual;
+                while (hit is not null)
+                {
+                    if (hit.DataContext is ViewModels.SpriteVm or ViewModels.MenuLineVm
+                                        or ViewModels.HotspotVm or ViewModels.BalloonButtonVm)
+                    {
+                        live++;
+                        System.Console.WriteLine($"MARGIN LIVE at {p} -> {hit.GetType().Name}");
+                        break;
+                    }
+                    hit = Avalonia.VisualTree.VisualExtensions.GetVisualParent(hit);
+                }
+            }
+
+            System.Console.WriteLine(
+                $"MARGIN {RenderScale.MarginColumns} columns per side, outer canvas " +
+                $"{outerW}x{RenderScale.CanvasHeight}, world at {RenderScale.WorldLeft}; " +
+                $"{live} of 5 margin points reach a game control");
+        }
+
         foreach (var m in misses) System.Console.WriteLine(m);
         System.Console.WriteLine($"HITTEST {pass} hit, {fail} missed, {grown} controls grown");
         return pass;
