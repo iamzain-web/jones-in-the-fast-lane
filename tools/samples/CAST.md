@@ -3102,13 +3102,29 @@ A walker that turns into a different person when his clothes wear out is a bug, 
 caveat. The rule is **no trace of the old graphic anywhere a player can get to**, so this is
 the full audit rather than a spot check. Against the installed `cast0` set:
 
-| character | cels still falling back |
-|---|---|
-| body0 (280–283) | **4** — view 283, the undressed tier |
-| body1 (284–287) | **16** — all four views |
-| body2 (290–293) | **20** — all four views, plus view 293's 4 prop cels |
-| body3 (294–297) | **16** — *nothing has ever been generated for this character* |
-| view 500 | the character-select screen still shows the 1990 photographs |
+**COUNTED IN KEYS, WHICH IS A QUARTER OF WHAT THE PLAYER SEES.** The table below was written
+as four cels per view. Every walker view holds **sixteen** — four keys and twelve
+in-betweens, `_s1` to `_s3` — and `SciArt.SubCel` resolves the in-betweens down the same
+search path, so they fall back to the 1990 art exactly as the keys do. Re-counted against the
+directories on disk:
+
+| character | views in `cast0` | cels still falling back |
+|---|---|---|
+| body0 (280–283) | 280, 281, 282 | **16** — view 283, the undressed tier |
+| body1 (284–287) | none | **64** — all four views |
+| body2 (290–293) | none | **64** + view 293's 4 prop cels |
+| body3 (294–297) | none | **64** — *nothing has ever been generated for this character* |
+| view 500 | none | the character-select screen still shows the 1990 photographs |
+
+A smoothed 1990 figure is *harder* to spot, not easier: view 283 gets its 22fps in-betweens
+from Sierra's art and so reads as deliberate rather than missing.
+
+`assets/png12x-new` is the LEGACY CARTOON SET and is not a source for any of this. It does
+contain `view_283`–`view_287`, which makes it look like the gap is already filled; it is not.
+That art is a different art direction entirely — flat illustration, not photography — and its
+283 is additionally torn, with blocky holes through the torso, arms and legs. `png12x-cast`
+(no `0`) is a third stale set, 16 files. Neither is on any search path unless someone sets
+`JONES_ART_SET` to its name.
 
 **body3 was omitted from the generation run entirely.** The view list was chosen as "the
 three dressed tiers of three bodies" and nobody noticed it left out a whole playable
