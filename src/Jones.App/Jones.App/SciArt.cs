@@ -213,12 +213,65 @@ public static class SciArt
     /// </summary>
     private static string? Resolve(string file)
     {
-        foreach (var dir in RenderScale.ArtDirectories)
+        var dirs = RenderScale.ArtDirectories;
+        for (var i = 0; i < dirs.Length; i++)
         {
-            var path = System.IO.Path.Combine(dir, file);
-            if (System.IO.File.Exists(path)) return path;
+            var path = System.IO.Path.Combine(dirs[i], file);
+            if (!System.IO.File.Exists(path)) continue;
+
+            // i > 0 means the art set was asked first and did not have it, so this cel is
+            // SIERRA'S while the rest of the screen is not. See NoteFallback.
+            if (i > 0) NoteFallback(file);
+            return path;
         }
         return null;
+    }
+
+    // ------------------------------------------------------------------
+    // WHAT THE ART SET DOES NOT COVER
+    //
+    // A fallback that cannot be told apart from a hit is a defect generator. `Resolve` takes
+    // the first file that exists, so a cel the set is missing is drawn from the ported 1990
+    // art with no error, no log and nothing on screen - which is how view 283, the fourth
+    // walker body, stayed Sierra's for a week while 280, 281 and 282 were rebuilt.
+    //
+    // MOST FALL-THROUGHS ARE CORRECT AND DELIBERATE: `cast0` holds 69 files against the
+    // ported set's 1070, because a set need only contain what it replaces. So this cannot be
+    // a warning - it would cry wolf a thousand times. What it is instead is an INVENTORY:
+    // every distinct cel that came from the ported art while a set was in force, written
+    // once, so the question "what is this set not covering?" has an answer somebody can read.
+    // Reading that list is what would have found 283 - 280/281/282 at 16 cels each and 283
+    // absent entirely.
+    // ------------------------------------------------------------------
+
+    private static readonly HashSet<string> FellBack = [];
+    private static bool _fallbackHeaderWritten;
+
+    /// <summary>How many distinct cels have come from the ported art despite a set being in force.</summary>
+    public static int FallbackCount { get { lock (FellBack) { return FellBack.Count; } } }
+
+    private static void NoteFallback(string file)
+    {
+        lock (FellBack)
+        {
+            if (!FellBack.Add(file)) return;      // once per distinct cel, not once per draw
+
+            try
+            {
+                var log = System.IO.Path.Combine(System.IO.Path.GetTempPath(),
+                                                 "jones_art_fallback.log");
+                if (!_fallbackHeaderWritten)
+                {
+                    _fallbackHeaderWritten = true;
+                    System.IO.File.AppendAllText(log,
+                        $"{Environment.NewLine}--- {DateTime.Now:yyyy-MM-dd HH:mm:ss}  art set " +
+                        $"'{RenderScale.ArtSet}' at factor {RenderScale.Factor}: cels below came " +
+                        $"from the PORTED art because the set does not have them ---{Environment.NewLine}");
+                }
+                System.IO.File.AppendAllText(log, file + Environment.NewLine);
+            }
+            catch { /* an inventory must never be the thing that takes the game down */ }
+        }
     }
 
     private static Bitmap? LoadFile(string path)

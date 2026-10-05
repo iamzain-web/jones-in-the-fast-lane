@@ -120,16 +120,79 @@ public static class RenderScale
     }
 
     /// <summary>
-    /// The art set name from <c>JONES_ART_SET</c>, or null for the ported originals.
+    /// THE ART SET THE GAME IS ACTUALLY BUILT ON. <c>cast0</c> by default — the photoreal
+    /// cast, the rebuilt buildings, the filled town centre and every rename.
+    ///
+    /// <para>
+    /// IT USED TO DEFAULT TO NULL, which is Sierra's 1990 art, and NOTHING in the repository
+    /// set it: not a script, not a launch profile, not a config file. Every rebuilt asset was
+    /// visible only to someone who happened to type <c>$env:JONES_ART_SET = 'cast0'</c> in the
+    /// launching shell first. Start the game from Explorer, a shortcut, the IDE or a fresh
+    /// terminal and you got the 1990 game, with nothing anywhere saying why — while
+    /// `PARITY.md` described the renames as "on, no switch", which was true of the content and
+    /// false of the selector.
+    /// </para>
+    ///
+    /// <para>
+    /// <b><c>JONES_ART_SET=none</c> selects the ported originals</b> and is the A/B path, which
+    /// has to stay: comparing the rebuilt art against Sierra's is how any of it was judged.
+    /// The word is <c>none</c> rather than an empty string because Windows DELETES an
+    /// environment variable set to empty, so "" and "unset" cannot be told apart — and unset
+    /// now means the opposite. <c>original</c> and <c>sierra</c> are accepted as synonyms
+    /// because they are what someone will type.
+    /// </para>
     /// </summary>
-    private static string? ArtSet
+    public static string? ArtSet
     {
         get
         {
             var env = Environment.GetEnvironmentVariable("JONES_ART_SET");
-            return string.IsNullOrWhiteSpace(env) ? null : env.Trim();
+            if (string.IsNullOrWhiteSpace(env)) return DefaultArtSet;
+
+            var name = env.Trim();
+            return name.Equals("none", StringComparison.OrdinalIgnoreCase)
+                || name.Equals("original", StringComparison.OrdinalIgnoreCase)
+                || name.Equals("sierra", StringComparison.OrdinalIgnoreCase)
+                ? null
+                : name;
         }
     }
+
+    /// <summary>
+    /// The set a launch with no environment variable at all uses. This is the one line that
+    /// decides which game somebody sees.
+    /// </summary>
+    public const string DefaultArtSet = "cast0";
+
+    /// <summary>
+    /// Set by <see cref="Resolve"/> when a named art set could not be found at any scale, so
+    /// the window can SAY SO. Silence here is how view 283 stayed Sierra's for a week: the
+    /// resolver falls through to the ported art cel by cel, with no error, no log and nothing
+    /// on screen to distinguish "the set replaced this" from "the set does not have this".
+    /// </summary>
+    public static string? MissingArtSet { get; private set; }
+
+    /// <summary>
+    /// What to put after the window's title: nothing at all in the normal case, and an
+    /// unmissable complaint when the art is not what the launcher asked for.
+    /// </summary>
+    public static string TitleSuffix
+    {
+        get
+        {
+            _ = Factor;   // force Resolve, which is what sets MissingArtSet
+            if (MissingArtSet is { } missing)
+                return $"  —  ART SET '{missing}' NOT FOUND: showing Sierra's 1990 art";
+            return ArtSet is null ? "  —  Sierra's 1990 art (JONES_ART_SET=none)" : string.Empty;
+        }
+    }
+
+    /// <summary>
+    /// The desktop window's title. It is the only channel a WinExe has for telling somebody
+    /// that the art on screen is not the art they asked for, so it carries
+    /// <see cref="TitleSuffix"/> and is otherwise the plain name.
+    /// </summary>
+    public static string WindowTitle => "Jones.App" + TitleSuffix;
 
     /// <summary>
     /// The scale actually in force: <see cref="Wanted"/> if its art is on disk, else the
@@ -310,9 +373,20 @@ public static class RenderScale
                 return;
             }
 
-            System.Diagnostics.Debug.WriteLine(
-                $"JONES_ART_SET={ArtSet}: no assets/png{{N}}x-{ArtSet} found at any scale; " +
-                "drawing the ported art.");
+            // LOUD, because this is the case where the player is looking at a different game
+            // from the one they asked for. A Debug.WriteLine on its own was not: a WinExe has
+            // no console, the desktop head leaves StartupLog's delegates null, and the result
+            // was a silent substitution of Sierra's art for the whole build.
+            MissingArtSet = ArtSet;
+            var complaint =
+                $"ART SET '{ArtSet}' NOT FOUND: no assets/png{{N}}x-{ArtSet} at any scale. " +
+                "Drawing Sierra's 1990 art instead. Set JONES_ART_SET=none to ask for that " +
+                "deliberately, or generate the set.";
+            System.Diagnostics.Debug.WriteLine(complaint);
+            StartupLog.Say(complaint);
+            SciArt.Trace(complaint);
+            // And the window title says it too - see TitleSuffix. That is the only channel
+            // this head actually has.
         }
 
         foreach (var n in order)

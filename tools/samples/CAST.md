@@ -180,6 +180,34 @@ contact sheets in this project now re-read a tile back out of the finished sheet
 is pixel-identical to the crop that went in; `verify_capture_guards.ps1` plants a probe file
 and requires a non-zero exit before it will report a clean sweep.
 
+### A FALLBACK THAT CANNOT BE DISTINGUISHED FROM A HIT IS A DEFECT GENERATOR
+
+The same family as "a check must fail when it measured nothing", one step along: there the
+check found nothing and said nothing was wrong; here the resolver finds nothing and returns
+something plausible instead.
+
+`SciArt.Resolve` walks `[png12x-cast0, png12x]` and takes the first file that exists. A cel
+the art set does not have is therefore drawn from **Sierra's 1990 art**, with no error, no log
+and nothing on screen — and it looks exactly like a cel the set replaced. That is how **view
+283, the fourth walker body, stayed Sierra's for a week** while 280, 281 and 282 were rebuilt
+at 16 cels each: nobody plays without clothing, so nobody saw it, and nothing said it.
+
+Compounding it: `JONES_ART_SET` defaulted to null — the ported art — and **nothing in the
+repository set it**. The whole rebuilt game was one unset environment variable from invisible,
+and `PARITY.md` described the renames as "on, no switch", which was true of the content and
+false of the selector.
+
+> **A fallback must be able to say that it fired.** Where falling back is *normal* — `cast0`
+> holds 69 files against 1070, because a set need only contain what it replaces — the answer
+> is not a warning, which would cry wolf a thousand times; it is an **inventory**: write each
+> distinct fall-through once, so "what is this set not covering?" has an answer somebody can
+> read. Where falling back means the whole feature is missing — the set's directory absent
+> entirely — that must be **loud on a channel the user actually has**. A `Debug.WriteLine` is
+> not one: a WinExe has no console, and this project's `StartupLog` delegates are null on the
+> desktop head. The window title is.
+
+Both are now in place, and the inventory is the thing that finds the next 283.
+
 ### A FUNCTION THAT RETURNS A VALUE AND ALSO WRITES DIAGNOSTICS RETURNS BOTH
 
 A PowerShell language rule rather than a mistake, which is exactly why it survives review: the

@@ -8,7 +8,7 @@
         mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
         x:Class="Jones.App.Views.MainWindow"
         Icon="/Assets/avalonia-logo.ico"
-        Title="Jones.App"
+        Title="{x:Static app:RenderScale.WindowTitle}"
         Background="Black"
         WindowStartupLocation="CenterScreen"
         Width="{x:Static app:RenderScale.WindowWidth}"
