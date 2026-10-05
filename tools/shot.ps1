@@ -31,11 +31,17 @@ while ((Get-Date) -lt $deadline) {
 }
 if (-not $p) { 'no window appeared'; exit 1 }
 
-# The capture goes through the shared guard. This script used to call
+# The capture goes through the shared module, which RENDERS THE WINDOW rather than reading
+# the screen - `PrintWindow` with PW_RENDERFULLCONTENT. This script used to call
 # `SetForegroundWindow`, sleep four seconds and copy the screen rectangle on the ASSUMPTION
-# that the game was underneath it. On one run it was not, and a capture written that way
-# saved the user's WhatsApp window instead. `SafeCapture.ps1` verifies that the window is
-# owned by this process AND is genuinely in front, before and after the copy.
+# that the game was underneath it; on one run it was not, and a capture written that way
+# saved the user's WhatsApp window instead.
+#
+# The module's answer to that was an ownership check and a foreground check, and in October
+# 2026 a capture passed both and still came back containing another application - foreground
+# is not the same as unobscured. So the API changed: nothing here reads the screen any more,
+# the window no longer has to be in front, and THIS SCRIPT NO LONGER STEALS FOCUS. See the
+# header of SafeCapture.ps1 for all three findings.
 . "$PSScriptRoot\SafeCapture.ps1"
 
 if (-not (Save-SafeWindowCapture -Process $p -Out $Out -SettleMs 4000)) { exit 1 }
