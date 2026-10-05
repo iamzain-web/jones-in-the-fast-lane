@@ -3799,11 +3799,33 @@ public sealed partial class MainViewModel : ViewModelBase
     private const int WalkerCels = 4;
 
     /// <summary>
-    /// In-between frames generated per cel, including the cel itself â€” 4 gives about 22
+    /// In-between frames generated per cel, including the cel itself â€” 8 gives about 44
     /// distinct pictures a second out of a 5.5-per-second original. Must match the
     /// <c>SUBS</c> constant in <c>tools/smooth_walk.py</c>, which names the files.
+    ///
+    /// <para>
+    /// 8 IS THE CEILING THE REDRAW CAN SHOW, not a preference. A cel holds 183.33ms and
+    /// <see cref="SmoothFrameMs"/> is 16, so a sub-frame lasts 183.33/N ms and has to be at
+    /// least one redraw long or the renderer never draws it. At 8 that is 22.9ms and every
+    /// frame gets one or two redraws; at 12 it is 15.3ms, shorter than the redraw, and
+    /// frames would be dropped irregularly â€” which puts back bigger steps than the extra
+    /// frames removed. 11 would divide the cel into one SCI tick each if the timer ran at
+    /// 16.67ms rather than 16.
+    /// </para>
+    ///
+    /// <para>
+    /// AND RAISING THIS IS NOT WHAT FIXED THE JERKY WALK. Measured on view 280 at 12x, the
+    /// worst adjacent-frame change was 12.13 levels at 4 frames per cel, 11.89 at 8 and
+    /// 11.76 at 16 â€” quadrupling the frame count bought 3%, because every added frame
+    /// landed in the part of the cycle that was already smooth. The fault was in the
+    /// interpolator: <c>smooth_walk.tween</c> cut a distrusted pixel from cel A to cel B
+    /// with a step at the cel's midpoint, and a third to a half of this sprite is
+    /// distrusted, so most of the figure teleported once per cel and was not interpolated
+    /// at all. See <c>CROSS_FRAMES</c> in that file. More frames only started paying once
+    /// that cut became a ramp.
+    /// </para>
     /// </summary>
-    private const int WalkerSubFrames = 4;
+    private const int WalkerSubFrames = 8;
 
     private void Arrive()
     {

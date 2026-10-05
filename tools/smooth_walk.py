@@ -58,9 +58,10 @@ cel stand for several 4x frames, and the 4x size guard still applies literally b
 in-between frame is generated at the size of the pair it sits between.
 
     assets/png4x/view_282_l0_c1.png       the cel          (Upscale / restore_faces)
-    assets/png4x/view_282_l0_c1_s1.png    1/4 of the way to cel 2   <- this script
-    assets/png4x/view_282_l0_c1_s2.png    2/4
-    assets/png4x/view_282_l0_c1_s3.png    3/4
+    assets/png4x/view_282_l0_c1_s1.png    1/8 of the way to cel 2   <- this script
+    assets/png4x/view_282_l0_c1_s2.png    2/8
+    ...
+    assets/png4x/view_282_l0_c1_s7.png    7/8
 
 All four cels of every walker view are the same size (checked), so nothing on screen can
 move as a result: the sprite's position is `160 - width/2`, and the width is the same
@@ -107,9 +108,17 @@ MEASUREMENTS
 Printed per view, all in 0-255 levels:
 
     step_before   mean abs change between ADJACENT DISPLAYED FRAMES over the four cels
-                  of the loop - how big a jump the eye is asked to absorb.
-    step_after    the same over the SUBS x 4 frames actually displayed now. The point of
-                  the exercise: it should fall by roughly the factor SUBS.
+                  of the loop.
+    step_after    the same over the SUBS x 4 frames actually displayed now. It falls by
+                  roughly the factor SUBS - AND THAT IS NOT EVIDENCE OF ANYTHING. A mean
+                  over N differences round a closed loop falls as 1/N however the frames
+                  are distributed, including when three in four are copies of a cel. This
+                  column read 5.9 against 23.7 for a cycle a player called jerky.
+    worst_*       the LARGEST single adjacent-frame change. This is the number that
+                  answers "how big a jump is the eye asked to absorb", and until
+                  CROSS_FRAMES was found it was not being taken at all: worst_after was
+                  12.1 against a worst_before of 13.5, i.e. the in-between frames had
+                  removed 10% of the jump while the mean said 75%.
     boil          mean abs deviation from the per-pixel mean, over the whole loop, on
                   pixels the 1x SOURCE held still (within 2 levels) in all four. The source
                   says nothing happens there, so anything above about 1.0 is the tool
@@ -172,7 +181,7 @@ Usage:
     python smooth_walk.py --method dissolve    cross-fade instead of optical flow
     python smooth_walk.py --sharpen MODEL      also rewrite the cels (see above; default off)
     python smooth_walk.py --views 282,296      restrict to these views
-    python smooth_walk.py --subs 4             frames per cel including the cel itself
+    python smooth_walk.py --subs 8             frames per cel including the cel itself
     python smooth_walk.py --no-samples         skip the animated comparisons
 
 Dependencies and how to get them onto this machine: see the bottom of
@@ -198,7 +207,26 @@ MANIFEST = os.path.join(PNG4X, "smooth_walk.manifest.json")
 SCALE = 4
 
 # Frames per cel INCLUDING the cel itself. Must match MainViewModel.WalkerSubFrames.
-SUBS = 4
+#
+# 8 IS A CEILING SET BY THE REDRAW, NOT A TASTE. A cel holds 11 ticks = 183.33ms and
+# MainViewModel.SmoothFrameMs redraws every 16ms, so a sub-frame lasts 183.33/SUBS ms and
+# must be at least one redraw long or the renderer never draws it. At 8 that is 22.9ms -
+# every frame gets one or two redraws. At 12 it is 15.3ms, SHORTER than the redraw, so
+# frames would be dropped irregularly and the steps the dropping leaves behind are bigger
+# than the ones the extra frames removed. 11 would be exact - 183.33/11 is one SCI tick -
+# if the timer ran at 16.67ms rather than 16.
+#
+# AND RAISING IT WAS NOT WHAT FIXED THE JERKINESS. Measured on view 280 at 12x, worst
+# adjacent-frame change in 0-255 levels, with the crossover still a step (see CROSS_FRAMES):
+#
+#     SUBS   4      12.131        the mean step falls as 1/SUBS and the WORST one does not
+#     SUBS   6      11.968        move, because every added frame lands in the part of the
+#     SUBS   8      11.885        cycle that was already smooth. Quadrupling the frame
+#     SUBS  16      11.762        count bought 3%.
+#
+# The frames only start paying once the crossover below is continuous; then 4 -> 8 halves
+# the jump as well as the mean.
+SUBS = 8
 
 # The board walker: four character bodies, each with four clothing states, `+3` being the
 # undressed one. `MainViewModel.BuildBoard` picks base + (Wearing - 34), or base + 3.
@@ -251,6 +279,87 @@ STILL_TOL = 2
 # the set: at 0.02/0.08 the doubled foot is gone and nothing else visibly changed.
 OCCLUSION_LO = 0.02
 OCCLUSION_HI = 0.08
+
+# HOW LONG THE DISTRUSTED REGION TAKES TO CROSS FROM CEL A TO CEL B, IN DISPLAYED FRAMES.
+#
+# THIS IS WHAT MADE THE WALK LOOK JERKY, AND IT IS NOT THE FRAME COUNT.
+#
+# `tween` used to push a distrusted pixel to the nearer real cel with a STEP: literally
+# `0.0 if t < 0.5 else 1.0`. Measured over the sprite on views 280-282 at 12x, conf is
+# below 0.5 on 44-63% of it and below 0.1 on 28-47% - this is not an occluded foot, it is
+# between a third and a half of the figure. So a third of the man did not interpolate at
+# all. He held cel A for the first half of the cel, jumped, and held cel B for the second
+# half - once per cel, 5.46 times a second, which is EXACTLY the rate the in-between frames
+# exist to break up. The sixteen displayed frames were four pictures wearing twelve hats.
+#
+# It shows up as a single huge step in the middle of every cel. The adjacent-frame change
+# over view 282's sixteen frames, in 0-255 levels, was:
+#
+#     2.6  13.4   2.5   2.5 | 3.0  17.7   2.9   2.9 | 2.7  13.3   2.6   2.6 | ...
+#          ^^^^                   ^^^^                    ^^^^
+#
+# and the four-cel step it is meant to be dividing is 18-23. One transition in four carried
+# three quarters of the motion.
+#
+# So the crossover is a RAMP, CROSS_FRAMES displayed frames wide, instead of a step.
+#
+# WHY TWO FRAMES AND NOT MORE, which is the part that needed a picture rather than a table.
+# A symmetric ramp is 0.5 at t=0.5 whatever its width, and with an even SUBS there is
+# always a frame at t=0.5 - so the WORST ghosted frame is identical at every width, and
+# widening the ramp cannot improve it. All a wider ramp does is add more ghosted frames
+# either side. The soft-alpha measure reads +34.04% at width 0.25, 0.375, 0.5, 0.75 and
+# 1.00 alike, to four digits, because `max` over the frames cannot see how many there are.
+# Looking at the legs over magenta at native 12x is what separates them:
+#
+#     ramp 2 frames   one frame with a translucent second shoe, 23ms. Reads as motion
+#                     blur on the fastest-moving limb, which is what 22fps film does.
+#     ramp 4 frames   three such frames, 69ms of the 183ms cel.
+#     ramp 6 frames   five, and the second shoe is plainly a second shoe. This is §7d's
+#                     "four feet" coming back, and it is the defect OCCLUSION_LO/HI were
+#                     calibrated to prevent.
+#
+# AND THE RAMP IS OFFSET BY HALF A FRAME, WHICH THE ACCEPTANCE GATE DECIDED, NOT TASTE.
+#
+# Centred on t=0.5 with an even SUBS there is always a displayed frame at exactly the
+# 50/50 point, and in the distrusted region that frame's alpha is 128. check_install
+# thresholds its mask at alpha > 200, so a third of the figure is INVISIBLE TO THE GATE on
+# that one frame: it failed every `_s4` of all three views at both scales, as "EATEN: fills
+# 0.52 < 0.54" with 2-3 detached fragments. The gate is right. A frame on which a third of
+# the man is half transparent is a defective frame, whatever the intention was, and the
+# gate's threshold is not to be moved to admit it (tools/install_walk.py says why at
+# length).
+#
+# So the ramp is centred half a frame LATE. The two frames that straddle the crossover then
+# land on the ramp's 25% and 75% points instead of on 50/50, so the departing limb is at
+# alpha 215 on one and 40 on the next - above the gate's mask, then below it, which is what
+# a limb that has moved actually looks like. Nothing is ever drawn at half opacity.
+#
+# It costs smoothness and the cost is stated: the crossover is now 0.688 of the jump in one
+# step instead of 0.500. That is the gate's alpha threshold setting a FLOOR on how gently
+# this can be done - any gentler and some frame has to sit in the 0.22-0.78 band the mask
+# cannot see. Worth writing down as a property of the apparatus rather than rediscovering.
+#
+# AND THE OTHER LEVER WAS TRIED AND IS WRONG. Loosening the detector instead - so that less
+# of the sprite is distrusted and more of it plainly blends - does reduce the step, and it
+# shreds the feet: check_install's foot-band run count goes 3 -> 4 at 0.04/0.16 and 3 -> 5
+# at 0.08/0.30, against a gate limit of 4. The calibration in OCCLUSION_LO/HI is correct
+# and is not to be moved; the step function sitting behind it was the fault.
+CROSS_FRAMES = 2
+
+
+def crossover(t, subs):
+    """Where a DISTRUSTED pixel is between cel A (0) and cel B (1) at time `t`.
+
+    A ramp CROSS_FRAMES displayed frames wide, centred half a frame after the cel's
+    midpoint so that no displayed frame lands on the 50/50 point. See CROSS_FRAMES.
+
+    Exactly 0 at t=0 and exactly 1 at t=1 for any subs > 3, which is what keeps the
+    `endpoint` check at zero."""
+    if subs <= 0 or CROSS_FRAMES <= 0:
+        return 0.0 if t < 0.5 else 1.0
+    half = CROSS_FRAMES / (2.0 * subs)
+    mid = 0.5 + 0.5 / subs
+    return float(smoothstep(mid - half, mid + half, np.float32(t)))
 
 
 # ----------------------------------------------------------------------------------
@@ -367,10 +476,14 @@ def premul(rgba):
     return rgba[..., :3] * a, a[..., 0]
 
 
-def tween(fa, fb, t, method, cached_flow=None):
+def tween(fa, fb, t, method, cached_flow=None, subs=0):
     """
     One in-between frame, `t` of the way from cel A to cel B. fa/fb are float RGBA 0-1.
     Returns float RGBA 0-1, alpha soft (see ALPHA_FLOOR).
+
+    `subs` is the frame count the crossover ramp is scaled to - see `crossover` and
+    CROSS_FRAMES, which is where the reasoning is. 0 keeps the old step at t=0.5, and is
+    kept reachable so the comparison can be re-made rather than repeated blind.
     """
     ca, aa = premul(fa)
     cb, ab = premul(fb)
@@ -394,9 +507,15 @@ def tween(fa, fb, t, method, cached_flow=None):
         # So the weight is pushed towards the NEARER of the two real cels in proportion to
         # how badly the two warps disagree. One foot in the wrong place beats two feet, and
         # the error is confined to the frames either side of the midpoint.
+        #
+        # THAT LAST SENTENCE WAS THE BUG. "Pushed towards the nearer cel" was implemented
+        # as `0.0 if t < 0.5 else 1.0`, which is not a push, it is a CUT - and conf is
+        # below 0.1 on a third to a half of this sprite, so a third to a half of the man
+        # teleported once per cel instead of interpolating. `crossover` replaces the cut
+        # with a ramp; see CROSS_FRAMES. subs=0 restores the cut exactly.
         conf = 1.0 - smoothstep(OCCLUSION_LO, OCCLUSION_HI, np.abs(sa - sb).mean(axis=2))
         conf = gauss(conf, 1.5)
-        w = (conf * t + (1.0 - conf) * (0.0 if t < 0.5 else 1.0))[..., None]
+        w = (conf * t + (1.0 - conf) * crossover(t, subs))[..., None]
         m = sa * (1.0 - w) + sb * w
         c, al = m[..., :3], m[..., 3]
 
@@ -569,6 +688,17 @@ def sequence_stats(srcs, base4x, frames):
     frames   the SUBS*4 frames as displayed after it
     """
     def step(seq):
+        """(mean, worst) adjacent-frame change over the loop, in 0-255 levels.
+
+        THE WORST ONE IS THE MEASUREMENT THAT MATTERS AND IT WAS NOT BEING TAKEN. Only the
+        mean was returned, and the mean of N adjacent differences around a closed loop falls
+        as 1/N for ANY interpolator that puts the frames somewhere - including one that puts
+        three of every four on top of a cel it already drew. It fell from 23.7 to 5.9 while
+        three quarters of the motion sat in one transition per cel, and that is exactly what
+        the player was seeing. See CROSS_FRAMES.
+
+        A mean cannot see a spike. If the quantity you care about is "the biggest jump the
+        eye is asked to absorb", measure the biggest jump."""
         d = []
         for i in range(len(seq)):
             j = (i + 1) % len(seq)
@@ -576,7 +706,7 @@ def sequence_stats(srcs, base4x, frames):
             # Compare what is actually SEEN: premultiplied, so a pixel appearing or
             # vanishing counts as the change it is.
             d.append(np.abs(a[..., :3] * a[..., 3:4] - b[..., :3] * b[..., 3:4]).mean() * 255.0)
-        return float(np.mean(d))
+        return float(np.mean(d)), float(np.max(d))
 
     # Pixels the SOURCE holds still across the WHOLE loop, eroded so the 4x neighbourhood
     # of a moving 1x pixel does not count as still.
@@ -602,7 +732,9 @@ def sequence_stats(srcs, base4x, frames):
         # so a blank boil can be told from a measured zero.
         boil = float("nan")
 
-    return step(base4x), step(frames), boil, int(m.sum())
+    mb, wb = step(base4x)
+    ma, wa = step(frames)
+    return mb, ma, wb, wa, boil, int(m.sum())
 
 
 # ----------------------------------------------------------------------------------
@@ -644,9 +776,13 @@ def write_gifs(view, base4x, frames, out_dir, half_size=True):
     pack(base4x, 30, "WAS: 4 cels @ 25ms (~30 here)", "walk_%d_1_was_25ms.gif" % view)
     # 2. The cadence fixed from the script, with the original four cels and no new art.
     pack(base4x, 180, "NOW: 4 cels @ 183ms (ticksToDo 10)", "walk_%d_2_fixed_4cel.gif" % view)
-    # 3. Plus the in-between frames.
-    pack(frames, int(round(183.0 / SUBS / 10.0)) * 10,
-         "NOW + tweens: %d frames @ 46ms" % len(frames),
+    # 3. Plus the in-between frames. The delay is derived from the number of frames ACTUALLY
+    #    passed in rather than from the SUBS constant - a --subs on the command line used to
+    #    leave this animation playing at the constant's rate while showing the other count's
+    #    frames, so the one artefact meant to settle the question ran at the wrong speed.
+    per = 183.0 / (len(frames) / float(CELS))
+    pack(frames, max(10, int(round(per / 10.0)) * 10),
+         "NOW + tweens: %d frames @ %.0fms" % (len(frames), per),
          "walk_%d_3_smooth_%dframe.gif" % (view, len(frames)))
     return written
 
@@ -711,16 +847,21 @@ def process_view(view, method, subs, sharpen_model, dry_run):
                   for f, s in zip(base4x, srcs)]
 
     # --- the in-betweens, round the loop: 0->1, 1->2, 2->3 and 3->0 ------------------
+    #
+    # The occlusion crossover is measured in DISPLAYED FRAMES, not in `t`, so it scales with
+    # the frame count: the same two frames of animation whether there are four per cel or
+    # eight, and raising `subs` shortens the crossover in real time rather than widening it
+    # in pictures. See `crossover` and CROSS_FRAMES.
     frames, endpoint = [], []
     for c in range(CELS):
         a, b = base4x[c], base4x[(c + 1) % CELS]
         fl = flow_for(a, b) if method == "flow" else None
         frames.append(a)                       # sub 0 IS the cel, byte for byte
         for k in range(1, subs):
-            frames.append(tween(a, b, k / float(subs), method, fl))
+            frames.append(tween(a, b, k / float(subs), method, fl, subs))
         # The interpolator at t=0 and t=1 must reproduce the cels it sits between.
         for t, ref in ((0.0, a), (1.0, b)):
-            g = tween(a, b, t, method, fl)
+            g = tween(a, b, t, method, fl, subs)
             endpoint.append(np.abs(g[..., :3] * g[..., 3:4]
                                    - ref[..., :3] * ref[..., 3:4]).mean() * 255.0)
 
@@ -860,10 +1001,10 @@ def main():
         print("  !! It rewrites the cels themselves. Undo with tools/Upscale, then")
         print("  !! tools/restore_faces.py, then this script with no --sharpen.")
     print()
-    print("%-6s %6s  %11s %10s %7s %8s %9s   %s"
-          % ("view", "frames", "step_before", "step_after", "boil", "still_px",
-             "endpoint", "size"))
-    print("-" * 88)
+    print("%-6s %6s  %11s %10s %11s %10s %7s %8s %9s   %s"
+          % ("view", "frames", "step_before", "step_after", "worst_before", "worst_after",
+             "boil", "still_px", "endpoint", "size"))
+    print("-" * 112)
 
     t0 = time.time()
 
@@ -882,11 +1023,11 @@ def main():
         r = process_view(view, method, subs, sharpen_model, dry)
         if r is None:
             continue
-        base4x, frames, (sb, sa, boil, still, ep), written = r
+        base4x, frames, (sb, sa, wb, wa, boil, still, ep), written = r
         made += len(written)
         h, w = base4x[0].shape[:2]
-        print("%-6d %6d  %11.2f %10.2f %7.2f %8d %9.3f   %dx%d"
-              % (view, len(frames), sb, sa, boil, still, ep, w, h))
+        print("%-6d %6d  %11.2f %10.2f %11.2f %10.2f %7.2f %8d %9.3f   %dx%d"
+              % (view, len(frames), sb, sa, wb, wa, boil, still, ep, w, h))
         if boil == boil:
             worst_boil = max(worst_boil, boil)
         if not dry:
