@@ -29,6 +29,7 @@ Three things it does that a `copy` does not:
   python tools/install_walk.py --restore
 """
 import argparse
+import datetime
 import hashlib
 import os
 import shutil
@@ -75,8 +76,39 @@ def cels_for(d, views):
 def gate(src, views):
     sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
     import check_install
-    bad = check_install.check(src, sorted(views))
-    return not bad
+    return check_install.check(src, sorted(views))
+
+
+# NOT tools/samples/ - `/tools/samples/*` is in .gitignore, so a waiver written there is
+# untracked, and an untracked record of a deliberate exception is indistinguishable from
+# the exception never having been decided. The point of this file is that it survives.
+OVERRIDE_LOG = os.path.join(ROOT, "tools", "INSTALL_OVERRIDES.md")
+
+
+def record_override(reason, failures, srcs):
+    """Write the waiver down where it is tracked, not where it is gitignored.
+
+    `assets/` is not in git, so a note left beside the installed cels disappears the
+    moment anyone cleans up - and a record of a deliberate exception that cannot be found
+    later is indistinguishable from the exception never having been decided."""
+    lines = ["", "## %s" % datetime.datetime.now().strftime("%Y-%m-%d %H:%M"), "",
+             "**Reason:** %s" % reason.strip(), "",
+             "Sources: png4x `%s`, png12x `%s`" % (srcs[4], srcs[12]), "",
+             "Gate failures waived:", ""]
+    for scale, name, black, green, why in failures:
+        lines.append("- `png%dx/%s` - %s" % (scale, name, why))
+    lines.append("")
+    os.makedirs(os.path.dirname(OVERRIDE_LOG), exist_ok=True)
+    new = not os.path.exists(OVERRIDE_LOG)
+    with open(OVERRIDE_LOG, "a", encoding="utf-8") as f:
+        if new:
+            f.write("# Installs that shipped against the gate\n\n"
+                    "Every entry here is a build `check_install` rejected and a person "
+                    "installed anyway, with the reason they gave. The gate was not "
+                    "weakened for any of them - see the comment at the override in "
+                    "`tools/install_walk.py` for why that distinction is the whole point.\n")
+        f.write("\n".join(lines))
+    print("  override recorded in %s" % os.path.relpath(OVERRIDE_LOG, ROOT))
 
 
 def main():
@@ -88,6 +120,10 @@ def main():
     ap.add_argument("--no-gate", action="store_true",
                     help="skip the acceptance gate. There is no good reason to use this on "
                          "a build going in front of a player.")
+    ap.add_argument("--override", metavar="REASON",
+                    help="install even though the gate fails, recording REASON in "
+                         "tools/INSTALL_OVERRIDES.md. The gate still RUNS and still "
+                         "reports; only the decision is overridden.")
     a = ap.parse_args()
     views = {int(v) for v in a.views.split(",")}
 
@@ -112,12 +148,38 @@ def main():
                          "picks by factor.")
 
     # GATE BEFORE ANYTHING IS OVERWRITTEN.
+    #
+    # OVERRIDE THE DECISION, NEVER THE INSTRUMENT.
+    #
+    # There is a real case for shipping a build the gate rejects: when the defect it
+    # catches is smaller than the defect the build fixes. 282 shipped that way once - a
+    # sheared sole on the raised foot, traded for a whole second shoe on the same leg,
+    # which is what the player actually complained about.
+    #
+    # The wrong way to do that is to move a threshold until the build passes. A ceiling
+    # raised to admit a known defect stops catching it everywhere else too: FOOT_FRAG_MAX
+    # loosened for 282's sheared sole would also have stopped reporting the fragment on
+    # 280, which nobody had decided to accept. That is how a gate dies - not by being
+    # switched off, but by being quietly tuned until it only ever agrees.
+    #
+    # So --override does not touch check_install. The gate runs in full, prints every
+    # failing cel and its reason, and the override is written down with WHO decided and
+    # WHY, next to the thing it waived.
+    failures = []
     if not a.no_gate:
         for scale in SCALES:
             print("gate png%dx:" % scale)
-            if not gate(srcs[scale], views):
-                print("\nGATE FAILED - nothing was written, nothing was backed up.")
-                return 1
+            bad = gate(srcs[scale], views)
+            failures.extend((scale,) + tuple(b) for b in bad)
+        if failures and not a.override:
+            print("\nGATE FAILED - nothing was written, nothing was backed up.")
+            print("If this build is meant to ship anyway, say why: --override \"<reason>\"")
+            return 1
+        if failures:
+            print("\nGATE FAILED on %d cel(s) and is being OVERRIDDEN." % len(failures))
+            record_override(a.override, failures, srcs)
+        elif a.override:
+            print("\n--override given but the gate passed; nothing to override.")
 
     # BACK UP THE SET ABOUT TO BE REPLACED.
     for scale in SCALES:

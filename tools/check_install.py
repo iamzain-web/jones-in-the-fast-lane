@@ -256,7 +256,9 @@ def check(directory, views):
             if runs > FOOT_RUNS_MAX:
                 why.append("FEET SHREDDED: %d runs on a foot row" % runs)
             if why:
-                bad.append((os.path.basename(p), black, green))
+                # The REASON travels with the failure, so an install override can record
+                # what it is overriding rather than just that something failed.
+                bad.append((os.path.basename(p), black, green, ", ".join(why)))
             print("  %-26s %8.1f%% %7.1f%% %7s %5d %5d  %s"
                   % (os.path.basename(p)[:26], black, green,
                      "-" if fill is None else "%.3f" % fill, frags, runs,
