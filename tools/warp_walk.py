@@ -1592,7 +1592,20 @@ def deshoe(src_rgba, shoes, fig, src_kps_y=None, grow=3):
     if ank is None:
         m = shoes[0] | shoes[1]
     else:
-        m = op0 & (yy >= ank - 0.035 * (fig if fig else out.shape[0]))
+        # 0.022, which must stay BELOW the region's own reach of SHOE_TOP = 0.030.
+        #
+        # At 0.035 the erase went higher up the leg than the rigid region comes, so a thin
+        # band was removed from the source and covered by nothing - a magenta line straight
+        # across the ankle on most cels. Now that the erase makes pixels transparent rather
+        # than recolouring them, anything erased above the region's top edge is simply a hole.
+        # The two numbers are a pair and have to be read together.
+        m = op0 & (yy >= ank - 0.022 * (fig if fig else out.shape[0]))
+
+        # Bounding the erase sideways to the region's own width was tried and is NOT here,
+        # because it changed nothing: identical ratios on all twelve cels and the same three
+        # tween frames failing. The remaining fragments are not an erase-versus-region
+        # mismatch - the keys are clean and only smooth_walk's in-betweens carry them, so
+        # they come from the flow interpolating between two correct key positions.
     if not m.any():
         return src_rgba
 
@@ -1618,6 +1631,24 @@ def deshoe(src_rgba, shoes, fig, src_kps_y=None, grow=3):
     if not band.any():
         return src_rgba
     rgb[m] = np.median(rgb[band], axis=0)
+
+    # AND THE ERASED AREA IS MADE TRANSPARENT, NOT JUST RECOLOURED.
+    #
+    # Filling it with trouser removed the second SHOE and replaced it with a second shoe-
+    # SHAPED patch of denim, because the general field goes on warping that region to
+    # wherever the smooth deformation sends it. Drawn over the cel, the region boxes sit
+    # correctly on both real shoes and the denim blob sits OUTSIDE them both - it is the fill
+    # arriving where the field would have put the shoe, which on view 282's raised foot is
+    # 100 px from where the rigid layer correctly draws it. On 280 and 281 the two places
+    # nearly coincide, which is why only 282 showed a stump.
+    #
+    # The ratio said 0.93 and the picture said stump: area right, placement wrong. A number
+    # that is in range while the thing is in the wrong place is the failure mode this gate
+    # cannot see, and it was caught by cropping the feet and looking - twice.
+    #
+    # So the field is given nothing there at all. The rigid layer is the only thing that
+    # draws a foot, which is what "the field never receives shoe pixels" should have meant.
+    out[:, :, 3][m] = 0
     return out
 
 
