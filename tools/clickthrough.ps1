@@ -1,12 +1,56 @@
-# Drives the running app through the new-game flow and screenshots each screen, so the
-# ported sequence can be checked against the original without manual clicking.
+# DISABLED. THIS SCRIPT DRIVES SYNTHETIC MOUSE INPUT AND NO AGENT MAY RUN IT.
+# ==========================================================================
 #
-# Coordinates are given in the game's own 320x200 space and converted to screen pixels
-# using the Viewbox scale, which is what keeps this stable across window sizes.
+# It moves the real cursor with `SetCursorPos` and presses the real left button with
+# `mouse_event`, on the machine Zain is sitting at. Every brief written for this project
+# carries the same constraint - **no synthetic mouse or keyboard input** - and a script whose
+# entire purpose is to violate it is a loaded gun on the table. It refuses to run unless a
+# HUMAN passes -IAmAHumanAtThisKeyboard, which no agent may pass on anyone's behalf.
+#
+# IT IS NOT DELETED, deliberately. The refusal is more informative than an absent file: it
+# tells the next person what this was for, why it stopped, and what to use instead. The
+# coordinate maths below is also the only worked example in the repository of converting the
+# game's 320x200 space to screen pixels through the Viewbox, which is worth keeping.
+#
+# IT IS ALSO THE LAST THING IN THE REPOSITORY THAT MOVES THE USER'S FOCUS. `SafeCapture.ps1`
+# stopped calling `SetForegroundWindow` when it moved to `PrintWindow` - captures now render
+# the window without bringing it forward - so the `SetForegroundWindow` on line 40 below is
+# the only remaining call that takes the screen away from whoever is using it. That is here
+# to deliver clicks, not to capture, and it goes when this script does.
+#
+# WHAT TO USE INSTEAD. To see a screen without driving the game: `JONES_DEBUG_LOCATION=<id>`
+# opens a building's interior and `JONES_DEBUG_BOARD=1` the town board, both at startup with
+# no input at all, and `tools/shot.ps1` captures. To check that a control responds where it is
+# drawn: `JONES_DEBUG_HITTEST=1` asks the visual tree directly, again with no mouse.
 param(
     [string]$OutDir = 'C:\AI-Accelerator\jones\assets',
-    [int]$WaitSeconds = 120
+    [int]$WaitSeconds = 120,
+
+    # The only way past the refusal. A human types this; an agent does not.
+    [switch]$IAmAHumanAtThisKeyboard
 )
+
+if (-not $IAmAHumanAtThisKeyboard) {
+    Write-Host ''
+    Write-Host 'REFUSED: clickthrough.ps1 drives SYNTHETIC MOUSE INPUT.' -ForegroundColor Red
+    Write-Host ''
+    Write-Host '  It calls SetCursorPos and mouse_event, so it takes over the real pointer on'
+    Write-Host '  the machine someone is sitting at. No agent on this project may run it:'
+    Write-Host '  "no synthetic mouse or keyboard input" is in every brief, because Zain is at'
+    Write-Host '  the keyboard.'
+    Write-Host ''
+    Write-Host '  To see a screen without driving the game:'
+    Write-Host '    JONES_DEBUG_LOCATION=<LocationId>  opens a building interior at startup'
+    Write-Host '    JONES_DEBUG_BOARD=1                opens the town board at startup'
+    Write-Host '    tools\shot.ps1                     captures, without stealing focus'
+    Write-Host '    JONES_DEBUG_HITTEST=1              checks controls respond where they draw'
+    Write-Host ''
+    Write-Host '  A human who genuinely wants this may re-run with -IAmAHumanAtThisKeyboard.'
+    Write-Host ''
+    exit 2
+}
+
+Write-Host 'clickthrough.ps1: taking the pointer. Do not touch the mouse until it finishes.' -ForegroundColor Yellow
 
 Add-Type -AssemblyName System.Drawing
 Add-Type -TypeDefinition @"
@@ -64,16 +108,19 @@ function Click([int]$gx, [int]$gy) {
     Start-Sleep -Milliseconds 700
 }
 
-# The capture goes through the shared guard, which verifies the window is OWNED by this
-# process and is genuinely in front, before and after the pixel copy. This function used to
-# copy the screen rectangle unconditionally; a capture written that way once saved the
-# user's WhatsApp window instead of the game. See tools/SafeCapture.ps1.
+# The capture goes through the shared module, which RENDERS the window with PrintWindow and
+# never reads the screen. It used to copy the screen rectangle; a capture written that way
+# once saved the user's WhatsApp window instead of the game, and the ownership-plus-foreground
+# guard added in response later failed too, because foreground is not the same as unobscured.
+# See the header of tools/SafeCapture.ps1 for all three findings.
 . "$PSScriptRoot\SafeCapture.ps1"
 
 function Shot([string]$name) {
     $path = Join-Path $OutDir "flow_$name.png"
+    # The boolean is now trustworthy: the module's diagnostics go to the host rather than
+    # into its own return value, which is what used to make every refusal read as success.
     if (Save-SafeWindowCapture -Process $p -Out $path -SettleMs 300) { "  shot -> $path" }
-    else { "  shot REFUSED for $name - the game was not the window on screen" }
+    else { "  shot REFUSED for $name - see the guard message above" }
 }
 
 Shot '1_menu'

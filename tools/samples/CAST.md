@@ -130,6 +130,66 @@ halved, an MSB3027 swallowed while the test passed against the previous build.
 `check` now counts what it measured and fails with "it measured nothing, which is not the
 same as finding nothing wrong" when that count is zero.
 
+### A CHECK THAT AVOIDS THE SUSPECT REGION IS A RUBBER STAMP. VERIFY IT CAN FAIL.
+
+The sibling of the rule above, and the harder one to catch, because the check does measure
+something — just never the thing it was written for. **Three instances now, in three
+different tools, by three different authors**, which makes it a pattern rather than three
+accidents:
+
+- **The band check whose crops were cut on the seams.** The defect lives at the join; the
+  sampler took its windows from the middle of each band and reported clean.
+- **The contact sheet that was quietly halved.** A sheet assembled from resized tiles cannot
+  show a one-pixel fault, and a round was lost to judging art off it.
+- **A capture-guard self-test that passed `-Quiet`.** The guard leaked its diagnostic into
+  its own return value and so returned `$true` on every failure (see below). The self-test
+  written to catch exactly that passed `-Quiet`, which suppresses the diagnostic — the one
+  code path that leaks — and duly passed against a module that had been **deliberately
+  broken to make it fail**.
+
+> **When you build a check, the first thing to verify is that it CAN fail, on the exact input
+> it was written for.** Not on some input: on the one the check exists to reject. Break the
+> thing on purpose, watch the check go red, put it back. A check that has never been seen to
+> fail is a claim about the apparatus, and the three above all passed for as long as nobody
+> asked them the question they were built to answer.
+
+The corollary is about where you sample: **take the window from the place the fault would be**
+— the seam, the edge, the margin, the error path — not from the comfortable middle. The
+contact sheets in this project now re-read a tile back out of the finished sheet and assert it
+is pixel-identical to the crop that went in; `verify_capture_guards.ps1` plants a probe file
+and requires a non-zero exit before it will report a clean sweep.
+
+### A FUNCTION THAT RETURNS A VALUE AND ALSO WRITES DIAGNOSTICS RETURNS BOTH
+
+A PowerShell language rule rather than a mistake, which is exactly why it survives review: the
+code reads correctly and behaves backwards.
+
+`tools/SafeCapture.ps1` was written in response to a privacy incident — a screenshot that
+captured the user's WhatsApp window. Its guard read:
+
+```powershell
+function _no($msg) { Write-Output "  capture guard: $msg"; return $false }
+...
+if (-not [SafeCaptureNative]::IsWindow($Handle)) { return (_no 'the handle is not a window') }
+```
+
+A function returns **everything it writes to the pipeline**, so `_no` returned the two-element
+array `@('  capture guard: …', $false)` — and a non-empty array is `$true`. Every call of the
+form `if (-not (Test-CaptureTarget …))` was therefore **false whenever the guard had something
+to say, which is to say whenever it failed.** Ownership, minimised, and the re-check after the
+copy were all inert. `Save-SafeWindowCapture` returned `@('REFUSED: …', $false)`, so
+`if (-not (Save-SafeWindowCapture …)) { exit 1 }` could never exit 1 either.
+
+> **The failure direction is the dangerous one: it returned SUCCESS exactly when it had a
+> complaint.** A module written after an incident, that reads as careful, that was not wired
+> up at all. Diagnostics from a function that returns a value must go to the host —
+> `Write-Host`, `Write-Verbose`, `Write-Warning` — never `Write-Output`, and never a bare
+> expression statement.
+
+It cannot be ruled out that this contributed to the original incident: if the ownership check
+had fired that day, it would have been ignored. `verify_capture_guards.ps1` now self-tests that
+a failing guard returns a plain `$false`.
+
 ### A KNOB THAT CANNOT BE TURNED ANSWERS EVERY QUESTION WITH THE SAME PICTURE
 
 A per-view override was added so a rebuild of 282 would not silently lose a setting:
