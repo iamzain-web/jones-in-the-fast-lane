@@ -373,6 +373,22 @@ GUARDS = ("deformed hands", "extra fingers", "missing fingers", "fused fingers",
 #
 # Written down here, next to the pin, because the pin is where someone will come looking in a
 # week and re-apply a requirement its owner has dropped.
+#
+# `hands in pockets` IS ALSO WITHDRAWN FOR 282, AND BY WHOEVER ADDED IT RATHER THAN BY ME.
+#
+# It was not the player's pin. It was added after he said the figure read as standing still
+# with identical arms - and that complaint was about BOTH hands buried and no arm motion at
+# all. The build now installed keeps one arm free and properly formed and tucks only the
+# other, so the thing the pin existed to prevent does not come back.
+#
+# THE REASON A PIN WAS ADDED MATTERS MORE THAN THE PIN. Read as a bare rule, "hands in
+# pockets" forbids the only build on this character with no malformed hand in it; read as the
+# complaint it came from, it is already satisfied. Both of this outfit's pins have now
+# outlived their reasons within a day of being written, which is the argument for recording
+# the reason beside every one of them rather than the rule alone.
+#
+# Like `watch`, the term stays in the negative - it reaches the model and nothing asked for it
+# to be removed - but it is not a constraint to satisfy for this view.
 PINNED = {
     ("body0", "cheap"): ("watch", "hands in pockets", "v neck"),
 }
@@ -858,7 +874,22 @@ HAND_OUT = 0.0
 # Per view rather than as the global default, because this is a statement about 282's source
 # and nothing has measured it on the others.
 HAND_STRENGTH_DEFAULT = 0.50
-HAND_STRENGTH_VIEWS = {282: 0.72}
+# EMPTY ON PURPOSE, AND 282 IS WHY IT IS EMPTY.
+#
+# It held {282: 0.72} for one afternoon, to beat a wristwatch. 0.72 does beat the watch and
+# takes both hands out of the pockets - and it also produces a splayed, spindly right hand,
+# because the base generation puts that hand INSIDE the pocket and leaves 324 px of skin below
+# the wrist against the other hand's 1256. At that strength the refiner does not move a hand,
+# it invents one from a quarter of the evidence: 324 px in, 326 px out, reshaped into fingers.
+#
+# The player saw it immediately - "why do the hands look like that? real hands don't look like
+# that" - and then settled the requirement to one sentence: the hand must look like an actual
+# hand. At the default 0.50 nothing is malformed: one hand is properly formed and resting on
+# the pocket, the other is simply tucked in it, and a hidden hand cannot look like a bad hand.
+#
+# So 282 is back on the default and THIS IS WHAT IS INSTALLED. The entry is left here, empty,
+# because the next person to reach for a per-view strength should see that it was tried.
+HAND_STRENGTH_VIEWS = {}
 
 
 def hand_strengths(args, view):

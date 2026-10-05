@@ -574,6 +574,18 @@ actually been asked for, and the first on which its failure means anything.
 > binding rather than a preference. A pin recorded in a file outlives the reason it was set;
 > check who still wants it before paying for it again.
 
+> **AND `hands in pockets` IS WITHDRAWN FOR 282 TOO, WHICH IS THE SHARPER CASE** — because it
+> was never the player's pin. It was added after he said the figure read as standing still
+> with identical arms, and *that* complaint was about **both** hands buried and no arm motion
+> at all. The installed build keeps one arm free and properly formed and tucks only the other,
+> so the thing the pin existed to prevent does not come back.
+>
+> **The reason a pin was added matters more than the pin.** Read as a bare rule, "hands in
+> pockets" forbids the only build on this character with no malformed hand in it. Read as the
+> complaint it came from, it is already satisfied. Both of this outfit's pins outlived their
+> reasons inside a day — which is the whole argument for writing the reason beside every rule
+> rather than the rule alone. A rule without its reason cannot be retired, only obeyed.
+
 The hands row is worth stating plainly, because it is not a model whim: the init paints the
 forearm as a skin capsule from elbow **to the wrist keypoint and no further**, and at mid-swing
 the wrist sits against the hip. So the init draws skin that stops dead at the trouser column —
