@@ -130,6 +130,29 @@ halved, an MSB3027 swallowed while the test passed against the previous build.
 `check` now counts what it measured and fails with "it measured nothing, which is not the
 same as finding nothing wrong" when that count is zero.
 
+### A KNOB THAT CANNOT BE TURNED ANSWERS EVERY QUESTION WITH THE SAME PICTURE
+
+A per-view override was added so a rebuild of 282 would not silently lose a setting:
+`HAND_STRENGTH_VIEWS.get(cel["view"], args.hand_strength)`. It reads as a sensible default.
+It is not: for view 282 the dict **always** wins, including over an explicit
+`--hand-strength` on the command line.
+
+The next thing done with that knob was a sweep — 0.56, 0.62, 0.68 — to find a setting between
+two known-bad ones. All three returned **byte-identical images**, because all three were
+rendered at 0.72. Had the three outputs merely *looked* similar rather than hashing the same,
+the conclusion would have been "the strength does not matter in this range", which is false,
+and it would have been supported by three pictures.
+
+> **A parameter with a concrete default cannot be distinguished from one that was never
+> passed**, so any per-target override written on top of it must win, and then it wins over
+> the explicit value too. Default the flag to `None` and resolve explicitly: flag, then
+> per-target, then default. And when a sweep returns results that are *too* consistent, hash
+> the outputs before believing them.
+
+Caught only because the derived numbers were identical to two decimal places across three
+runs — which is the same instinct as §0a's: a measurement that is suspiciously clean is a
+claim about the apparatus, not the subject.
+
 ### A RECORD THAT IS NOT TRACKED IS NOT A RECORD
 
 `tools/install_walk.py --override` ships a build the gate rejects, and writes down who
@@ -509,6 +532,15 @@ actually been asked for, and the first on which its failure means anything.
 | Shoe colour | what the object is | `SHOE_INIT`, an init override |
 | Hands in pockets | where the limb ENDS | the init's forearm capsule stops at the wrist |
 | Wristwatch | a small detail on skin | the only one the prompt can plausibly own |
+
+> **THE WATCH REQUIREMENT HAS SINCE BEEN WITHDRAWN BY THE PERSON WHO SET IT.** After seeing
+> the build that removed it, Zain said: *"I don't care about the watch, The hand just needs to
+> look like an actual hand!"* The term stays in the negative — it is reaching the model and
+> removing it is a change nobody asked for — but it is **not a constraint to satisfy any
+> more**, and in particular it is not a reason to raise the hand refinement strength. The
+> withdrawal was given *after* seeing what beating the watch cost, which is what makes it
+> binding rather than a preference. A pin recorded in a file outlives the reason it was set;
+> check who still wants it before paying for it again.
 
 The hands row is worth stating plainly, because it is not a model whim: the init paints the
 forearm as a skin capsule from elbow **to the wrist keypoint and no further**, and at mid-swing

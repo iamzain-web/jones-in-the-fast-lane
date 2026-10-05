@@ -356,6 +356,23 @@ GUARDS = ("deformed hands", "extra fingers", "missing fingers", "fused fingers",
 # grepping the file. Neither was reaching the model.
 #
 # So: the word, decoded, out of the tokeniser, or it is not pinned.
+#
+# `watch` IS STILL PINNED, AND THE PLAYER HAS WITHDRAWN THE REQUIREMENT BEHIND IT.
+#
+# It stays in the negative because removing a term that is reaching the model is a change
+# with its own risk and nothing asked for it. But it must not be treated as a constraint to
+# satisfy any more. Zain pinned it originally, then saw the build that removed it and said:
+#
+#     "I don't care about the watch, The hand just needs to look like an actual hand!"
+#
+# That is an explicit withdrawal, and it was given AFTER seeing what beating the watch cost -
+# the refiner at 0.72 pulls the hands out of the pockets but invents a splayed, spindly left
+# hand, because the base generation puts both hands IN the pockets and there is no hand there
+# to improve. So the watch is no longer a reason to raise the refinement strength, and the
+# cost of beating it is no longer worth paying. Hand SHAPE is the only axis now.
+#
+# Written down here, next to the pin, because the pin is where someone will come looking in a
+# week and re-apply a requirement its owner has dropped.
 PINNED = {
     ("body0", "cheap"): ("watch", "hands in pockets", "v neck"),
 }
@@ -840,6 +857,7 @@ HAND_OUT = 0.0
 #
 # Per view rather than as the global default, because this is a statement about 282's source
 # and nothing has measured it on the others.
+HAND_STRENGTH_DEFAULT = 0.50
 HAND_STRENGTH_VIEWS = {282: 0.72}
 
 
@@ -1747,7 +1765,9 @@ def refine(img_pipe, torch, base, cel, who, device, args):
                          "slightly apart and clearly separated, four fingers and one "
                          "thumb, anatomically correct hand, detailed knuckles, sharp "
                          "focus, photorealistic",
-                         HAND_STRENGTH_VIEWS.get(cel["view"], args.hand_strength),
+                         (args.hand_strength if args.hand_strength is not None
+                          else HAND_STRENGTH_VIEWS.get(cel["view"],
+                                                       HAND_STRENGTH_DEFAULT)),
                          args.hand_res))
     if args.refine_feet:
         fy = max(k[10][1], k[13][1])
@@ -2116,7 +2136,18 @@ def main():
                     help="regenerate a frame this many times before shipping one that "
                          "fails the screen")
     ap.add_argument("--head-strength", type=float, default=0.42)
-    ap.add_argument("--hand-strength", type=float, default=0.50)
+    # DEFAULT None, NOT 0.50, SO THE FLAG CAN BE TOLD FROM ITS ABSENCE.
+    #
+    # With a concrete default there is no way to know whether 0.50 was asked for or merely
+    # not overridden, so HAND_STRENGTH_VIEWS had to win to be useful - and then it won over
+    # an EXPLICIT --hand-strength too. A sweep of 0.56, 0.62 and 0.68 on view 282 returned
+    # three byte-identical images, because every one of them was silently rendered at 0.72.
+    # A knob that cannot be turned is worse than no knob: it answers every question with the
+    # same picture and the pictures look like evidence.
+    ap.add_argument("--hand-strength", type=float, default=None,
+                    help="strength for the hand refinement crop. Default %.2f, or the "
+                         "per-view value in HAND_STRENGTH_VIEWS; passing it explicitly "
+                         "overrides both." % HAND_STRENGTH_DEFAULT)
     ap.add_argument("--hand-res", type=int, default=512,
                     help="render the hand refinement crop at this resolution. A hand is the "
                          "smallest feature in the pipeline and 512 across a whole-hand crop "
