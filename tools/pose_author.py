@@ -670,8 +670,48 @@ def main():
                          "a photograph of a man standing still, so past a certain relative "
                          "movement it has no information about how the cloth falls beside "
                          "the limb and the shirt tears into a lobe over the hip")
+    ap.add_argument("--stance", type=float, default=1.0,
+                    help="scale the STILL pose's foot separation. The source photograph must "
+                         "show both shoes clear of each other or the warp inherits the "
+                         "occlusion in every cel; 1.0 leaves the authored stance alone.")
     a = ap.parse_args()
     globals()["ARM_SCALE"] = a.arm_scale
+    # STANCE WIDTH FOR THE STILL POSE, WHICH IS THE SOURCE PHOTOGRAPH'S POSE.
+    #
+    # The source is generated once per character and every cel of the walk is warped out of
+    # it, so anything the source hides is hidden in all sixteen frames. On 282 the two feet
+    # stood close enough that one shoe was partly behind the other leg, the rigid region was
+    # sized on the truncated mask that resulted, and it then clipped the shoe at every
+    # destination where that foot swings clear - a sheared sole on nearly every cel. No
+    # renderer rule can recover it, because the occluded half of that shoe is not in the
+    # image.
+    #
+    # So the stance is a knob: the source pose has to put both shoes in clear view, which is
+    # a different requirement from the walk cycle's own stride and is why it is separate from
+    # STRIDE. 1.0 leaves the authored stance alone.
+    #
+    # WHAT WIDENING IT COSTS, MEASURED. At 0.107, 0.123 and 0.137 of figure height between
+    # the ankles the shoes clear each other by 56-75 px and the warped walk comes out with
+    # ZERO detached fragments on all sixteen frames at 12x, two shoe components on every
+    # one, and shoe-area ratios of 0.93-0.98. The feet problem is completely solved.
+    #
+    # But all three regenerations put a BLACK WRISTWATCH on the figure, and "watch" is one
+    # of the four pinned negative terms - verified decoded, present in the base negative AND
+    # in the hand-refinement negative, and drawn anyway. Three different poses at the same
+    # pinned seed is not an unlucky draw: a man standing with his arms hanging straight down
+    # against a plain backdrop is a stock product photograph, and that prior brings a watch
+    # with it. The init cannot argue, because it already paints that wrist as bare skin,
+    # which is the strongest thing it can say. This is the same failure as "white trainers"
+    # reaching the model intact and being overridden - except SHOE_INIT could win the shoe,
+    # a large uniform mass the init dictates, and cannot win a small dark band drawn on top
+    # of skin the init is already painting.
+    #
+    # So the knob works, and the source it produces was NOT installed.
+    if a.still and a.stance != 1.0:
+        for side in ("l", "r"):
+            STILL[side] = dict(STILL[side],
+                               ank_x=STILL[side]["ank_x"] * a.stance,
+                               knee_x=STILL[side]["knee_x"] * a.stance)
     # Written through globals() for the same reason ARM_SCALE is: these are read at module
     # level inside the cycle, and `global X` after a read in the same function is a
     # SyntaxError. None means "leave the authored constant alone".

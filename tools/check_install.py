@@ -234,6 +234,7 @@ def coverage(path, h, a):
 
 def check(directory, views):
     bad = []
+    seen = 0
     print("  %-26s %9s %8s %7s %5s %5s  %s"
           % ("cel", "black%", "green%", "fill", "frag", "runs", "verdict"))
     for v in views:
@@ -243,6 +244,7 @@ def check(directory, views):
             if m is None:
                 continue
             black, green, fill, (frags, runs) = m
+            seen += 1
             floor = COVER_FLOOR.get(v, COVER_DEFAULT)
             why = []
             if black > ceil:
@@ -263,6 +265,19 @@ def check(directory, views):
                   % (os.path.basename(p)[:26], black, green,
                      "-" if fill is None else "%.3f" % fill, frags, runs,
                      "ok" if not why else "FAIL: " + ", ".join(why)))
+
+    # A GATE THAT MEASURED NOTHING HAS NOT PASSED.
+    #
+    # It printed "GATE PASSED. Safe to install." over an empty directory, because a loop
+    # that finds no files appends no failures. That is the project's own recurring failure
+    # - a check for too-much cannot see too-little - and it was found by running the gate
+    # on a build step that had silently produced zero cels.
+    if not seen:
+        bad.append(("(no cels)", 0.0, 0.0,
+                    "the gate found no view_*.png for views %s in %s - it measured nothing, "
+                    "which is not the same as finding nothing wrong"
+                    % (sorted(views), directory)))
+        print("  FOUND NO CELS AT ALL in %s" % directory)
     return bad
 
 def main():
