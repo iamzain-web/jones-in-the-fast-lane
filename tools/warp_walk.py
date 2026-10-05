@@ -994,6 +994,45 @@ def skin_field(src_kps, dst_kps, size, alpha=2.0, step=2, reach=0.26, fig=None,
             # the region complete over the shoe (so there is nothing to delete) while giving
             # it nowhere to invent one. The box travels with the foot because the transform
             # is rigid; that is the whole point of it being rigid.
+            #
+            # WHAT IS STILL WRONG HERE, AND WHY NOTHING IN THIS FUNCTION CAN FIX IT.
+            #
+            # The box is measured on a shoe AS THE SOURCE SHOWS IT, and the source is one
+            # mid-stride photograph in which one shoe is partly behind the other leg. On view
+            # 282 the far shoe masks 2363 px to the near one's 3222, and its box comes out
+            # 64 x 96 against 90 x 115. That truncated box is carried to the destination and
+            # used there, where the same foot is raised clear and fully visible - so it clips
+            # the shoe, with a straight vertical edge at the heel and a flat one under the
+            # sole, and the piece cut off is the "detached fragment" the gate counts.
+            #
+            # It is NOT confined to smooth_walk's in-betweens, which is what the evidence at
+            # 4x suggested: at 12x the KEYS carry it too (c1 and c3 of 282, 139 px and 119 px).
+            # A fragment that merges with the body at one resolution and separates at another
+            # was never a tweening artefact; it was always this clip.
+            #
+            # Two fixes were tried and are NOT here:
+            #
+            #   - Testing the box in the ROTATED frame, against `rx, ry` (the source offset
+            #     the pixel actually samples) rather than the raw destination offset. This is
+            #     the geometrically exact thing to do, since a rotated rectangle does not fit
+            #     inside its unrotated self - but `th` on this cycle peaks at 0.035 rad, two
+            #     degrees, so it moves the boundary by under a pixel. Identical ratios,
+            #     identical fragments, identical pictures.
+            #
+            #   - Giving both feet the UNION of the two boxes, on the sound reasoning that he
+            #     wears one pair of shoes and the two boxes are one object seen twice. This
+            #     made it worse. The surplus box has to sample the source somewhere, and
+            #     where the source does not hold this shoe it holds the near leg or the other
+            #     trainer: the rigid path stamped a dark trouser blob on cel 0 and white
+            #     slabs on cels 1 and 2, and the shoe-area ratio went to 1.08. Excluding
+            #     samples that land on the other foot's mask recovered only 1.08 -> 1.05.
+            #     More shoe out than in is the duplicate this whole section exists to remove.
+            #
+            # The reason is not a tuning failure. The occluded half of that shoe IS NOT IN
+            # THE SOURCE IMAGE, and no region rule can sample pixels that were never
+            # photographed. The box is small because the shoe is small because the leg is in
+            # front of it. Fixing it properly means a source frame with both feet clear of
+            # each other - a generation change, not a renderer change.
             ys_sh = np.nonzero(sh.any(axis=1))[0]
             xs_sh = np.nonzero(sh.any(axis=0))[0]
             if len(ys_sh) and len(xs_sh):
