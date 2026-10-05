@@ -850,6 +850,53 @@ HAND_LEN = 0.105
 # measured contrast rather than by eye; see init_field.
 HAND_R = 0.042
 HAND_OUT = 0.0
+# PER VIEW, AND THE NUMBER IS GEOMETRY RATHER THAN TASTE.
+#
+# The init draws the hand as an ellipse of radius HAND_R past the wrist, and then does NOT
+# paint the thigh over it - but on a figure standing with its arms down the two are still
+# adjacent, and adjacent masses merge under the island's 62 px blur. Measured on 282's
+# authored still pose: the hand centre sits 48.7 px from the thigh capsule's axis at that
+# height, and clearing it needs HAND_R + thigh radius = (0.042 + 0.075) * fig = 120.0 px. So
+# the hand has to move outboard by at least (120.0 - 48.7) / fig = 0.0695 of figure height
+# before the init is drawing a hand BESIDE a trouser rather than a hand ON one.
+#
+# Below that the init is still describing a hand in a pocket, whatever the prompt says, and
+# the prompt loses to the init (#0).
+#
+# EMPTY, BECAUSE THE FOOTAGE SAYS THAT THRESHOLD IS ANATOMICALLY WRONG.
+#
+# 0.050, 0.070 and 0.090 were tried. The init moves: dumped and looked at, the hand blobs go
+# from touching the trouser column at 0.0 to standing clear of it in open backdrop at 0.070
+# and 0.090. The generated base did not follow - skin below the wrist stayed at 324/334/335/332
+# px on the right hand, and skin lying lateral to the thigh was ZERO at every value.
+#
+# walkref.mp4 explains it, and it is the measurement that should have come first. Across 1434
+# samples in four sets, a real walker's HAND-TO-HIP LATERAL GAP is:
+#
+#     min 0.0033   MEDIAN 0.0201   max 0.1155   10th-90th 0.0067 .. 0.0471
+#
+# and the arm merges into the torso in projection on 46-93% of sampled rows depending on the
+# set. A real hand does NOT hang clear of the thigh. It hangs against it, about 0.02 of figure
+# height out, touching in the picture half the time.
+#
+# So 0.0695 - the push needed to clear the thigh capsule outright - is three and a half times
+# the real median and past the 90th percentile. The init was asking for a posture humans do
+# not adopt, and the model, whose prior is photographs of humans, declined. THE PRIOR WAS
+# RIGHT AND THE TARGET WAS WRONG.
+#
+# Which also rules out the adjacent lever before it is spent: holding the hands further from
+# the hips in the authored pose asks for the same anatomically wrong thing one stage earlier.
+# The hand is ALREADY where a real hand is. The defect is not WHERE it is but that the model
+# draws it inserted into the pocket rather than resting beside it, and lateral displacement
+# cannot express that difference.
+HAND_OUT_VIEWS = {}
+
+
+def hand_out_for(args, view):
+    """Outboard push for the init's hand blob: flag, then per view, then the default."""
+    if getattr(args, "hand_out", None) is not None:
+        return float(args.hand_out)
+    return HAND_OUT_VIEWS.get(view, HAND_OUT)
 
 # THE REFINEMENT STRENGTH THAT BEATS A WRISTWATCH, per view.
 #
@@ -1111,7 +1158,7 @@ def drift(a):
 
 
 def init_field(cel, size, bg, blur=62, grain=8, bands=None, soft=18, glasses=False,
-               waist=True, collar=None, prop=None, shoe=None):
+               waist=True, collar=None, prop=None, shoe=None, hand_out=None):
     """The frame the base is denoised from: a flat backdrop with a soft noise island where
     the figure is going to be.
 
@@ -1330,7 +1377,8 @@ def init_field(cel, size, bg, blur=62, grain=8, bands=None, soft=18, glasses=Fal
             # OUTBOARD, AWAY FROM THE MIDLINE. A relaxed hand hangs outside the thigh, not
             # on top of it, and the init needs it clear of the trouser column for the same
             # reason the briefcase did: adjacent masses merge under a 62px blur.
-            hx += (fig * HAND_OUT * g) * (1.0 if hx > mid_x else -1.0)
+            out_f = HAND_OUT if hand_out is None else hand_out
+            hx += (fig * out_f * g) * (1.0 if hx > mid_x else -1.0)
             r = fig * HAND_R * g
             pd.ellipse([hx - r, hy - r, hx + r, hy + r], fill=bands["face"])
         # A WAISTBAND, SO TWO GARMENTS ARE TWO SHAPES. View 286's top and shorts are both
@@ -2047,7 +2095,8 @@ def generate(a):
                                             prop=who.get("prop", {}).get(cel["outfit"]),
                                             waist=not any(
                                                 w in who["wear"][OUTFIT_I[cel["outfit"]]]
-                                                for w in ONE_PIECE)),
+                                                for w in ONE_PIECE),
+                                            hand_out=hand_out_for(a, v)),
                            control_image=pose, strength=a.bg_strength,
                            num_inference_steps=max(a.steps, int(a.steps / a.bg_strength)),
                            guidance_scale=a.cfg,
@@ -2205,6 +2254,10 @@ def main():
     # three byte-identical images, because every one of them was silently rendered at 0.72.
     # A knob that cannot be turned is worse than no knob: it answers every question with the
     # same picture and the pictures look like evidence.
+    ap.add_argument("--hand-out", type=float, default=None,
+                    help="push the init's hand blob this far outboard of the midline, as a "
+                         "fraction of figure height. Default %.3f, or the per-view value in "
+                         "HAND_OUT_VIEWS; passing it explicitly overrides both." % HAND_OUT)
     ap.add_argument("--hand-passes", default=None, metavar="S1,S2",
                     help="refine the hand crop more than once, at these strengths in order, "
                          "each pass fed the previous one's output. Overrides "

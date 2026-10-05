@@ -185,6 +185,43 @@ The honest consequence for this character: there is **no setting where the right
 out of the pocket and hand-shaped**. The choice is between a hand that is hidden and a hand
 that is wrong, and a hidden hand cannot look like a bad hand.
 
+### WHEN THE MODEL REFUSES AN INSTRUCTION, CHECK WHETHER THE INSTRUCTION IS ANATOMICALLY TRUE
+
+The init beats the prompt (§0). It does not beat anatomy.
+
+282's hands come out in the pockets, and the documented lever for position is `HAND_OUT`,
+which pushes the init's hand blob outboard of the trouser column. The target was derived from
+geometry rather than taste: the hand ellipse sits 48.7 px from the thigh capsule's axis, and
+clearing it needs `HAND_R + thigh radius = 0.117 × fig = 120 px`, so **0.0695 of figure
+height**. Three values either side were generated — 0.050, 0.070, 0.090.
+
+**The init moved and the model did not.** Dumped and looked at, the hand blobs go from
+touching the trouser at 0.0 to standing in open backdrop at 0.070. The generated base was
+unmoved: skin below the wrist 324 → 334 → 335 → 332 px, and skin lying lateral to the thigh
+**zero at every value**.
+
+`walkref.mp4` says why, and it is the measurement that should have come first. Across 1434
+samples in four sets, a real walker's hand-to-hip lateral gap is:
+
+    min 0.0033    MEDIAN 0.0201    max 0.1155    10th-90th 0.0067 .. 0.0471
+
+and the arm merges into the torso in projection on **46–93% of sampled rows**. A real hand
+does not hang clear of the thigh — it hangs *against* it, about 0.02 of figure height out,
+touching in the picture half the time. So 0.0695 is **three and a half times the real median
+and past the 90th percentile**.
+
+> **The init was asking for a posture humans do not adopt, and the model — whose prior is
+> photographs of humans — declined. The prior was right and the target was wrong.** When a
+> generator ignores an instruction it is capable of following, the next question is not "how
+> do I push harder" but "is the thing I am asking for true of the subject?" A number derived
+> correctly from the *apparatus* (capsule radii) can still be wrong about the *world*.
+
+It also rules out the adjacent lever before it is spent: holding the hands further from the
+hips in the authored pose asks for the same wrong thing one stage earlier. **The hand is
+already where a real hand is.** The defect is not *where* it is but that the model draws it
+inserted into the pocket rather than resting beside it — and lateral displacement cannot
+express that difference.
+
 ### A RECORD THAT IS NOT TRACKED IS NOT A RECORD
 
 `tools/install_walk.py --override` ships a build the gate rejects, and writes down who
