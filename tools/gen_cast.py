@@ -861,6 +861,31 @@ HAND_STRENGTH_DEFAULT = 0.50
 HAND_STRENGTH_VIEWS = {282: 0.72}
 
 
+def hand_strengths(args, view):
+    """The strengths the hand crop is refined at, in order. Usually one.
+
+    A SECOND, GENTLER PASS IS NOT THE SAME AS ONE STRONGER PASS, and the hand is where that
+    matters. One pass has to both move the hand and make it a hand; the strength that moves
+    it is higher than the strength that would draw it well, so the result is a hand that is
+    out of the pocket and the wrong shape. Splitting the work lets the first pass move it and
+    a second settle the silhouette at a strength that does not invent.
+
+    ON VIEW 282 IT DID NOT WORK, and the reason is worth keeping. `--hand-passes 0.72,0.50`
+    produced a right hand indistinguishable from the single 0.72 pass: the same splayed,
+    spindly digits. A settling pass cannot settle what is not a hand. The base generation puts
+    that hand INSIDE the pocket and leaves 324 px of skin below the wrist against the other
+    hand's 1256; the first pass does not move a hand out, it invents one from a quarter of the
+    evidence, and the second pass then faithfully preserves the invention. Same shape as the
+    occluded shoe in warp_walk: no amount of downstream processing can sample what was never
+    photographed. The knob is kept because the reasoning behind it is sound and it is cheap to
+    try; it is simply not the lever for a hand the source does not contain."""
+    if getattr(args, "hand_passes", None):
+        return [float(s) for s in str(args.hand_passes).split(",")]
+    if args.hand_strength is not None:
+        return [args.hand_strength]
+    return [HAND_STRENGTH_VIEWS.get(view, HAND_STRENGTH_DEFAULT)]
+
+
 def shoe_for(view, loop=0):
     s = _median_of_cels(_measure_shoe_cel, view, loop, ("top", "halfw", "colour"))
     if s and view in SHOE_INIT:
@@ -1765,10 +1790,7 @@ def refine(img_pipe, torch, base, cel, who, device, args):
                          "slightly apart and clearly separated, four fingers and one "
                          "thumb, anatomically correct hand, detailed knuckles, sharp "
                          "focus, photorealistic",
-                         (args.hand_strength if args.hand_strength is not None
-                          else HAND_STRENGTH_VIEWS.get(cel["view"],
-                                                       HAND_STRENGTH_DEFAULT)),
-                         args.hand_res))
+                         hand_strengths(args, cel["view"]), args.hand_res))
     if args.refine_feet:
         fy = max(k[10][1], k[13][1])
         fx = (k[10][0] + k[13][0]) / 2.0
@@ -1798,16 +1820,24 @@ def refine(img_pipe, torch, base, cel, who, device, args):
             # the init cannot, because a hand is smaller than its 62px blur (7n).
             crop = out.crop((x0, y0, x1, y1)).resize((res, res), Image.LANCZOS)
             blank = Image.new("RGB", (res, res), (0, 0, 0))
-            gen = torch.Generator(device=device).manual_seed(who["seed"] + 977)
             t = time.time()
-            fixed = img_pipe(prompt=prompt + ", plain green screen background",
-                             negative_prompt=negative_for(who, cel["outfit"]), image=crop,
-                             control_image=blank,
-                             strength=strength,
-                             num_inference_steps=max(args.steps,
-                                                     int(args.steps / strength)),
-                             guidance_scale=args.cfg, controlnet_conditioning_scale=0.0,
-                             generator=gen).images[0]
+            # A job may ask for SEVERAL passes, each fed the previous one's output.
+            fixed = crop
+            for pi, st in enumerate(strength if isinstance(strength, (list, tuple))
+                                    else [strength]):
+                # The generator is re-seeded PER PASS, offset by the pass index, so a second
+                # pass is a second opinion rather than the same denoising path walked again.
+                gen = torch.Generator(device=device).manual_seed(who["seed"] + 977 + pi * 31)
+                fixed = img_pipe(prompt=prompt + ", plain green screen background",
+                                 negative_prompt=negative_for(who, cel["outfit"]),
+                                 image=fixed,
+                                 control_image=blank,
+                                 strength=st,
+                                 num_inference_steps=max(args.steps,
+                                                         int(args.steps / st)),
+                                 guidance_scale=args.cfg,
+                                 controlnet_conditioning_scale=0.0,
+                                 generator=gen).images[0]
             fixed = fixed.resize((x1 - x0, y1 - y0), Image.LANCZOS)
             out = out.copy()
             out.paste(fixed, (x0, y0), feather(x1 - x0, y1 - y0, max(6, (x1 - x0) // 9)))
@@ -2144,6 +2174,10 @@ def main():
     # three byte-identical images, because every one of them was silently rendered at 0.72.
     # A knob that cannot be turned is worse than no knob: it answers every question with the
     # same picture and the pictures look like evidence.
+    ap.add_argument("--hand-passes", default=None, metavar="S1,S2",
+                    help="refine the hand crop more than once, at these strengths in order, "
+                         "each pass fed the previous one's output. Overrides "
+                         "--hand-strength.")
     ap.add_argument("--hand-strength", type=float, default=None,
                     help="strength for the hand refinement crop. Default %.2f, or the "
                          "per-view value in HAND_STRENGTH_VIEWS; passing it explicitly "

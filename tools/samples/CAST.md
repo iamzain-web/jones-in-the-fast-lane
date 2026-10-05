@@ -153,6 +153,38 @@ Caught only because the derived numbers were identical to two decimal places acr
 runs — which is the same instinct as §0a's: a measurement that is suspiciously clean is a
 claim about the apparatus, not the subject.
 
+### THE SAME LESSON AS THE OCCLUDED SHOE, ONE LIMB UP: A HAND THE SOURCE DOES NOT CONTAIN
+
+282's walk is warped from one photograph, and in that photograph **both hands are in the
+pockets**. Below the wrist the base leaves **324 px of skin on the right hand against 1256 on
+the left** — four times less. Everything downstream was then asked to produce a hand from that
+quarter.
+
+What each setting does, looked at over magenta at 3x and at the cel's own 95-row scale:
+
+| refinement | right hand | left hand |
+|---|---|---|
+| 0.50 | in the pocket | a good hand, watch on |
+| 0.56 | in the pocket | a good hand, watch on |
+| 0.62 | in the pocket | at the pocket, watch gone pale |
+| 0.72 | **splayed spindly claw** | smooth free hand, no watch |
+| 0.72 then 0.50 | **the same claw** | smooth free hand |
+
+The refiner at 0.72 did not *add* mass — 324 px in, 326 px out. It reshaped the little that was
+there into fingers. And a second, gentler pass could not settle it, because **a settling pass
+cannot settle what is not a hand**: it preserved the invention exactly.
+
+> **This is `warp_walk`'s occluded shoe, one limb up.** There the rigid region was sized on a
+> shoe the source photographed half-hidden, and no region rule could recover it. Here the
+> refiner is asked to draw a hand the source photographed inside a pocket, and no strength can
+> recover that either. When a defect survives every knob on the stage you are tuning, stop
+> tuning and ask whether **the information exists in the input at all** — and if it does not,
+> the only real fix is upstream, in what was generated.
+
+The honest consequence for this character: there is **no setting where the right hand is both
+out of the pocket and hand-shaped**. The choice is between a hand that is hidden and a hand
+that is wrong, and a hidden hand cannot look like a bad hand.
+
 ### A RECORD THAT IS NOT TRACKED IS NOT A RECORD
 
 `tools/install_walk.py --override` ships a build the gate rejects, and writes down who
