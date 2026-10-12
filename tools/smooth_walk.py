@@ -346,6 +346,11 @@ OCCLUSION_HI = 0.08
 # and is not to be moved; the step function sitting behind it was the fault.
 CROSS_FRAMES = 2
 
+# Sub index that holds a REAL frame rather than an invented one, or None. Set by
+# --anchor-sub. See process_view: with eight authored poses mapped onto four cels, sub 4 of
+# every cel is a photograph, and the interpolator fills 1-3 and 5-7 around it.
+ANCHOR_SUB = None
+
 
 def crossover(t, subs):
     """Where a DISTRUSTED pixel is between cel A (0) and cel B (1) at time `t`.
@@ -852,16 +857,52 @@ def process_view(view, method, subs, sharpen_model, dry_run):
     # the frame count: the same two frames of animation whether there are four per cel or
     # eight, and raising `subs` shortens the crossover in real time rather than widening it
     # in pictures. See `crossover` and CROSS_FRAMES.
+    # AN ANCHORED SUB IS A PHOTOGRAPH, NOT AN OUTPUT.
+    #
+    # When the art comes from a sheet of eight authored poses rather than four, every other
+    # displayed frame is a real picture and the interpolator's job changes: it no longer
+    # bridges cel to cel, it bridges cel to ANCHOR and anchor to the next cel. Writing over
+    # the anchor would throw away the half of the animation that was not invented, and
+    # interpolating straight through it would make the frames either side disagree with it.
+    #
+    # Each half is driven with `subs = ANCHOR_SUB` (and `subs - ANCHOR_SUB`) rather than the
+    # full count, which is what keeps the occlusion crossover CROSS_FRAMES wide in DISPLAYED
+    # frames inside each half rather than stretching it across the anchor. That ramp, and its
+    # half-frame late centring, is a measured fix and must not be undone: `check_install`
+    # masks at alpha 200 and a frame sitting at half opacity fails the fill test.
     frames, endpoint = [], []
     for c in range(CELS):
         a, b = base4x[c], base4x[(c + 1) % CELS]
-        fl = flow_for(a, b) if method == "flow" else None
+        anchor = None
+        if ANCHOR_SUB and 0 < ANCHOR_SUB < subs:
+            ap = os.path.join(PNG4X, sub_name(view, c, ANCHOR_SUB))
+            if os.path.exists(ap):
+                anchor = load_rgba(ap)
+                if anchor.shape != a.shape:
+                    raise SystemExit("anchor %s is %dx%d, expected %dx%d"
+                                     % (sub_name(view, c, ANCHOR_SUB), anchor.shape[1],
+                                        anchor.shape[0], a.shape[1], a.shape[0]))
+
         frames.append(a)                       # sub 0 IS the cel, byte for byte
-        for k in range(1, subs):
-            frames.append(tween(a, b, k / float(subs), method, fl, subs))
-        # The interpolator at t=0 and t=1 must reproduce the cels it sits between.
-        for t, ref in ((0.0, a), (1.0, b)):
-            g = tween(a, b, t, method, fl, subs)
+        if anchor is None:
+            fl = flow_for(a, b) if method == "flow" else None
+            for k in range(1, subs):
+                frames.append(tween(a, b, k / float(subs), method, fl, subs))
+            refs = ((0.0, a, b, fl, subs, a), (1.0, a, b, fl, subs, b))
+        else:
+            n1, n2 = ANCHOR_SUB, subs - ANCHOR_SUB
+            f1 = flow_for(a, anchor) if method == "flow" else None
+            f2 = flow_for(anchor, b) if method == "flow" else None
+            for k in range(1, n1):
+                frames.append(tween(a, anchor, k / float(n1), method, f1, n1))
+            frames.append(anchor)              # the real photograph, untouched
+            for k in range(1, n2):
+                frames.append(tween(anchor, b, k / float(n2), method, f2, n2))
+            refs = ((0.0, a, anchor, f1, n1, a), (1.0, a, anchor, f1, n1, anchor),
+                    (0.0, anchor, b, f2, n2, anchor), (1.0, anchor, b, f2, n2, b))
+        # The interpolator at t=0 and t=1 must reproduce the frames it sits between.
+        for t, fa, fb, fl_, sb, ref in refs:
+            g = tween(fa, fb, t, method, fl_, sb)
             endpoint.append(np.abs(g[..., :3] * g[..., 3:4]
                                    - ref[..., :3] * ref[..., 3:4]).mean() * 255.0)
 
@@ -871,6 +912,9 @@ def process_view(view, method, subs, sharpen_model, dry_run):
     if not dry_run:
         for c in range(CELS):
             for k in range(1, subs):
+                if ANCHOR_SUB and k == ANCHOR_SUB and os.path.exists(
+                        os.path.join(PNG4X, sub_name(view, c, k))):
+                    continue               # the anchor is input, never output
                 f = frames[c * subs + k]
                 assert f.shape == base4x[c].shape, (f.shape, base4x[c].shape)
                 h, w = srcs[c].shape[:2]
@@ -958,7 +1002,9 @@ def main():
     # character with three frames of the old one. Everything else here is unchanged - the
     # cels are read from the directory given and the 1x decode is still only ever read,
     # never written.
-    global PNG4X, SCALE, MANIFEST
+    global PNG4X, SCALE, MANIFEST, ANCHOR_SUB
+    if "--anchor-sub" in argv:
+        ANCHOR_SUB = int(opt("--anchor-sub"))
     if "--dir" in argv:
         PNG4X = os.path.abspath(opt("--dir"))
         MANIFEST = os.path.join(PNG4X, "smooth_walk.manifest.json")
