@@ -180,6 +180,37 @@ contact sheets in this project now re-read a tile back out of the finished sheet
 is pixel-identical to the crop that went in; `verify_capture_guards.ps1` plants a probe file
 and requires a non-zero exit before it will report a clean sweep.
 
+**A FOURTH INSTANCE, MINE, COMMITTED FOUR DAYS AFTER WRITING THE RULE ABOVE.**
+
+Zain's eight-pose sheet came on a painted checkerboard with no alpha. I keyed it, eroded the
+mask by one pixel to drop the lossy edge, and validated that erode by zooming **the
+shoulder** — white t-shirt against a white-and-grey checkerboard, which is the one place on
+that figure where residual backdrop **cannot** show. It looked perfect. I wrote "no halo to
+fight" and shipped it.
+
+He was wearing blue jeans. Against the denim the surviving backdrop measured **+74.5, +63.2,
++52.6** against the figure immediately inside it — a light grey line beside blue cloth, which
+anti-aliasing cannot produce. On the board it read as **+87 luminance** over the green behind
+it: a white outline round his legs, visible from across the room. The player described it as
+"the background colour looked a bit weird", which is as close to "matte halo" as anyone gets
+without the word.
+
+> **Choosing where to validate is itself a check, and it fails the same way.** I did not skip
+> the verification; I performed it somewhere it could not fail. **Pick the sample by where the
+> defect would be WORST, not by where the image is easiest to read** — and when a figure has
+> several materials, check the one whose colour is furthest from the background you removed.
+>
+> The measurement that settled it is worth keeping as an instrument: **split the rim by what
+> it borders.** A pale rim beside a white shirt is ambiguous; a pale rim beside blue denim is
+> decided. An aggregate over the whole silhouette averaged the two and read as "slightly
+> light", which is exactly how it survived.
+
+The fix was erode 2 rather than 1. Also tried and **provably inert**: flooding the figure's
+colour outward with `fill_transparent` before resizing, on the theory that the resampler was
+blending backdrop out of the transparent pixels. It is not — the output was **byte-identical**
+to the build without it. The contamination is in the source sheet's own lossy edge, so the
+only thing that removes it is removing those pixels.
+
 ### A FALLBACK THAT CANNOT BE DISTINGUISHED FROM A HIT IS A DEFECT GENERATOR
 
 The same family as "a check must fail when it measured nothing", one step along: there the
