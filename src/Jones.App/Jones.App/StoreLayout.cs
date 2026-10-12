@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using Jones.Core.Model;
 
 namespace Jones.App;
@@ -373,31 +374,39 @@ public static class StoreLayout
     /// it scales and moves with the panel like every other part of the room.
     ///
     /// <para>
-    /// (150,119), AND THERE IS NOWHERE ELSE IN THE BOX. The figure is 34x7 at its widest
-    /// (font 14, see below), and a search of all 184x119 of the Dialog against every control
-    /// in all thirteen layouts returns **2040 positions clear of every control and not one of
-    /// them below row 23** - the interior is full, which is unsurprising since Sierra laid it
-    /// out. The bottom-right corner belongs to `exitButton`, nsLeft 143 nsTop 108 and 32x9,
-    /// so rows 108..116 of columns 143..174 are spoken for, and 184 - 34 = 150 puts the
-    /// figure's widest form flush with the Dialog's own right edge.
+    /// (128,119), AND THERE IS NOWHERE ELSE IN THE BOX. The figure is 56x12 (font 8, see
+    /// <see cref="CashFont"/>), and a search of all 184x119 of the Dialog against every
+    /// control in all thirteen layouts finds nothing clear below row 23 - the interior is
+    /// full, which is unsurprising since Sierra laid it out. The bottom-right corner belongs
+    /// to `exitButton`, nsLeft 143 nsTop 108 and 32x9, so rows 108..116 of columns 143..174
+    /// are spoken for, and 184 - 56 = 128 puts the figure's widest form flush with the
+    /// Dialog's own right edge.
     /// </para>
     ///
     /// <para>
     /// THE TWO-ROW GAP IS DELIBERATE AND IT IS NOT FREE. 117 is the first row clear of
     /// `exitButton` and is the only row at which the whole interior covers no building at
-    /// all; at 119 the figure's bottom edge falls 1.5 scaled rows past the University's first
-    /// row and clips **about 47 px² of its roof**, and at 118 about 18. The gap is worth it:
-    /// butted straight up against DONE the figure reads as a caption of that button rather
-    /// than as the cash. A roof is cheaper than a misread control, and the choice was taken
-    /// with both numbers in front of it.
+    /// all; 119 puts the figure past the University's first row. The gap is worth it: butted
+    /// straight up against DONE the figure reads as a caption of that button rather than as
+    /// the cash - which is half of what "disjointed" meant.
     /// </para>
     ///
     /// <para>
-    /// IT IS LEFT-ALIGNED FROM 150 AND NOT RIGHT-ALIGNED TO 184, deliberately. Font 14's
-    /// space is 4px against its 5px digits, so `"%6s "` does NOT line the right edge up and
-    /// the readout creeps as the figure gains digits - a quirk of the shipped game that
-    /// `CalcDisplayLeft` above already documents and that working rule 4 says to keep.
-    /// Right-aligning here would quietly fix it.
+    /// WHAT THE BIGGER FACE COSTS THE BOARD, stated rather than glossed. Both the old
+    /// rectangle and the new one fall ENTIRELY inside two `Place` rectangles - the
+    /// University's (190,158)-(250,192) and Socket City's (251,133)-(311,192) - so the figure
+    /// has always been drawn over painted town. It grows from <b>238 px² to 672 px²</b>. The
+    /// hotspots themselves cost nothing: a Dialog is modal over the room, so no `Place` is
+    /// clickable while an interior is open (see `MainViewModel.BuildScreen`). The cost is
+    /// scenery and only scenery.
+    /// </para>
+    ///
+    /// <para>
+    /// IT IS LEFT-ALIGNED FROM 128 AND NOT RIGHT-ALIGNED TO 184, deliberately - nothing here
+    /// aligns the string's right edge, exactly as `calc::doit` does not. What that is worth
+    /// changed with the face: see <see cref="CashFont"/> for why font 8 makes the creep the
+    /// original has in font 14 stop arising, which is a consequence of the deviation rather
+    /// than a quiet fix of the quirk.
     /// </para>
     ///
     /// <para>
@@ -412,17 +421,92 @@ public static class StoreLayout
     /// down - it is the strip the clock and `Week #N` sit in - so a `CashLeft` of about 95
     /// would put the figure in it and cost nothing at any `CashTop`. It is bottom-CENTRE
     /// rather than the bottom-right corner that was asked for, which is why it is a note and
-    /// not the value.
+    /// not the value. Note also that `Place`-free is not PAINT-free: sampled against `pic 11`
+    /// that rectangle holds 549 distinct colours, so it covers scenery like everywhere else
+    /// down here - it just covers nothing CLICKABLE.
+    /// </para>
+    ///
+    /// <para>
+    /// <b>THE TOP RIGHT WAS ASKED FOR AND IS NOT AVAILABLE.</b> Zain: *"the money looks very
+    /// disjointed down there, make it a bit more readable and move it to the top right of the
+    /// frame as it is a critical element of the game!"* The readability half is done - see
+    /// <see cref="CashFont"/>. The move is not, and the reason is a measurement rather than an
+    /// opinion. <b>The top band is clear of CONTROLS</b>: rows 0..18 of the whole 184 width
+    /// collide with nothing clickable in any of the thirteen (the first is the Employment
+    /// Office's Factory-list header at nsTop 19), which is why the "nothing below row 24"
+    /// result never ruled it out. <b>What is up there is ART AND LETTERING.</b> Composing each
+    /// interior from its own backdrop, portrait and `items` panel and scanning in from the
+    /// frame gives a flat run at the top-right corner of <b>at most 2px wide in all thirteen,
+    /// and 0 in Low-Cost, Le Security, the Pawn Shoppe and Hi-Tech U</b>. Two things are
+    /// there: the shopkeeper's 68x55 portrait, which sits at (115,0) in Z-Mart, QT Clothing,
+    /// Monolith, Black's Market and the Rent Office and so owns columns 115..182 of rows
+    /// 0..54; and <b>the right-hand end of the location's own painted name</b> - LOW-COST
+    /// APARTMENTS, Le Security Apartments, PAWN SHOPPE, Socket City, HI-TECH UNIVERSITY,
+    /// EMPLOYMENT OFFICE and the BANK plaque all run into the frame. A 56x12 plate in that
+    /// corner takes the last four to six characters off each of those names. <b>Those names
+    /// are text, not backdrop</b>, and they are the very art being rebuilt for the renames
+    /// (Watt a Bargain, Needful Things, Rentflix and the rest), so covering them is a defect
+    /// and not a trade. Searching the whole box for a slot clear of both controls and
+    /// lettering in all thirteen returns NOTHING at any of the three candidate sizes.
     /// </para>
     /// </summary>
-    public const int CashLeft = 150, CashTop = 119;
+    public const int CashLeft = 128, CashTop = 119;
 
     /// <summary>
-    /// The figure's widest form, measured off `assets/raw/font/14.font` across every digit
-    /// count: `"%6s "` is 34px at six digits and 7px tall. Used by the layout tests, and by
-    /// <see cref="CashLeft"/> to put the right edge on the Dialog's own.
+    /// <b>FONT 8 RATHER THAN THE SCRIPT'S FONT 14 - A USER-REQUESTED LEGIBILITY DEVIATION.</b>
+    /// `calc::doit` (`room1.sc:1437-1455`) draws text 1[3] in `dsFONT 14`, which is 7 rows
+    /// tall with 5px digits - about as small as the game gets, and at the bottom of the frame
+    /// it read as a caption rather than as the player's balance. Font 8 is the game's own
+    /// 12-row face with 8px digits: <b>71% taller and 60% wider</b>, measured off
+    /// `assets/raw/font/8.font` rather than eyeballed.
+    ///
+    /// <para>
+    /// <b>ONLY ON THIS PATH.</b> With `JONES_CALCULATOR=1` the figure goes back inside
+    /// `gCalc`'s 61x34 body at the script's own offsets, where 56px would not fit - that path
+    /// keeps <see cref="CalcFont"/>, so the calculator is still Sierra's exactly.
+    /// </para>
+    ///
+    /// <para>
+    /// <b>IT COSTS THE CREEP, AND THAT IS WORTH STATING because working rule 4 says to keep
+    /// the original's quirks.</b> The readout is left-aligned from a fixed x, so in font 14 -
+    /// space 4px against 5px digits - `"%6s "` grows a pixel per digit and the right edge
+    /// creeps: 29px at one digit, 34 at six. <b>Font 8 is MONOSPACED</b> (space and digits
+    /// both 8px), so the same string is 56px wide at every digit count from one to six and
+    /// the creep simply does not arise. It is not suppressed in code - nothing right-aligns
+    /// anything - it is a property of the face, and it returns at seven digits, which the
+    /// original's 16-bit cash could never reach.
+    /// </para>
     /// </summary>
-    public const int CashWidth = 34, CashHeight = 7;
+    public const int CashFont = 8;
+
+    /// <summary>
+    /// <c>JONES_CASH_TOPRIGHT=1</c> — the top-right position Zain asked for, built so it can
+    /// be LOOKED AT in the game without a rebuild, and deliberately NOT the default.
+    ///
+    /// <para>
+    /// The rectangle is clear of every control in all thirteen (`CashFigureTests`
+    /// `TheTopBandOfTheDialogIsFreeOfControlsEverywhere`), so nothing becomes unclickable and
+    /// nothing is at risk. What it covers is paint: the right-hand end of the location's own
+    /// name in Low-Cost Apartments, Le Security, the Pawn Shoppe, Socket City, Hi-Tech
+    /// University, the Employment Office and the Bank, and the top-right of the shopkeeper's
+    /// portrait in the five that carry one at (115,0). Those names are text and are the art
+    /// being rebuilt for the renames, which is why the default stays at the bottom — but the
+    /// judgement is Zain's, and this is how he makes it against the real screen rather than
+    /// against my description of it.
+    /// </para>
+    /// </summary>
+    public static bool AtTopRight =>
+        Environment.GetEnvironmentVariable("JONES_CASH_TOPRIGHT") is "1";
+
+    /// <summary>Row 0 — flush with the Dialog's own top edge. See <see cref="AtTopRight"/>.</summary>
+    public const int CashTopRightTop = 0;
+
+    /// <summary>
+    /// The figure's widest form, measured off `assets/raw/font/8.font` across every digit
+    /// count: `"%6s "` is 56px at one through six digits and 12px tall. Used by the layout
+    /// tests, and by <see cref="CashLeft"/> to put the right edge on the Dialog's own.
+    /// </summary>
+    public const int CashWidth = 56, CashHeight = 12;
 
     /// <summary>
     /// Job lists (scripts 216â€“224). Every job sits at nsLeft 25; only the starting row

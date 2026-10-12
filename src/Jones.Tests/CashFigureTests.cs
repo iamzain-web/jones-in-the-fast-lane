@@ -8,9 +8,9 @@ namespace Jones.Tests;
 ///
 /// <para>
 /// `gCalc`'s 61x34 body is no longer drawn (<see cref="PanelScale.CalculatorBody"/>) and the
-/// figure alone sits at dialog-relative (150,117). The Dialog is 184x119 and Sierra used all
-/// of it, so the one claim that matters is that this slot collides with nothing a player
-/// presses or reads, in ANY of the thirteen layouts — including the ones that only appear
+/// figure alone sits at dialog-relative (128,119), 56x12 in font 8. The Dialog is 184x119 and
+/// Sierra used all of it, so the one claim that matters is that this slot collides with
+/// nothing a player presses or reads, in ANY of the thirteen layouts — including the ones that only appear
 /// sometimes: a workplace's WORK button, an apartment's RELAX, Hi-Tech U's ENROLL, the Pawn
 /// Shoppe's three modes and its lists, and the Employment Office's nine job lists.
 /// </para>
@@ -131,9 +131,9 @@ public class CashFigureTests
     }
 
     /// <summary>
-    /// AND IT IS THE BOTTOM-RIGHT CORNER, which is what was asked for: its widest form ends
-    /// exactly on the Dialog's own right edge, and it sits two rows below DONE — close enough
-    /// to read as that corner's figure, far enough not to read as that button's caption.
+    /// AND IT IS THE BOTTOM-RIGHT CORNER: its widest form ends exactly on the Dialog's own
+    /// right edge, and it sits two rows below DONE — close enough to read as that corner's
+    /// figure, far enough not to read as that button's caption.
     /// </summary>
     [Fact]
     public void TheCashSlotIsTheDialogsBottomRightCorner()
@@ -143,10 +143,62 @@ public class CashFigureTests
     }
 
     /// <summary>
-    /// THERE IS NOWHERE ELSE, and this is the assertion that says so rather than the comment.
-    /// Nothing in the Dialog below row 24 is clear of every control in every layout - Sierra
-    /// used the whole box - so a slot that clears them all AND is at the bottom cannot be
-    /// found inside it, which is why (150,117) reaches five rows past `nsBottom 119`.
+    /// THE TOP BAND IS CLEAR OF EVERY CONTROL, AND THAT IS NOT WHY THE FIGURE IS NOT UP
+    /// THERE. Zain asked for the top right; this test is the half of the answer that lives in
+    /// the layout, so the next person does not re-derive it. Rows 0..18 of the FULL 184 width
+    /// collide with nothing clickable in any of the thirteen — the earliest control anywhere
+    /// is the Employment Office's Factory job-list header at nsTop 19 — so
+    /// <see cref="NoSlotInsideTheDialogsOwnBoxIsClearEverywhere"/>, which starts its search at
+    /// row 24, never spoke about the top band at all.
+    ///
+    /// <para>
+    /// What blocks it is ART AND LETTERING, which no layout constant can express: the
+    /// shopkeeper's 68x55 portrait owns columns 115..182 of rows 0..54 in five interiors
+    /// (<see cref="StoreLayout.TalkerAt"/>'s default), and the right-hand end of the
+    /// location's own painted name runs into the frame in the rest. Measured against the
+    /// composed art, the flat run at the top-right corner is at most 2px wide in all thirteen
+    /// and zero in four. That measurement is in `StoreLayout.CashLeft`'s remarks; this test
+    /// pins only the part that can go stale when a script coordinate changes.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public void TheTopBandOfTheDialogIsFreeOfControlsEverywhere()
+    {
+        var all = Everywhere().SelectMany(ControlsIn).ToList();
+
+        // The first control in any layout, so the claim moves if a coordinate does.
+        Assert.Equal(19, all.Min(c => c.Y));
+
+        for (var y = 0; y + StoreLayout.CashHeight <= 19; y++)
+            for (var x = 0; x + StoreLayout.CashWidth <= 184; x++)
+                Assert.DoesNotContain(all, c =>
+                    x < c.X + c.W && c.X < x + StoreLayout.CashWidth &&
+                    y < c.Y + c.H && c.Y < y + StoreLayout.CashHeight);
+    }
+
+    /// <summary>
+    /// AND THE FIGURE IS DRAWN IN FONT 8, NOT THE SCRIPT'S FONT 14 — a user-requested
+    /// legibility deviation, pinned here so it cannot be reverted by accident along with a
+    /// position change. Font 8 is monospaced, which is why <see cref="StoreLayout.CashWidth"/>
+    /// is a single number rather than the widest of six: `"%6s "` is seven cells of 8px at
+    /// every digit count the original's 16-bit cash can reach.
+    /// </summary>
+    [Fact]
+    public void TheFigureUsesTheLargerFaceAndIsSizedForIt()
+    {
+        Assert.Equal(8, StoreLayout.CashFont);
+        Assert.NotEqual(StoreLayout.CalcFont, StoreLayout.CashFont);
+        Assert.Equal(7 * 8, StoreLayout.CashWidth);   // "%6s " = six digits plus one space
+        Assert.Equal(12, StoreLayout.CashHeight);     // font 8's own row count
+    }
+
+    /// <summary>
+    /// THERE IS NOWHERE ELSE BELOW THE TOP BAND, and this is the assertion that says so
+    /// rather than the comment. Nothing in the Dialog below row 24 is clear of every control
+    /// in every layout - Sierra used the whole box - so a slot that clears them all AND is at
+    /// the bottom cannot be found inside it, which is why the figure sits at `nsBottom 119`
+    /// itself. The top band is a different matter and has its own test above; it is clear of
+    /// controls and full of art.
     /// </summary>
     [Fact]
     public void NoSlotInsideTheDialogsOwnBoxIsClearEverywhere()

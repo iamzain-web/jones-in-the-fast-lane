@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Globalization;
 
 namespace Jones.App;
@@ -153,9 +153,10 @@ public static class PanelScale
 
     /// <summary>
     /// The group's true extent from the dialog's origin, WITH the calculator body gone: the
-    /// 184x119 box, deepened to 126 by the cash figure, which sits at dialog-relative
-    /// (150,119) and is 34x7 at its widest — so 150+34 = 184 is the box's own right edge and
-    /// 119+7 = 126 is seven rows below its floor.
+    /// 184x119 box, deepened to 131 by the cash figure, which sits at dialog-relative
+    /// (128,119) and is 56x12 (font 8 — see <see cref="StoreLayout.CashFont"/>) — so
+    /// 128+56 = 184 is the box's own right edge and 119+12 = 131 is twelve rows below its
+    /// floor. It was 126 while the figure was drawn in the script's font 14 at 34x7.
     ///
     /// <para>
     /// It was 244x150 while `gCalc` was drawn, because that cel hung out to (244,150) from
@@ -165,7 +166,7 @@ public static class PanelScale
     /// </para>
     /// </summary>
     public const int GroupWidth = 184;
-    public const int GroupHeight = 126;
+    public const int GroupHeight = 131;
 
     /// <summary>
     /// The largest rectangle on the board that no <c>Place</c> rectangle touches: columns
@@ -259,16 +260,25 @@ public static class PanelScale
     /// </para>
     ///
     /// <para>
-    /// <see cref="TriedElevenTwelfths"/> SITS JUST OUTSIDE IT, and that was a choice taken
-    /// with the number in front of it rather than an oversight. The ceiling was 0.919 while
-    /// the cash figure sat at dialog row 117 — butted straight against DONE, where it read as
-    /// a caption of that button rather than as the cash. Moving it down two rows to 119 costs
-    /// 10 pixels of ceiling and clips about 47 px² of the University's ROOF, which is a
-    /// cheaper thing to lose than a control that is misread. That reasoning is unaffected by
-    /// the revert to full size and the two rows stay.
+    /// <see cref="TriedElevenTwelfths"/> SITS OUTSIDE IT, and that was a choice taken with the
+    /// numbers in front of it rather than an oversight. Butted straight against DONE the
+    /// figure reads as a caption of that button rather than as the cash, so it is two rows
+    /// lower, and that costs ceiling: 114/129 = 0.884 at row 117 against 114/131 = 0.870 at
+    /// 119. That reasoning is unaffected by the revert to full size and the two rows stay.
+    /// </para>
+    ///
+    /// <para>
+    /// THE BIGGER FACE MOVED THESE NUMBERS AND THEY ARE RESTATED RATHER THAN LEFT STALE.
+    /// While the figure was the script's font 14 at 34x7 the ceiling was 114/126 = 0.905, row
+    /// 117 covered NOTHING at all, and row 119 clipped about 47 px² of the University's roof.
+    /// In font 8 at 56x12 (<see cref="StoreLayout.CashFont"/>, a user-requested legibility
+    /// change) the figure reaches 22 columns further left and five rows further down, so at
+    /// 11/12 it clips about 284 px² of that roof and row 117 no longer clears it either — it
+    /// clips about 198. There is now NO `CashTop` at which the withdrawn scale covers no
+    /// building, which is a fact about the withdrawn scale and not about what ships.
     /// </para>
     /// </summary>
-    public const double LargestWithNoCoverage = 114.0 / 126.0;
+    public const double LargestWithNoCoverage = 114.0 / 131.0;
 
     /// <summary>
     /// <c>JONES_PANEL_SCALE</c>, which overrides <see cref="Requested"/> without a rebuild

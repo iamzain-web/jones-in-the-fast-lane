@@ -229,32 +229,47 @@ public class PanelScaleTests
 
         Assert.Single(hit);
         Assert.Equal("University", hit[0].Name);
-        Assert.InRange(hit[0].Area, 40, 55);        // about 47 px^2 of its roof
+
+        // About 284 px^2 of its roof. It was about 47 while the figure was the script's
+        // font 14 at 34x7; font 8 is 56x12, so it reaches 22 columns further left and five
+        // rows further down. See StoreLayout.CashFont for why the face changed.
+        Assert.InRange(hit[0].Area, 275, 295);
 
         // Still clear of Socket City, which is what removing the calculator bought.
         Assert.True(cash.X + cash.W < 251);
     }
 
     /// <summary>
-    /// AND THE ROW ABOVE IT IS FREE, which is the number the choice was made against: at
-    /// `CashTop` 117 the whole interior covers nothing. Two rows of gap from DONE cost 47 px²
-    /// of roof, and this says so rather than leaving it to a commit message.
+    /// THE GAP FROM DONE NO LONGER BUYS THE LAST OF THE COVERAGE, AND THAT CHANGED WITH THE
+    /// FACE. While the figure was the script's font 14 at 34x7, `CashTop` 117 — hard against
+    /// the bottom of `exitButton` — covered nothing at all, and the two rows of gap cost about
+    /// 47 px² of the University's roof. In font 8 at 56x12 the figure is wide and deep enough
+    /// that 117 clips the roof too, so there is no row at which the withdrawn scale is free.
+    /// The test is kept and inverted rather than deleted: the fact it pins is now that the
+    /// choice has no cost-free option, which is exactly what a later reader needs to know.
     /// </summary>
     [Fact]
-    public void TheGapFromDoneIsWhatCostsTheLastOfTheCoverage()
+    public void NoCashRowIsFreeOfTheTownAtTheWithdrawnScale()
     {
         var s = PanelScale.TriedElevenTwelfths;
         var t = new PanelTransform(s,
                                    PanelScale.FreeLeft - PanelScale.DialogLeft * s,
                                    PanelScale.FreeTop - PanelScale.DialogTop * s);
 
-        // 117 - hard against the bottom of `exitButton` - covers nothing.
-        Assert.False(CoversAnyBuilding(
+        (double, double, double, double) At(int top) =>
             (t.MapX(PanelScale.DialogLeft + StoreLayout.CashLeft),
-             t.MapY(PanelScale.DialogTop + 117),
-             t.Size(StoreLayout.CashWidth), t.Size(StoreLayout.CashHeight))));
+             t.MapY(PanelScale.DialogTop + top),
+             t.Size(StoreLayout.CashWidth), t.Size(StoreLayout.CashHeight));
 
-        // The chosen row does not, and it is the first row clear of the button plus two.
+        // 117 used to be free with the smaller face. It is not any more.
+        Assert.True(CoversAnyBuilding(At(117)));
+        Assert.True(CoversAnyBuilding(At(StoreLayout.CashTop)));
+
+        // Nor is any row from the bottom of DONE down to the figure's own.
+        for (var top = StoreLayout.ExitTop + 9; top <= StoreLayout.CashTop; top++)
+            Assert.True(CoversAnyBuilding(At(top)), $"row {top} was expected to cover a building");
+
+        // And the chosen row is still the first row clear of the button plus two.
         Assert.Equal(StoreLayout.ExitTop + 9 + 2, StoreLayout.CashTop);
     }
 

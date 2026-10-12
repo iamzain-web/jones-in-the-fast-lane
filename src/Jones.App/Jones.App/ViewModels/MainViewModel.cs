@@ -2328,23 +2328,41 @@ public sealed partial class MainViewModel : ViewModelBase
             // readout's right edge creeps as the figure gains digits, and true
             // right-alignment hid that.
             // WHERE THE FIGURE GOES. With the body drawn it keeps the script's own offsets
-            // from the cel; without it, the Dialog's bottom-right corner - nsLeft 150, nsTop
-            // 119, which is 184-34 (the figure's widest form flush with the Dialog's right
+            // from the cel; without it, the Dialog's bottom-right corner - nsLeft 128, nsTop
+            // 119, which is 184-56 (the figure's widest form flush with the Dialog's right
             // edge) two rows below `exitButton`. See StoreLayout.CashLeft for the search that
-            // establishes there is nowhere else and for what those two rows cost.
+            // establishes there is nowhere else, for what those two rows cost, and for the
+            // measurement that says the TOP right - which is what was asked for - is the
+            // location's own painted name in seven interiors and the shopkeeper's portrait in
+            // five, with a flat run of at most 2px in any of the thirteen.
             //
             // EVERYTHING ELSE IS THE SCRIPT'S AND UNCHANGED: text 1[3] `"%6s "`, font 14,
             // colour index 0, and the opaque band of index 101 - which is `dsBACKGROUND`,
             // not a container this port invented to replace the one it removed. The figure
             // is still LEFT-aligned from a fixed x, so its right edge still creeps as the
             // amount gains digits, exactly as the shipped game's does.
+            // JONES_CASH_TOPRIGHT=1 lifts it to the Dialog's top-right corner - the position
+            // that was asked for, kept behind a switch because it covers the end of the
+            // location's own painted name in seven of the thirteen. See StoreLayout.AtTopRight.
+            var cashTop = StoreLayout.AtTopRight
+                ? StoreLayout.CashTopRightTop
+                : StoreLayout.CashTop;
+
             var (cashX, cashY) = PanelScale.CalculatorBody
                 ? (StoreLayout.CalcLeft + StoreLayout.CalcDisplayLeft,
                    StoreLayout.CalcTop + StoreLayout.CalcDisplayTop)
-                : (DialogX + StoreLayout.CashLeft, DialogY + StoreLayout.CashTop);
+                : (DialogX + StoreLayout.CashLeft, DialogY + cashTop);
+
+            // THE FACE IS THE ONE THING THAT IS NOT THE SCRIPT'S, and only off the calculator.
+            // Zain asked for the balance to be more readable; font 8 is the game's own 12-row
+            // face with 8px digits against font 14's 7 rows and 5px digits. Inside `gCalc`'s
+            // 61x34 body it would not fit, so that path keeps font 14 and stays Sierra's.
+            // See StoreLayout.CashFont, which also records what the bigger face does to the
+            // original's right-edge creep.
+            var cashFont = PanelScale.CalculatorBody ? StoreLayout.CalcFont : StoreLayout.CashFont;
 
             Texts.Add(new TextVm($"{P.Cash,6} ", cashX, cashY,
-                                 fontNumber: StoreLayout.CalcFont,
+                                 fontNumber: cashFont,
                                  colour: SciPalette.Hex(StoreLayout.CalcColour),
                                  background: StoreLayout.CalcBackground));
         }
