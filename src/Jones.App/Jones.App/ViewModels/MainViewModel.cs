@@ -213,6 +213,14 @@ public sealed partial class MainViewModel : ViewModelBase
         // A network joiner has no game to build a screen from; the host's arrives as frames.
         if (_remoteView) return;
 
+        BuildCount++;
+
+        // The two sprites an animation timer changes on its own. See ReplaceSprite: a tick
+        // that rebuilt the whole screen destroyed every control on it, which is what made
+        // the WORK button miss clicks while its clock turned.
+        _clockSpriteIndex = -1;
+        _itemsSpriteIndex = -1;
+
         Sprites.Clear();
         Hotspots.Clear();
         Texts.Clear();
@@ -2584,6 +2592,31 @@ public sealed partial class MainViewModel : ViewModelBase
     /// <see cref="Arrive"/> calls once the door animation is done, so the screen built is
     /// the real one — not a stripped-down stand-in that could hide a layout fault.
     /// </summary>
+    /// <summary>
+    /// Rebuilds the screen on demand, for the diagnostic in <c>MainView.ProbeHitTesting</c>
+    /// that asks whether a rebuild destroys the controls. It does exactly what every timer
+    /// tick does and nothing else.
+    /// </summary>
+    internal void DebugRebuild() => BuildScreen();
+
+    /// <summary>
+    /// Does exactly what an animation tick now does — swaps the shop's `items` cel in place —
+    /// so the diagnostic can compare it against a full rebuild. Returns false where there is
+    /// no such sprite to swap. See <see cref="ReplaceSprite"/>.
+    /// </summary>
+    internal bool DebugReplaceAnimatedSprite()
+    {
+        if (_itemsSpriteIndex < 0 || _game is null) return false;
+        if (StoreLayout.ItemsFor(P.Location) is not { } panel) return false;
+
+        ReplaceSprite(_itemsSpriteIndex,
+                      () => Icon(panel.View, _itemsLoop, _itemsCel, panel.Left, panel.Top));
+        return true;
+    }
+
+    /// <summary>How many times the screen has been rebuilt. Read by the same diagnostic.</summary>
+    internal static int BuildCount { get; private set; }
+
     internal void DebugJumpToLocation(string name)
     {
         _playerCount = 1;
@@ -4463,7 +4496,11 @@ public sealed partial class MainViewModel : ViewModelBase
             _itemsCel = _itemsCel + 1 > panel.LastCel ? 0 : _itemsCel + 1;
         }
 
-        BuildScreen();
+        // ONE SPRITE, NOT THE WHOLE SCREEN — the same fix as the work clock, and the same
+        // reason: this parade runs continuously in every shop, so rebuilding here made EVERY
+        // price line a coin toss against the animation. See `ReplaceSprite`.
+        ReplaceSprite(_itemsSpriteIndex,
+                      () => Icon(panel.View, _itemsLoop, _itemsCel, panel.Left, panel.Top));
     }
 
     /// <summary>
@@ -4581,7 +4618,12 @@ public sealed partial class MainViewModel : ViewModelBase
             // `market.sc:99-110`). It was missing entirely; the shops were drawing their
             // list against bare backdrop.
             if (_itemsShown && StoreLayout.ItemsFor(here.Id) is { } panel)
+            {
+                // Remembered so `ItemsTick` can swap this one cel without clearing the
+                // screen out from under whatever the player is pressing. See ReplaceSprite.
+                _itemsSpriteIndex = Sprites.Count;
                 Sprites.Add(Icon(panel.View, _itemsLoop, _itemsCel, panel.Left, panel.Top));
+            }
 
             // The Bank has no `items` panel at all Ã¢â‚¬â€ it never publishes `gItems` Ã¢â‚¬â€ it has
             // `piggyBank`, which occupies the same slot and is third in its unconditional
@@ -5800,6 +5842,50 @@ public sealed partial class MainViewModel : ViewModelBase
     }
 
     private SpriteVm Dialog() => Icon(501, 1, 0, 0, 0);
+
+    // ------------------------------------------------------------------
+    // ANIMATING WITHOUT DESTROYING THE CONTROLS
+    //
+    // THE PROBLEM, MEASURED. `BuildScreen` clears every collection and rebuilds it, and an
+    // `ObservableCollection.Clear()` raises Reset, which makes the ItemsControl throw away
+    // every container and make new ones. That was verified rather than assumed - the
+    // diagnostic in `MainView.ProbeHitTesting` hit-tests a control, rebuilds, and hit-tests
+    // the same point again: "BuildScreen 4 -> 5; the control at the first clickable sprite is
+    // A DIFFERENT OBJECT".
+    //
+    // An Avalonia Button raises Click only if it still holds the pointer capture when the
+    // button comes up. A control replaced between press and release therefore swallows the
+    // click silently. `ClockTick` rebuilt four times over the work clock's 1.1 second pass
+    // and `ItemsTick` rebuilds continuously in every shop, so clicking WORK - or a price
+    // line - was a coin toss against the animation rather than something the game refused.
+    // Nothing was ever disabled; there is no blocking wait anywhere in the path.
+    //
+    // THE FIX. An animation changes ONE sprite, so it replaces that one item instead of
+    // clearing the collection. A single-index assignment raises Replace, which recreates only
+    // that container and leaves every other control - including the button under the
+    // player's finger - exactly where it was.
+    // ------------------------------------------------------------------
+
+    /// <summary>Index of the work clock's sprite in <see cref="Sprites"/>, or -1.</summary>
+    private int _clockSpriteIndex = -1;
+
+    /// <summary>Index of the shop's `items` panel sprite in <see cref="Sprites"/>, or -1.</summary>
+    private int _itemsSpriteIndex = -1;
+
+    /// <summary>
+    /// Swaps one sprite for a new one in place. Falls back to a full rebuild if the index has
+    /// gone stale, which is the safe direction: a redundant rebuild costs a frame, a write to
+    /// the wrong index would draw the clock over a price line.
+    /// </summary>
+    private void ReplaceSprite(int index, Func<SpriteVm> make)
+    {
+        if (index < 0 || index >= Sprites.Count) { BuildScreen(); return; }
+
+        // The interior's own transform, because `Icon` reads it from the ambient and this is
+        // running from a timer rather than from inside the panel's build scope.
+        using var panel = PanelScale.Open();
+        Sprites[index] = make();
+    }
 
     private SpriteVm Icon(int view, int loop, int cel, int nsLeft, int nsTop,
                           Action? onClick = null, string? tip = null) =>

@@ -248,6 +248,51 @@ public partial class MainView : UserControl
 
         if (pass == 0) return 0;   // nothing realised yet; the caller tries again
 
+        // DOES A REBUILD DESTROY THE CONTROLS? This is the link in the "clicking WORK is
+        // unreliable while the clock turns" chain that cannot be read off the source: a
+        // Button raises Click only if it is still the element holding the pointer capture
+        // when the button comes up, so a control replaced between press and release
+        // swallows the click. BuildScreen clears every collection, and whether an
+        // ObservableCollection Reset recycles containers or recreates them is Avalonia's
+        // business, not ours - so it is measured rather than assumed.
+        if (System.Linq.Enumerable.FirstOrDefault(vm.Sprites, s => s.IsClickable) is { } probe)
+        {
+            var at = new Point((probe.DrawX + probe.DrawW / 2) * f,
+                               (probe.DrawY + probe.DrawH / 2) * f);
+            var before = GameCanvas.InputHitTest(at);
+            var builds = ViewModels.MainViewModel.BuildCount;
+
+            vm.DebugRebuild();
+            GameCanvas.UpdateLayout();
+
+            var after = GameCanvas.InputHitTest(at);
+            System.Console.WriteLine(
+                $"REBUILD: BuildScreen {builds} -> {ViewModels.MainViewModel.BuildCount}; " +
+                $"the control at the first clickable sprite is " +
+                (ReferenceEquals(before, after)
+                    ? "THE SAME OBJECT - a rebuild keeps it, so a click cannot be lost to one"
+                    : "A DIFFERENT OBJECT - a rebuild destroys it, so a click spanning one is lost"));
+
+            // AND THE SAME QUESTION OF A SINGLE-SPRITE REPLACE, which is what an animation
+            // tick does now. This is the measurement the fix stands on: the animating cel's
+            // own container may be recreated, but every control around it must survive.
+            var beforeSwap = GameCanvas.InputHitTest(at);
+            if (vm.DebugReplaceAnimatedSprite())
+            {
+                GameCanvas.UpdateLayout();
+                var afterSwap = GameCanvas.InputHitTest(at);
+                System.Console.WriteLine(
+                    "ANIMATION TICK: the control at the first clickable sprite is " +
+                    (ReferenceEquals(beforeSwap, afterSwap)
+                        ? "THE SAME OBJECT - a tick no longer destroys it, so clicks land"
+                        : "A DIFFERENT OBJECT - the tick still destroys it, THE FIX DOES NOT WORK"));
+            }
+            else
+            {
+                System.Console.WriteLine("ANIMATION TICK: no animated sprite on this screen");
+            }
+        }
+
         // THE MARGIN MUST BE DEAD. With the wide-board probe on, points out in the scenery
         // are hit-tested through the OUTER canvas; nothing there may resolve to a game view
         // model, because the world's canvas clips at column 319 and the margin holds no

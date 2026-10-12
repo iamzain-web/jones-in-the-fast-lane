@@ -483,6 +483,17 @@ public sealed partial class MainViewModel
     {
         if (_game is null || !HasWorkClock(P.Location)) return;
 
+        // EVERY SHIFT PUTS THE FACE BACK TO CEL 0, INCLUDING ONE STARTED WHILE THE CLOCK IS
+        // STILL TURNING. `TimeClock::doit` is `(self cel: 0 setCycle: FwdCount self 1)`
+        // (`WButton.sc:306-310`), unconditionally, and that path is reachable in the original:
+        // the paid branch of `localproc_0` (`n108.sc:58-120`) calls no `proc0_18`, so nothing
+        // blocks while the clock turns and a second click arrives in the dialog's own loop.
+        //
+        // I had this turning instead, on the reasoning that a 1990 click could not land
+        // mid-pass. THAT REASONING WAS WRONG and is recorded here so it is not re-made: the
+        // interpreter loops rather than waits, so a fast clicker in 1990 saw the same snap
+        // back to cel 0 that a fast clicker sees here. Resetting is the original's behaviour,
+        // so the port resets and the clock is NOT a deviation.
         _clockCel = 0;
         _clockCount = 0;
 
@@ -516,7 +527,12 @@ public sealed partial class MainViewModel
             return;
         }
 
-        BuildScreen();
+        // ONE SPRITE, NOT THE WHOLE SCREEN. This used to be `BuildScreen()`, which destroys
+        // every control — including the WORK button a player is trying to press again. See
+        // `MainViewModel.ReplaceSprite`.
+        var (left, top) = TimeClockAt(P.Location);
+        ReplaceSprite(_clockSpriteIndex,
+                      () => Icon(TimeClockView, TimeClockLoop, _clockCel, left, top));
     }
 
     /// <summary>`timeClock::cue` — different at the bank from everywhere else.</summary>
@@ -560,6 +576,10 @@ public sealed partial class MainViewModel
         if (!HasWorkClock(id)) return;
 
         var (left, top) = TimeClockAt(id);
+
+        // Remembered so `ClockTick` can advance the cel without clearing the screen. See
+        // `MainViewModel.ReplaceSprite` for why that matters to the WORK button above it.
+        _clockSpriteIndex = Sprites.Count;
         Sprites.Add(Icon(TimeClockView, TimeClockLoop, _clockCel, left, top));
     }
 
