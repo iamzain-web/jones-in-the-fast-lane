@@ -139,9 +139,15 @@ def main():
         # A DECLARED `board_fill` MAY REACH OUTSIDE THE REGION and the Factory's does, by
         # four rows, because the thing it paints out stands above the region. Declared is
         # not stranded.
-        for fr in (getattr(b, "board_fill", None) or []):
-            fx0, fy0, fx1, fy1 = fr[:4]
-            band[fy0:fy1 + 1, fx0:fx1 + 1] = False
+        # AND A NEIGHBOUR'S DECLARED PATCH IS STILL DECLARED. This loop used to read only
+        # `b.board_fill`, so Hyper Save's patch - which sits just left of Bare Necessities'
+        # region - was invisible to Hyper Save's own row and charged to Bare Necessities
+        # as 106 stranded pixels, on a building nobody had touched. A declaration is a
+        # statement about the BOARD, not about the building that made it.
+        for other in BUILDINGS.values():
+            for fr in (getattr(other, "board_fill", None) or []):
+                fx0, fy0, fx1, fy1 = fr[:4]
+                band[fy0:fy1 + 1, fx0:fx1 + 1] = False
         stranded = int((band & ~owned & (diff > 3)).sum())
         # THE THIRD CLAUSE: in the margin, whose pixels are they? Measured at the SHIPPING
         # RUNG, because a 1x downsample averages away exactly the difference that matters.

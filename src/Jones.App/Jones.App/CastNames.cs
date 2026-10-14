@@ -48,9 +48,10 @@ public static class CastNames
     /// the game's own word alone.
     ///
     /// <para>
-    /// THE BANK AND NOTHING ELSE IS ABSENT. Every building here has had its art rebuilt;
-    /// the Bank has not, so it is still Sierra's building and "Bank" is still its name. A
-    /// name without a building behind it would be the inverse of the bug this fixes.
+    /// ALL THIRTEEN ARE HERE NOW. The Bank was the last holdout — it kept Sierra's name
+    /// while its art was still hers, because a new name over her building would have been
+    /// the inverse of the bug this class fixes. It became Hyper Save when Zain supplied the
+    /// artwork for it, which is the order these two things have to happen in.
     /// </para>
     /// </summary>
     private static string? In(string set, LocationId id) => set switch
@@ -69,6 +70,7 @@ public static class CastNames
             LocationId.MonolithBurgers    => "Bun Believable",
             LocationId.ZMart              => "General Dealer",
             LocationId.PawnShop           => "Needful Things",
+            LocationId.Bank               => "Hyper Save",
             _                             => null,
         },
         _ => null,

@@ -55,7 +55,7 @@ DOORS = {"factory": (5, 50, 181), "rentoffice": (1, 105, 29), "pawnshop": (12, 2
          "security": (2, 29, 44), "zmart": (11, 282, 34), "monolith": (10, 288, 75),
          "university": (7, 220, 179), "socketcity": (8, 277, 183),
          "qtclothing": (9, 277, 113), "blacksmarket": (3, 46, 105),
-         "lowcost": (0, 144, 30)}
+         "lowcost": (0, 144, 30), "bank": (4, 20, 147)}
 
 # Materials, keyed by building. Sampled to sit with that facade's own palette and light.
 MATERIAL = {
@@ -391,6 +391,52 @@ MATERIAL = {
     # mean 0.000 on five buildings including through a rebuild, so there is no reason left
     # to paint a synthetic leaf over a facade that already draws the door.
 
+    # HYPER SAVE, AND IT IS THE ONLY DOOR IN THE TABLE THAT NEEDED NO OFFSET AT ALL.
+    #
+    # Its building was fitted FROM this sprite - the scale is 205 source px of his door
+    # divided by her 10-row leaf body, and his door's centre was put on her x 20 - so the
+    # measurement afterwards is a check rather than a correction. Off the installed board
+    # at 12x, median of each block:
+    #
+    #     y 133..135   his awning over the door, E7337B
+    #     y 136..137   the awning's edge and the door's top rail  -> `head_rows` 2
+    #     y 138..145   his glazing, median 449CCC
+    #     y 146        the door's bottom rail
+    #     y 147..151   HIS STEPS, C6C6C6..D5D4D4                  -> `foot_rows` 2
+    #     x 13..14 and x 25..26 the frames; x 15..24 the glazing
+    #
+    # Her leaf body is y 136..145 and her feet y 146..147. `head_rows` 2 lands exactly on
+    # his rail and the opening is exactly his eight glazed rows. **(0,0)**, so the Bank has
+    # no entry in CastDoors.cs at all.
+    #
+    # HIS STEPS ARE WHAT HER FEET STAND ON, and that is the one thing I chose rather than
+    # measured. Her feet rows want pavement; his building puts a flight of steps there,
+    # because a classical bank has steps. `foot_rows` 2 keeps those rows as FACADE, so the
+    # feet show his top step instead of being painted as interior spilling down it. Below
+    # a doorway at the top of a stair there is no doorway - there is a stair.
+    "bank": {
+        "from_facade": True,
+        "head_rows": 2,
+        "foot_rows": 2,
+        "in_top": (0x28, 0x18, 0x18), "in_mid": (0x48, 0x38, 0x38),
+        "in_low": (0x60, 0x48, 0x48), "in_floor": (0x98, 0x40, 0x28),
+        "bands": [(2, 3, "in_top"), (4, 5, "in_mid"), (6, 7, "in_low"), (8, 9, "in_floor")],
+        # Darker than the leaf it replaces, which is the rule from the six: his glazing
+        # measures 449CCC at the median. A banking hall is lit and cool - pale stone, not
+        # the warm shop interiors the rest of the board has - so the lit wall here is a
+        # grey rather than a tan, and it is the only interior in the table that is.
+        "in_ceil": (0x12, 0x12, 0x14), "in_dark": (0x20, 0x20, 0x24),
+        "in_back": (0x56, 0x5A, 0x60), "in_back_hi": (0x76, 0x7C, 0x84),
+        "in_fl_front": (0x3A, 0x3C, 0x40),
+        "interior": [
+            (0, 2, 8, 2, "in_ceil"),             # the soffit inside the doorway
+            (0, 3, 8, 9, "in_dark"),             # the hall, away from the lights
+            (2, 3, 6, 6.5, "in_back"),           # its lit back wall, inset at both sides
+            (2, 3, 6, 4.5, "in_back_hi"),
+            (0, 7.5, 8, 9, "in_fl_front"),       # the floor at the threshold
+        ],
+        "board": (0x3C, 0x59, 0x68),             # his glazing's own p10, for the stile
+    },
     # HIRE GROUND. His timber double door measures x 92..101 y 172..182 off the board at
     # 12x - the SAME ten columns as her sprite, which is the first exact horizontal match in
     # the programme. Vertically it is one row low: her body is y 171..181, so dy +1 seats it
@@ -665,7 +711,8 @@ LOCATION = {"factory": "Factory", "rentoffice": "RentOffice", "pawnshop": "PawnS
             "employment": "EmploymentOffice", "security": "SecurityApartments",
             "zmart": "ZMart", "university": "HiTechU", "socketcity": "SocketCity",
             "qtclothing": "QtClothing", "blacksmarket": "BlacksMarket",
-            "monolith": "MonolithBurgers", "lowcost": "LowCostHousing"}
+            "monolith": "MonolithBurgers", "lowcost": "LowCostHousing",
+            "bank": "Bank"}
 
 
 def cast_offset(set_name, who):
@@ -748,6 +795,9 @@ LEAF = {
     # [7,6,4,2] where the table above says [7,4,4,2]. That building is shipped and approved
     # and its door is not in this job, so the 4 stands; but if its cel 1 ever looks like it
     # opens too far too fast, that is where to look.
+    # HYPER SAVE, the thirteenth and last. Read the same way as the six: shut, then cols
+    # 3..5, 2..6, 1..7 of a 9-wide sprite.
+    "bank":      {"hinge": "both", "w": [5, 3, 2, 1]},
     "employment": {"hinge": "both", "w": [5, 4, 2, 1]},
     "lowcost":   {"hinge": "both", "w": [4, 3, 2, 1]},
     "university": {"hinge": "both", "w": [5, 4, 3, 2], "opening_cols": (3, 6)},

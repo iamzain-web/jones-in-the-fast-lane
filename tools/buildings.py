@@ -2095,16 +2095,17 @@ BUILDINGS["factory"] = Building(
         # audit clause could see it - it is INSIDE the clip, so it is not her art inside the
         # silhouette and not our art in the margin. Only the eye at native 12x finds this.
         "clip": [
-            (0, 8, 1, 41),       # the left block
-            (2, 4, 9, 41),       # the water tower's tank, whole, top at row 4
-            (10, 8, 17, 41),     # the lower roof, its stacks and the sphere
-            (18, 10, 27, 41),    # the glazed monitor roof
-            (28, 8, 31, 41),     # the arch over it
-            (32, 10, 45, 41),    # the monitor roof continuing
-            (46, 7, 48, 41),     # the turbine vent
-            (49, 1, 52, 41),     # the chimney, the tallest thing he drew
-            (53, 9, 54, 41),     # the small vent
-            (55, 10, 59, 41),    # the right-hand block
+        (0, 12.2, 0, 55.0), (1, 11.4, 1, 55.0), (2, 10.3, 2, 55.0), (3, 9.3, 3, 55.0),
+        (4, 7.6, 4, 55.0), (5, 7, 5, 55.0), (6, 6.35, 6, 55.0), (7, 5.85, 7, 55.0),
+        (8, 5.45, 8, 55.0), (9, 4.75, 9, 55.0), (10, 4.45, 10, 55.0), (11, 3.95, 11, 55.0),
+        (12, 3.45, 12, 55.0), (13, 3.05, 13, 55.0), (14, 2.35, 14, 55.0), (15, 1.85, 15, 55.0),
+        (16, 1.4, 16, 55.0), (17, 0.8, 17, 55.0), (18, 0.25, 18, 55.0), (19, 0.15, 19, 55.0),
+        (20, 0, 20, 55.0), (21, 0, 21, 55.0), (22, 0.1, 22, 55.0), (23, 0.75, 23, 55.0),
+        (24, 1.3, 24, 55.0), (25, 1.5, 25, 55.0), (26, 1.9, 26, 55.0), (27, 2.45, 27, 55.0),
+        (28, 3.1, 28, 55.0), (29, 3.6, 29, 55.0), (30, 4.05, 30, 55.0), (31, 4.55, 31, 55.0),
+        (32, 5.1, 32, 55.0), (33, 5.7, 33, 55.0), (34, 6.35, 34, 55.0), (35, 6.75, 35, 55.0),
+        (36, 7.05, 36, 55.0), (37, 7.6, 37, 55.0), (38, 7.55, 38, 55.0), (39, 7.55, 39, 55.0),
+        (40, 7.5, 40, 55.0),
         ],
     },
     cond_blur=0.25,
@@ -3060,4 +3061,131 @@ BUILDINGS["zmart"] = Building(
            "the raw bytes, Place 11 + 71 - and is NOT "
            "changed either - no rename on this board has touched that table. "
            "49x30 at scale 20 = 980x600 = 588,000 px, inside the measured 810k ceiling."),
+)
+
+# --- the Bank -> Hyper Save (the THIRTEENTH and last board building) ----------------
+#
+# THE DOORWAY WAS PLACED FIRST, which is now the rule (gen_building.py's docstring), and on
+# this building it decided every other number. `DoorFor` gives the Bank (loop 4, x 20,
+# y 147) and her loop 4 cel is 9x12, so `AddCastView` lands it on game x 16..24 y 136..147
+# with the LEAF BODY in rows 0..9 - y 136..145 - and only the swinging feet in y 146..147.
+#
+# His door is 200 x 205 source px. Her body is 10 rows tall, so the scale is not a choice:
+#
+#     205 source px / 10 cel rows = 20.5 source px per cel px
+#
+# and everything else follows from it. His building is 850 x 1155 source px, which at that
+# scale is 41.5 x 56.3 cel px; his door's centre sits 49.4% across it, so placing that
+# centre on x 20 puts his left edge at x -0.5 and his right at x 41. Half a pixel of his
+# left wall falls off the board and nothing else is cut.
+#
+# THE POLE SIGN IS DROPPED, and unlike Bun Believable that is forced rather than chosen.
+# The door's x is Sierra's and the board's left edge is x 0; between them the composition
+# has 20 columns to the left of the door and his building needs 20.5 of them. There is no
+# room for a sign that stands further left again. Nothing of hers is lost either way - her
+# Bank is a plain round tower with no pole sign - and his building still carries HS twice,
+# on the pediment roundel and on the fascia.
+BUILDINGS["bank"] = Building(
+    key="bank", sierra="Bank", new_name="Hyper Save",
+    # `background`, NOT `cel:12`. Her Bank IS cel 12 - 43x54 at (11,92) - but this region
+    # is neither that box nor inside it: it is x 0..41 y 97..153, set by where her door
+    # anchor and the board's left edge put his building. `cel:12` would assert the two
+    # match and they do not; `background` crops cel 0, which is what "Sierra's pixels for
+    # this rectangle" actually means here.
+    source="background", region=(0, 97, 42, 57), hotspot=(7, 119, 67, 154),
+    palette={"GROUND": (0xC8, 0x90, 0x70)},
+    init=[(0, 0, 41, 56, "GROUND")],
+    prompt="(supplied art - no generation; see source_image)",
+    surround={"mode": "rects", "keep": [(0, 0, 41, 56)]},
+    # THE ERASER IS THE REGION AND NOTHING MORE, and that took two goes. `board_fill`
+    # writes eight rows ABOVE the region, so on the second install `pick_clear_source`
+    # found the first install's own fill in the control frame it compares against the
+    # ported sets, matched nothing (5.88 against 0.00) and refused. Widening the eraser to
+    # y 89 fixed that and broke something worse: at x 39..41 it reached into BARE
+    # NECESSITIES and erased three columns of a neighbour's building every time the Bank
+    # was installed, which showed up as that building's own door cel no longer matching
+    # its facade (max 183.0, mean 18.5). The fix belongs in the check, not here - a
+    # declared `board_fill` is our work and `pick_clear_source` now excludes it the same
+    # way it already excludes every region and every clear rect.
+    clear=(0, 97, 41, 154),
+    name_lines=[], name_rect=(0, 0, 0, 0), name_ink=(0, 0, 0),
+    source_image={
+        "path": r"C:\AI-Accelerator\jones\tools\samples\hypersave.png",
+        # Derived, not chosen: x so his door's centre (source x 720) lands on game x 20,
+        # y so his door's top (source y 895) lands on game y 136, and the size so the
+        # aspect matches the region's 42/57 = 0.7368 (861/1168 = 0.7372).
+        "crop": (310, 96, 1171, 1264),
+        "baseline": 153,
+        # HIS OUTLINE, one rect per cel column, MEASURED off the fitted image at 20 px per
+        # cel px and written down. Columns 3..41 are his roofline read directly; columns
+        # 0..2 are EXTRAPOLATED along that same line - his pole sign's board runs down the
+        # left of the crop and a colour test reads its pink as building, which would square
+        # off the roof's left slope. The slope through columns 3..19 is 0.497 cel rows per
+        # column, so columns 2, 1 and 0 are 8.60, 9.10 and 9.60. They are the only three
+        # samples here that were not read off the picture.
+        #
+        # The pediment is the whole reason this is authored at generation resolution rather
+        # than on the cel grid: a pediment is a function of x, and at the cel grid it would
+        # come out as the staircase that sections 51 and 52 are about. Here the roofline
+        # steps a twentieth of a cel.
+        "clip": [
+        # THREE TRIMS, each one measured against his own crop arithmetic rather than
+        # eyeballed off the composite:
+        #
+        #   COLUMN 41 IS GONE. His building's right edge is source x 1150, which is cel
+        #   (1150-310)/20.5 = 40.98 - the very end of column 40. Column 41 was therefore
+        #   100% his plaza, and it installed as an orange stripe down the right of the
+        #   building. 41 rects, not 42.
+        #
+        #   THE BASE COMES IN TO 55.0, which ends the rect at cel 56.0. His own base is
+        #   source y 1250 = cel 56.29, so 55.3 looked right and left three tenths of a row
+        #   of his plaza under the building; the row below the base is a shadow we do not
+        #   need. The first version ran to 56.85 and took three quarters of a row.
+        #
+        #   COLUMNS 0..3 DROP. The extrapolation along the roof's measured slope put them
+        #   at 9.6, 9.1, 8.6, 8.1 and a wedge of his grass showed above the roof's left
+        #   corner. His eave is at source (300, 470) = cel (-0.49, 18.2), so the true
+        #   left slope is steeper than the one the colour test returned - it was reading
+        #   the pink fascia behind the roof, not the roof. 12.2, 11.4, 10.3, 9.3.
+        (0, 17.3, 0, 54), (1, 15.5, 1, 54), (2, 13.7, 2, 54), (3, 8.85, 3, 54), (4, 8.25, 4, 54),
+        (5, 7.65, 5, 54), (6, 7.05, 6, 54), (7, 6.5, 7, 54), (8, 6.3, 8, 54), (9, 5.4, 9, 54),
+        (10, 5.1, 10, 54), (11, 4.75, 11, 54), (12, 4.1, 12, 54), (13, 3.7, 13, 54),
+        (14, 3.1, 14, 54), (15, 2.55, 15, 54), (16, 1.95, 16, 54), (17, 1.4, 17, 54),
+        (18, 0.95, 18, 54), (19, 0.75, 19, 54), (20, 0.15, 20, 54), (21, 0.35, 21, 54),
+        (22, 0.8, 22, 54), (23, 1.4, 23, 54), (24, 1.95, 24, 54), (25, 2.25, 25, 54),
+        (26, 3, 26, 54), (27, 3.2, 27, 54), (28, 3.8, 28, 54), (29, 4.4, 29, 54),
+        (30, 4.85, 30, 54), (31, 5.35, 31, 54), (32, 5.8, 32, 54), (33, 6.45, 33, 54),
+        (34, 7.05, 34, 54), (35, 7.6, 35, 54), (36, 7.75, 36, 54), (37, 8.35, 37, 54),
+        (38, 8.95, 38, 54), (39, 13, 39, 54),
+        ],
+    },
+    matte_file="matte_840x1140.png",
+    # HER TOWER STICKS OUT ABOVE AND BESIDE HIS PEDIMENT, and that is arithmetic rather
+    # than carelessness. Her Bank is a round tower 18 cel px wide and 54 tall running
+    # y 92..148; his building is 41.5 wide and 56 tall, and the door fixes where both of
+    # them go. His roof is a TRIANGLE, so at its apex it is four columns wide and at
+    # y 100 it covers only x 16.6..23.4 - her shaft is x 11..27 and shows on both sides
+    # until the pediment reaches full width at about y 104. Above y 97 her dome is not
+    # covered at all.
+    #
+    # Nothing can be done about that by moving or scaling: the scale is set by her leaf
+    # body and the position by `DoorFor`. So it is the Factory's answer (section 42) -
+    # `board_fill` diffuses the board's OWN pixels over the strip, no GPU and no invented
+    # landscape. The ring sits on clean board above and beside the tower.
+    # STOPPING AT x 24 IS NOT A ROUNDING, IT IS A NEIGHBOUR. The fill first ran to x 30
+    # and the audit charged 106 stranded pixels to BARE NECESSITIES, because its region
+    # starts at x 25 and our patch was writing inside it. It does not need to: her tower
+    # runs x 11..27 and Bare Necessities' own building already covers x 25..30 down to
+    # y 105, so the three columns we were fighting for are behind somebody else's wall.
+    board_fill=[(10, 90, 24, 98, 2), (10, 96, 24, 105, 2)],
+    scale=20,
+    notes=("THE THIRTEENTH AND LAST board building. The doorway was placed FIRST and every "
+           "other number follows from it - see BUILDINGS.md 53. HIS lettering is kept, as "
+           "at Bun Believable: `Hyper Save` is drawn into his picture on its own fascia "
+           "board and no sign of ours is stamped over it. The pole sign in his picture is "
+           "dropped for want of room, not for taste. "
+           "INSTALL `blacksmarket` BEFORE `bank`: the two regions overlap at "
+           "x 25..41 y 97..105, each building's eraser is a rectangle covering its "
+           "own region, and whichever goes last wins there. The Bank is nearer the "
+           "viewer, so it goes last."),
 )

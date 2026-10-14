@@ -142,6 +142,19 @@ def pick_clear_source(ported, F, board, clear):
         if getattr(other, "clear", None):
             kx0, ky0, kx1, ky1 = other.clear
             frame[ky0 * F:(ky1 + 1) * F, kx0 * F:(kx1 + 1) * F] = False
+        # AND EVERY DECLARED LANDSCAPE PATCH, for the same reason. `board_fill` writes
+        # OUTSIDE the region by design - it is how Sierra's own building gets removed where
+        # ours does not cover it - so it is our work sitting in what this function treats as
+        # untouched control area. Hyper Save found it: its fill reaches eight rows above its
+        # region, and on the SECOND install the frame contained the FIRST install's fill, no
+        # ported set matched (best 5.88 against 0.00) and the tool refused.
+        #
+        # The alternative was to widen that building's `clear` to cover the fill, and that
+        # is worse: the rectangle needed would have reached three columns into Bare
+        # Necessities and erased part of a neighbour every time the Bank was installed.
+        # A patch we declare is a patch this check already knows is ours.
+        for (px0, py0, px1, py1, *_rest) in getattr(other, "board_fill", None) or []:
+            frame[py0 * F:(py1 + 1) * F, px0 * F:(px1 + 1) * F] = False
     if frame.sum() < 500:
         raise SystemExit("  not enough untouched board left to identify the clear source")
 

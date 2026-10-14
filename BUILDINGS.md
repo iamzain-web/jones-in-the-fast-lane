@@ -16,7 +16,7 @@ Order is his. This file is the record of what is done, so nobody has to reconstr
 | 2 | Rent Office | **Rentflix** | photoreal | **DONE** — eighth of thirteen |
 | 3 | Security Apartments | — | — | not started |
 | 4 | Black's Market | **Bare Necessities** | photoreal | **DONE** — verified on the town board |
-| 5 | Bank | — | — | not started |
+| 5 | Bank | **Hyper Save** | **his own pixel art** | **DONE** — see §53. The THIRTEENTH and last. Doorway placed first and its door needed **no offset at all**; HIS lettering kept; the pole sign in his picture dropped for want of room |
 | 11 | QT Clothing | **Common Threads** | photoreal | shipped — **sign rejected**, awaiting the rebuild |
 | 12 | Monolith Burgers | **Bun Believable** | **his own pixel art** | **DONE** — see §47. The first non-photographic source; HIS lettering is kept because it measures 4.04 cel px of cap against our house face's 2.70. Door cels built, `CastDoors` (+1,+1). Its 21 spoken lines are the first rename to reach the VOICE — §48 |
 | 13 | Pawn Shoppe | **Needful Things** | photoreal | **rebuilt under the sign technique** — first customer |
@@ -2825,6 +2825,133 @@ board. The 21 spoken lines in text 210 **were** rewritten and re-recorded — se
 but the three resource strings above are still Sierra's bytes and are the coordinator's to
 decide on.
 
+## 53. HYPER SAVE — THE THIRTEENTH, AND THE FIRST WHOSE DOOR NEEDED NO OFFSET
+
+**The board is finished: thirteen of thirteen, every one with a working door.**
+
+### EVERY NUMBER CAME OUT OF THE DOORWAY
+
+Done strictly in the order §50 set down, and this time it decided the whole fit rather than
+one row of it.
+
+```
+DoorFor(Bank)       = loop 4 at (20, 147)        Sierra's, never edited
+her loop 4 cel      = 9 x 12
+AddCastView         -> game x 16..24, y 136..147
+her LEAF BODY       = rows 0..9  = y 136..145    the feet are only rows 10..11
+his door            = 200 x 205 source px
+                       205 / 10 rows = 20.5 source px per cel px   <- the scale, forced
+his building        = 850 x 1155 source px = 41.5 x 56.3 cel px at that scale
+his door's centre   = 49.4% across it; putting that on x 20 puts his left edge at x -0.5
+```
+
+So `crop (310, 96, 1171, 1264)`, `baseline 153`, region **(0, 97, 42, 57)** — and half a
+pixel of his left wall falls off the board, which is the only thing that is cut.
+
+**The offset is (0,0).** Measured afterwards as a check, off the board at 12x: his awning at
+y 133..135, the awning's edge and the door's top rail at y 136..137, his glazing y 138..145,
+the bottom rail y 146, his steps y 147..151, his frames at x 13..14 and x 25..26 with the
+glazing between. `head_rows: 2` lands exactly on the rail and the opening is exactly his
+eight glazed rows. **The Bank has no entry in `CastDoors.cs` at all** — against nine rows,
+five, three and one for the buildings fitted the other way round.
+
+### THE STEPS ARE WHAT HER FEET STAND ON
+
+The one thing chosen rather than measured. Her feet rows want pavement; his building puts a
+flight of steps there, because a classical bank has steps. `foot_rows: 2` keeps those rows
+as **façade**, so the feet show his top step instead of being painted as interior spilling
+down it. Below a doorway at the top of a stair there is no doorway — there is a stair.
+
+### THE POLE SIGN IS DROPPED, AND IT IS FORCED RATHER THAN CHOSEN
+
+Unlike Bun Believable, where it was a composition call. The door's x is Sierra's and the
+board's left edge is x 0; between them the composition has twenty columns to the left of the
+door and his building needs 20.5 of them. There is no room for a sign standing further left
+again. Nothing of hers is lost — her Bank is a plain round tower with no pole sign — and his
+building carries HS twice anyway, on the pediment roundel and on the fascia.
+
+### HER TOWER STICKS OUT ABOVE AND BESIDE HIS PEDIMENT
+
+Arithmetic, not carelessness. Her Bank is a tower 18 cel px wide and 54 tall at y 92..148;
+his building is 41.5 wide and 56 tall, and the door fixes where both of them go. **His roof
+is a triangle**, so near its apex it is four columns wide: at y 100 it covers only
+x 16.6..23.4 while her shaft is x 11..27, and above y 97 her dome is not covered at all.
+Nothing can be done by moving or scaling, because the scale is her leaf body and the
+position is `DoorFor`.
+
+So it is the Factory's answer from §42 — `board_fill`, diffusing the board's **own** pixels
+over the strip, no GPU and no invented landscape. Two overlapping bands at x 10..24,
+y 90..105.
+
+**Stopping at x 24 is a neighbour, not a rounding.** The fill first ran to x 30 and the audit
+charged 106 stranded pixels to **Bare Necessities**, whose region starts at x 25. It does not
+need those columns: Bare Necessities' own building already covers x 25..30 down to y 105, so
+the three columns being fought over are behind somebody else's wall.
+
+### THE OUTLINE TOOK FOUR GOES AND THE FOURTH WAS THE ONLY HONEST TEST
+
+A pediment is a function of x, which is what §51 is about, so the clip is authored at 20 px
+per cel px and the roofline steps a twentieth of a cel. Getting the *shape* took longer:
+
+| test | what it returned | why it was wrong |
+|---|---|---|
+| "not his ground and not his verge" | a slope of 0.50 rows/col | it found the pink **fascia** behind the roof, not the roof |
+| extrapolating that slope to columns 0..2 | 9.6, 9.1, 8.6 | a wedge of his grass showed above the roof's left corner |
+| his building's bounding box from the source | right edge at cel 40.98 | true, but the roof does not reach there — the **wall** does, nine rows lower |
+| **the topmost ROOF-PINK pixel per column** | 8.85 at col 3, 0.15 at col 20, 8.95 at col 38, nothing at 39..40 | this is the roof, and nothing else is |
+
+Column 40 went entirely — it installed as an orange stripe down the right of the building —
+and the base came in to row 54. The lesson is the one CAST.md 4 keeps making: a colour test
+answers the question you actually asked it, and "not the background" is not the same question
+as "the roof".
+
+### THE AUDITS
+
+| clause | bank |
+|---|---|
+| 1 — her art inside the silhouette | **0 px, 0.0%** |
+| 2 — ours stranded outside the region | **11 px** (the landscape patch's feathered edge; 33 cel px of the margin are the declared patch) |
+| 3 — SLAB in the margin | **0** — a join rim plus a declared patch |
+| margin still hers | 415 of 2394 px, **17.3%** |
+
+**All thirteen doors verify shut against their façade at max 0.000 / mean 0.000** — twelve by
+`from_facade`, and Villa Locke & Keyes, which still carries the synthetic panelled door it
+was given before `from_facade` existed and has never been in a brief.
+
+### ONE SLAB LEFT ON THE BOARD, AND IT IS A DEPTH ORDER
+
+The Bank's base lands at y 151 and **The Industrial Revolution's region starts at y 149**, so
+the two overlap by three rows and the audit charges the Factory 3036 px at 12x — **21 cel
+px** — of margin that is now ours. Trimming the Bank to clear it was tried and is worse: at
+y 148 the planters are cut in half and the building ends on a hard horizontal edge against
+the grass. Looked at, the Bank's planters standing in front of the Factory's upper margin is
+what the board should show. **Recorded, not fixed** — `sierra_audit` has no way to say "this
+building legitimately stands in front of that one", and inventing one on the last building of
+the thirteen is not the moment.
+
+### TWO TOOL FIXES THIS BUILDING FORCED, BOTH THE SAME SHAPE
+
+A declaration is a statement about the **board**, not about the building that made it.
+
+- **`pick_clear_source` now excludes every declared `board_fill`.** It already excluded every
+  region and every clear rect; `board_fill` writes outside the region by design, so on the
+  Bank's SECOND install the control frame contained the FIRST install's own patch, no ported
+  set matched (5.88 against 0.00) and the tool refused. The alternative was to widen the
+  Bank's `clear` to cover the patch — and that was tried, and it reached three columns into
+  Bare Necessities and erased part of a neighbour every time the Bank was installed, which
+  surfaced as that building's own door cel no longer matching its façade (max 183.0).
+- **`sierra_audit` now excludes every building's declared patch from every building's
+  stranded band**, not just its own. That is where Bare Necessities' phantom 106 px came
+  from: the Bank's patch, sitting just outside its region, charged to a building nobody had
+  touched. 106 → 10.
+
+### AND AN ORDERING THE BOARD NOW HAS
+
+The Bank's region overlaps **Bare Necessities'** by x 25..41, y 97..105. Each building's
+eraser is a rectangle covering its own region, so whichever installs last wins there. The
+Bank is nearer the viewer, so **install `blacksmarket` before `bank`**. Running them the
+other way leaves Bare Necessities' art over the Bank's pediment.
+
 ## 52. THE CROWN SWEEP, AND THE MARGIN CHECK CAUGHT ME MAKING A BUILDING BIGGER
 
 Two of the three were fixed. The third should not be, and the instruction to **expect the
@@ -3797,7 +3924,7 @@ looked at as well.
 | Rentflix | 1, x 102..108 y 16..26 | **yes, rebuilt** | 0.54 | its glazed shop door, three rows HIGHER than her sprite; (0,−3) |
 | Villa Locke & Keyes | 2, x 23..34 y 33..44 | yes | 0.89 | its panelled portal |
 | **Bun Believable** | 10, x 282..295 y 67..76 | **yes, new** | — | **his glazed double door, after a (+1,+1) offset - section 47** |
-| the Bank | 4 | no - 1990 | 0.81 | not renamed; 1990 door over 1990 art is consistent |
+| **Hyper Save** | 4, x 16..24 y 136..147 | **yes, new** | 0.81 | **his glazed double doors at the top of his steps** — §53. The only one of the thirteen with NO offset |
 
 The Monolith row of this table read `10 ... 0.81 / 1.24 ... not renamed` and is now the Bun
 Believable row above it: the building was rebuilt from Zain's picture and its door with it.

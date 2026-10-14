@@ -53,9 +53,27 @@ internal sealed class HttpArtStore : ArtStore
     /// beside the page — in which case the head keeps the 1x art compiled into the
     /// assembly, which is exactly what it did before this class existed.
     /// </summary>
-    public static async Task<HttpArtStore?> LoadAsync()
+    /// <summary>Why the last <see cref="LoadAsync"/> gave up, for the startup log.</summary>
+    public static string? LastFailure { get; private set; }
+
+    /// <param name="pageUri">
+    /// The page's own address, which the head gets as <c>args[0]</c> — <c>main.js</c> calls
+    /// <c>runMain</c> with <c>globalThis.location.href</c>.
+    ///
+    /// <para>
+    /// IT IS REQUIRED, AND LEAVING IT OUT IS WHY THE FIRST DEPLOYMENT SHOWED SIERRA'S ART.
+    /// In WebAssembly <c>HttpClient</c> has NO BaseAddress — Blazor sets one in its host
+    /// builder and a plain Avalonia browser app has no host builder — so a relative request
+    /// like <c>art/art-manifest.txt</c> throws <i>before any request is made</i>. The art was
+    /// published, served and reachable; nothing ever asked for it.
+    /// </para>
+    /// </param>
+    public static async Task<HttpArtStore?> LoadAsync(Uri? pageUri)
     {
+        LastFailure = null;
         var store = new HttpArtStore();
+        if (pageUri is not null) store._http.BaseAddress = pageUri;
+
         try
         {
             var text = await store._http.GetStringAsync(ManifestPath);
@@ -74,14 +92,23 @@ internal sealed class HttpArtStore : ArtStore
                 set.Add(name);
             }
         }
-        catch (Exception)
+        catch (Exception e)
         {
-            // No manifest is a legitimate deployment: the page still plays, in Sierra's
-            // own pixels, exactly as it did before there was any art to fetch.
+            // No manifest is a legitimate deployment: the page still plays, in Sierra's own
+            // pixels, exactly as it did before there was any art to fetch.
+            //
+            // BUT THE REASON IS KEPT. This catch once swallowed "HttpClient has no
+            // BaseAddress" and reported it as "no art published", which sent the search to
+            // the deployment - where the art was present, served and reachable - instead of
+            // to the four lines above it. A fallback that cannot say why it fell back turns
+            // a fixable error into a property of the build.
+            LastFailure = e.Message;
             return null;
         }
 
-        return store._listing.Count > 0 ? store : null;
+        if (store._listing.Count > 0) return store;
+        LastFailure = "the manifest downloaded but listed no files";
+        return null;
     }
 
     /// <summary>The art directories the manifest listed, for the startup log.</summary>

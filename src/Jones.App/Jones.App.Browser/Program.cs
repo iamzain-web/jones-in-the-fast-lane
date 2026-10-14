@@ -1,3 +1,4 @@
+using System;
 using System.Runtime.Versioning;
 using System.Threading.Tasks;
 using Avalonia;
@@ -31,7 +32,11 @@ internal sealed partial class Program
         // BEFORE the first cel is drawn, because RenderScale settles its factor and search
         // path on first use and nothing invalidates them. Installed late, this would be a
         // store nobody ever asks.
-        var art = await HttpArtStore.LoadAsync();
+        // args[0] is the page's own href: main.js calls runMain with globalThis.location.href.
+        // It is the store's base address, and without it every art request is a relative URI
+        // that WebAssembly's HttpClient refuses before it reaches the network.
+        var pageUri = args.Length > 0 && Uri.TryCreate(args[0], UriKind.Absolute, out var u) ? u : null;
+        var art = await HttpArtStore.LoadAsync(pageUri);
         if (art is not null)
         {
             RenderScale.UseArtStore(art);
@@ -47,8 +52,9 @@ internal sealed partial class Program
         else
         {
             System.Console.WriteLine(
-                "Jones: no art manifest beside the page - drawing Sierra's 1990 pixels. " +
-                "Publish the art (see Jones.App.Browser.csproj) to change that.");
+                $"Jones: no art beside the page - drawing Sierra's 1990 pixels. " +
+                $"Base {pageUri?.ToString() ?? "<unknown>"}; " +
+                $"reason: {HttpArtStore.LastFailure ?? "<none given>"}");
         }
 
         // A phone has no keyboard and no right mouse button, exactly as Android does not -

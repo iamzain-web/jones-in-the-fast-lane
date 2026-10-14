@@ -89,8 +89,11 @@
                       Overwrite="true" WriteOnlyWhenDifferent="true" />
   </Target>
 
-  <!-- Everything under wwwroot is served beside the page; the art lands there above. -->
-  <ItemGroup>
-    <Content Include="wwwroot\art\**" CopyToPublishDirectory="PreserveNewest" />
-  </ItemGroup>
+  <!-- NO <Content Include="wwwroot\art\**"> HERE, AND THAT IS THE POINT.
+
+       The WebAssembly SDK already globs wwwroot into Content, so declaring it again is a
+       duplicate - NETSDK1022, which the Debug BUILD tolerates and `publish` refuses. The
+       art lands under wwwroot above and is carried to the publish output by that default
+       glob; the only thing an explicit item adds is a build that works until you try to
+       deploy it. -->
 </Project>
