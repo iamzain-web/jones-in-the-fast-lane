@@ -591,12 +591,64 @@ MATERIAL = {
     # values here are the showroom's own, taken a little darker for the recess - which
     # makes the opening correct and very nearly invisible, and that is the honest state of
     # this door. See BUILDINGS.md: the real fix is a facade with an entrance in it.
+    # WATT A BARGAIN, REBUILT. The entry that used to sit here read:
+    #
+    #     "head_rows": 11, "bands": [(11,11,"in_warm"), (12,13,"in_floor")]
+    #
+    # - a three-row opening in a fourteen-row sprite, eleven rows of it held shut because
+    # the generated showroom had no entrance in it and the three rows underneath were all
+    # there was to open. Its own note said so: *"the opening is correct and very nearly
+    # invisible, and that is the honest state of this door. The real fix is a facade with
+    # an entrance in it."* That facade now exists, so this is the real fix.
+    #
+    # THE DOORWAY WAS DESIGNED FROM HER SPRITE RATHER THAN MEASURED AFTERWARDS, which is
+    # the one thing the other twelve buildings did backwards. `buildings.py` placed the
+    # entrance at cel rows 38..49 and cols 15..28 because that is exactly where her loop 8
+    # leaf body lands. What the model then painted, measured off the board at 12x:
+    #
+    #     y 172        the head rail, 1A263C..2A4975 across the opening
+    #     y 173..182   the entrance glazing, median 729CA8
+    #     y 183        the threshold line, 0D0818
+    #     x 270        the left jamb, 0B080B   |   x 282..283 the right
+    #     x 271..281   the glazing, 11 columns
+    #
+    # Her body is y 170..181 against glazing that ends at y 182, so dy +1 seats it flush and
+    # `head_rows` 2 lands on his head rail. One row, on a building designed around the
+    # sprite - which is the argument for doing it in this order.
     "socketcity": {
         "from_facade": True,
-        "head_rows": 11,
-        "bands": [(11, 11, "in_warm"), (12, 13, "in_floor")],
-        "in_warm":  (0x5E, 0x4C, 0x38),   # the showroom's #8E7458, in shadow
-        "in_floor": (0x74, 0x5E, 0x46),
+        "head_rows": 2,
+        "foot_rows": 2,
+        "in_top": (0x28, 0x18, 0x18), "in_mid": (0x48, 0x38, 0x38),
+        "in_low": (0x60, 0x48, 0x48), "in_floor": (0x98, 0x40, 0x28),
+        "bands": [(2, 3, "in_top"), (4, 6, "in_mid"), (7, 9, "in_low"), (10, 11, "in_floor")],
+        # DARKER THAN THE GLASS, which is the rule the six doors before this one taught:
+        # an opening is darker than the leaf that was covering it, whatever the leaf is
+        # made of. This leaf is bright glazing at median luminance 145, and the showroom
+        # behind it measures #A98F74 through the display windows - so the opening is that
+        # showroom seen directly, warm and lit but without the glass's own sky reflection.
+        #
+        # A LIT PATCH SURROUNDED BY DARK, not a vertical ramp. The first build of this
+        # opening ran 74624C at the head down through 5E5248 and 4A4038 to 3A342E at the
+        # floor - every row uniform across its full width, each one a little darker than
+        # the last. That is a gradient, and a gradient reads as a flat wash at 12x, which
+        # is the fault sections 45 and 47 both opened with. What makes a room a room is
+        # that the lit part does not touch the sides: the back wall is inset three columns
+        # at each side and stops short of the floor, so dark returns frame it.
+        "in_ceil": (0x14, 0x11, 0x0E), "in_dark": (0x1E, 0x1A, 0x16),
+        "in_back": (0x6A, 0x5A, 0x44), "in_back_hi": (0x8E, 0x7A, 0x5E),
+        "in_shelf": (0x52, 0x48, 0x38), "in_rack": (0x7A, 0x68, 0x50),
+        "in_fl_front": (0x3E, 0x38, 0x32),
+        "interior": [
+            (1, 2, 11, 2, "in_ceil"),              # the soffit over the entrance
+            (1, 3, 11, 11, "in_dark"),             # the showroom, away from the lights
+            (3.5, 3.5, 8.5, 7.0, "in_back"),       # its lit back wall, inset at both sides
+            (3.5, 3.5, 8.5, 4.8, "in_back_hi"),    # brighter under the ceiling lights
+            (2, 8.2, 11, 9.2, "in_shelf"),         # a run of appliances on the floor
+            (2, 9.6, 11, 11, "in_fl_front"),       # the floor, which reaches both walls
+        ],
+        "shelves": [(3.7, 8.3, 4.6, 6.8, 0.6, 0.35)],
+        "board": (0x0B, 0x0C, 0x14),               # his jamb, measured
     },
     # RENTFLIX HAD A SECOND ENTRY HERE AND IT IS GONE. It was the synthetic glazed leaf the
     # first version of this door was built from - `leaf` / `leaf_hi` / `pane` / `iron`, a
@@ -738,7 +790,33 @@ LEAF = {
     #     loop 3  cel 0 none, cel 1 x 5..8, cel 2 x 4..9, cel 3 x 3..10   -> 7 / 5 / 4 / 3
     #     loop 8  cel 0 x 5,   cel 1 x 4..7, cel 2 x 4..9, cel 3 x 2..11  -> 7 / 4 / 4 / 2
     "blacksmarket": {"hinge": "both", "w": [7, 5, 4, 3]},
-    "socketcity":   {"hinge": "both", "w": [7, 4, 4, 2]},
+    # 6, NOT 4, AT CEL 1 - and the `cel 0 x 5` above is the tell that the old reading was
+    # unsound, because cel 0 is the SHUT door and cannot have an open column in it. That
+    # stray column is dithering in her leaf, and whatever threshold admitted it also moved
+    # cel 1. The interior-colour test (see the six, above) reads loop 8 as
+    #
+    #     cel 0 shut, cel 1 cols 6..7, cel 2 cols 4..9, cel 3 cols 2..11   ->  7 / 6 / 4 / 2
+    #
+    # and it reproduces three hand-measured tables without being told them. At 4 this door
+    # went from shut to two-thirds open in a single frame; at 6 it opens in four steps.
+    # It was left alone while the building was shipped. The building is not shipped any
+    # more, so the measurement is taken.
+    #
+    # `opening_cols` HERE IS INERT TODAY AND IS KEPT ANYWAY, which is worth stating rather
+    # than leaving someone to find out. His glazing is x 271..281 and his jambs are x 270
+    # and x 282..283, so the clamp is (1,11) in footprint columns - but her own leaves
+    # never reach it. Measured, body rows only:
+    #
+    #     cel 0 shut   cel 1 x 276..277   cel 2 x 274..279   cel 3 x 272..281
+    #
+    # Every one of those is already inside [1,11], so the clamp never fires, at (1,11) or
+    # at any narrower value. A clamp can only make an opening NARROWER; it cannot reveal a
+    # column her leaf is covering. The one column of his glazing left under her leaf,
+    # x 271, would need `w[3]` to be 1 instead of her measured 2 - and THEN this clamp
+    # would earn its place, catching the overshoot onto his right jamb at x 282 and
+    # leaving the opening as exactly his eleven glazed columns. That is a change to her
+    # animation, not to the clamp, and it is not mine to make.
+    "socketcity":   {"hinge": "both", "w": [7, 6, 4, 2], "opening_cols": (1, 11)},
 }
 
 

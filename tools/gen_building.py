@@ -25,6 +25,32 @@ instead of three:
   * the blend keeps Sierra's surroundings by SILHOUETTE, never by bounding box;
   * nothing in an init is drawn thinner than 2px, because a mass thinner than the blur was
     never in the init at all.
+
+TWO RULES THAT ARE NOT ABOUT THE MODEL, AND BOTH ARE READ BEFORE YOU WRITE AN INIT
+
+  * **PLACE THE DOORWAY FIRST AND DESIGN THE FACADE AROUND IT.** Twelve buildings were
+    generated and then measured to find out where their door had landed; three needed a
+    `CastDoors` offset to recover, and Casa El Cheapo still cannot be fully covered at any
+    offset because its painted door is eleven rows against a six-row leaf. Watt a Bargain
+    is the one that was done the other way - `DoorFor` gives the sprite's footprint, her
+    LEAF BODY inside it gives the rows that have to be a doorway, and the init is written
+    around those two numbers. The offsets are the evidence: nine rows, five, three - and
+    one, for the only building designed this way. Work it out like this, in cel units
+    against the region's origin:
+
+        loop, x, y   = MainViewModel.DoorFor(id)      # Sierra's, never edited
+        footprint    = (x - w/2, y + 1 - h)           # AddCastView, w/h from her cel
+        leaf body    = the rows of her cel 0 that are FULLY opaque; the rest are feet
+        the doorway  = those rows, and the feet rows under them must be ground
+
+  * **WHAT MAKES A ROOM A ROOM IS THAT THE LIT PART DOES NOT TOUCH THE SIDES.** This is
+    about the door's opening rather than the facade, but it is the same lesson and it has
+    now been arrived at by three separate routes (BUILDINGS.md 45, 47 and 50). A value
+    ladder that runs the full width of the opening, each row a little darker than the
+    last, is a GRADIENT, and a gradient reads as a flat wash at 12x - "a god damn block"
+    is the owner's phrase for it. Inset the lit surface at both sides and stop it short of
+    the floor so dark returns frame it. The floor and any counter DO reach both walls,
+    because floors do.
 """
 
 import argparse

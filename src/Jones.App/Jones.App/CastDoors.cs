@@ -66,8 +66,8 @@ public static class CastDoors
     /// </summary>
     private static (int Dx, int Dy) OffsetIn(string set, LocationId id) => set switch
     {
-        // The only set that moves any door, and after measuring all nine rebuilt buildings
-        // one at a time it moves FIVE. The door survey's original shortlist came off a
+        // The only set that moves any door, and after measuring all ten rebuilt buildings
+        // one at a time it moves SIX. The door survey's original shortlist came off a
         // dark/wall ratio and that ratio has now been wrong three times — it cleared Hire
         // Ground at 0.40 and Rentflix at 0.54, both of which needed an offset, and it
         // flagged Bare Necessities at 1.68 and Monolith at 1.24, neither of which did. It
@@ -75,8 +75,16 @@ public static class CastDoors
         //
         // What each entry rests on is the same measurement every time: the painted doorway
         // read off the installed façade at 12x, against the footprint `DoorFor` produces.
-        // Five moved — the Factory by nine rows, Casa El Cheapo by five, Rentflix by three
-        // upwards, Bun Believable and Hire Ground by one. Four did not, and are absent.
+        // Six moved — the Factory by nine rows, Casa El Cheapo by five, Rentflix by three
+        // upwards, Bun Believable, Hire Ground and Watt a Bargain by one. Three did not,
+        // and are absent.
+        //
+        // THE SPREAD IS THE ARGUMENT FOR DESIGNING THE DOORWAY FIRST. Nine rows, five
+        // rows, three rows — those are façades generated without the sprite in mind, and
+        // one of them (Casa El Cheapo) still cannot be fully covered at any offset because
+        // its door is eleven rows and her leaf is six. Watt a Bargain is the only building
+        // whose doorway was placed from `DoorFor` before its init was written, and it came
+        // out one row off.
         "cast0" => id switch
         {
             // +11, NOT +9, AND THE DIFFERENCE IS HER OWN ALPHA. The base-row difference is
@@ -166,6 +174,21 @@ public static class CastDoors
             // dx −1 because his jambs measure #4E4E4D at x 138 and #3A3A3F at x 147, so the
             // leaf is x 139..146 against her footprint's x 140..147.
             LocationId.LowCostHousing => (-1, 5),
+
+            // WATT A BARGAIN, +1 DOWN, AND IT IS THE SMALLEST OFFSET IN THE TABLE BECAUSE
+            // ITS BUILDING WAS DESIGNED AROUND THIS SPRITE. Every other façade here was
+            // generated first and measured afterwards, and three of them needed an offset
+            // to recover. This one had its doorway placed at cel rows 38..49 and cols
+            // 15..28 of its region *before* the init was written, because that is exactly
+            // where `DoorFor` lands her loop 8 leaf body (game x 270..283, y 170..181).
+            //
+            // Measured on the result at 12x: his head rail at y 172, his entrance glazing
+            // y 173..182, his threshold line y 183, his jambs at x 270 and x 282..283 with
+            // eleven columns of glazing between them. Her body is y 170..181 against
+            // glazing that ends at y 182, so +1 seats it flush and `head_rows: 2` lands on
+            // the head rail. One row — and that one row is the generator's own tolerance,
+            // not a mistake in the placement.
+            LocationId.SocketCity => (0, 1),
 
             // NOT HERE, AND THAT IS ALSO A MEASUREMENT. Open Door University, Needful Things
             // and Common Threads were each measured off the board at 12x and each came back

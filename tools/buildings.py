@@ -179,6 +179,19 @@ class Building:
     # the only one: its shape IS her blank panel, flood-filled, and no arrangement of
     # init rectangles would reproduce it honestly. See tools/town_centre_mask.py.
     matte_file: str = None
+    # AN AUTHORED ROOFLINE, in cel units, as samples (col, top) interpolated between.
+    #
+    # `init` boxes are the silhouette for most buildings and they are exact IN CEL TERMS
+    # ONLY: `building_matte` krons the box grid up to the rung, so an outline authored on
+    # the cel grid staircases in whole-cel steps. On a flat roof nothing shows. On a CURVE
+    # it is a staircase - Watt a Bargain's dome came out as eight steps with a 36 px riser
+    # at 12x, which reads as a ziggurat rather than a roofline.
+    #
+    # This is the same fix the General Dealer's `clip` is: author the outline at the
+    # GENERATION resolution, where a quarter of a cel is a real distance. Here it is a
+    # profile rather than a list of rects, because a roofline is a function of x.
+    # tools/crown_mask.py writes the matte; `matte_file` then points at it.
+    crown: tuple = ()
     # STAGE B, the tiled detail pass - see tools/detail_tiles.py. `cols` and `rows` are
     # the cel-coordinate JOINS between tile cores, and they are a design decision rather
     # than a setting: two adjacent tiles are denoised independently, so a core boundary
@@ -1055,6 +1068,27 @@ BUILDINGS["blacksmarket"] = Building(
     # of this building wrote generated ground, kerb and tree across the whole region, and
     # the matte no longer covers them, so they would survive outside the silhouette
     # forever. Erasing costs no GPU (BUILDINGS.md 24).
+    # HER DIAGONAL SHOULDERS, SMOOTHED. The `init` draws them as treads - tops 4, 4, 2, 2,
+    # 2, 0 on the left and the mirror on the right - and `building_matte` renders that at
+    # cel resolution, so the bevel is four 24 px jogs instead of a line. These samples are
+    # the SAME shape at the same endpoints, interpolated: nothing about the design changes,
+    # only the resolution it is drawn at.
+    #
+    # Her own board agrees about the shape and not about the extent. Measured as the first
+    # non-foliage row per column (a test that has to see foliage IN SHADOW, or it reads her
+    # dark leaves as the sign board):
+    #
+    #     col  3  4  5  6  7  8 ... 36 37 38 39 | 40 41 42
+    #     row 11  7  5  5  4  4 ...  4  4  3  3 | 19 18 20
+    #
+    # so her shoulder is a steeper diagonal starting a column further right, and her right
+    # edge is a CLIFF at column 40 where ours bevels. Following her there would narrow a
+    # shipped building, which is a design change and not this fix; it is written down here
+    # instead. COLUMN 0 IS NOT IN THE SPAN: its top is row 16, the vertical left wall of
+    # the shopfront, and a wall is not a staircase.
+    crown=((1, 4.0), (2.5, 3.0), (5.5, 1.0), (7, 0.0),
+           (35, 0.0), (36.5, 1.0), (39.5, 3.0), (41, 4.0)),
+    matte_file="matte_688x592.png",
     clear=(25, 69, 67, 105),
     name_lines=["BARE", "NECESSITIES"],
     # Her own two bands, short over long, exactly as BARE over NECESSITIES. `BARE` is 15px
@@ -1408,6 +1442,18 @@ BUILDINGS["qtclothing"] = Building(
     surround={"mode": "rects", "keep": [(0, 0, 39, 35)]},
     scenery=("GROUND",),
     # the eraser, sized to the old install's footprint
+    # HER ARCHED SHOULDERS, SMOOTHED. The `init` steps 9, 9, 9, 9, 9, 6, 6, 4, 4, 2, 2, 2, 0
+    # and mirrors it - EIGHT treads, the most of any building on the board, which is why
+    # this one looked worst at 12x despite its risers being the smallest. Same endpoints,
+    # interpolated.
+    #
+    # Her own board, first non-foliage row per column, agrees closely: the shoulder runs
+    # from about (4, 9) to (10, 2) and then flattens at 2 to 3, against the init's (5, 9) to
+    # (13, 0). The difference is a column of start and three rows of height on the flat -
+    # the second of those is the building's own design and is left alone.
+    crown=((3.9, 9.0), (5.5, 7.5), (7.5, 5.0), (9.5, 3.0), (12.5, 1.0), (14, 0.0),
+           (25, 0.0), (26.5, 1.0), (29.5, 3.0), (31.5, 5.0), (33.5, 7.5), (35.1, 9.0)),
+    matte_file="matte_640x576.png",
     clear=(257, 80, 296, 116),
     name_lines=["COMMON", "THREADS"],
     # COMMON is 23px and the gable offers about 24; THREADS is 27px and the awning offers
@@ -1531,7 +1577,8 @@ BUILDINGS["socketcity"] = Building(
         "DARK":    (0x20, 0x20, 0x20),   # inside the display windows
         "GOODS":   (0x70, 0x80, 0x90),   # appliance shapes behind the glass
         "FOLIAGE": (0x20, 0x78, 0x60),   # the trees in the corners - KEPT, not generated
-        "BASE":    (0x90, 0x48, 0x30),   # the plinth under the shopfront
+        "BASE":    (0x90, 0x48, 0x30),   # the stall riser under the display windows
+        "PAVE":    (0x88, 0x84, 0x80),   # the two rows her sprite's feet stand on
         "SKY":     (0x58, 0x90, 0xE0),
     },
     init=[
@@ -1541,6 +1588,19 @@ BUILDINGS["socketcity"] = Building(
         # that make the building what it is - Sierra's DOMED CROWN, and any structure at
         # all across the 60% of the canvas that is glass. A featureless slab gives the
         # model nothing to grip and comes back as a blank wall.
+        # THE DOORWAY'S ROWS WERE CHOSEN BEFORE ANYTHING ELSE IN THIS INIT, which is the
+        # one thing the other twelve buildings did backwards. Sierra's loop 8 sprite is
+        # 14x14 drawn at (277,183), so `AddCastView` lands it on game x 270..283 y 170..183
+        # - and inside that, her LEAF BODY is rows 0..11 (y 170..181) with only the swinging
+        # feet in rows 12..13 (y 182..183). Against this region's origin (255,132) that is
+        #
+        #     the doorway   cel cols 15..28, cel rows 38..49
+        #     her feet      cel rows 50..51, which have to be pavement and not shopfront
+        #
+        # The previous facade put its ground floor in the last three rows with a display
+        # window above, so her leaf had nothing to seat on; `CastDoors` can move a sprite
+        # but it cannot invent a doorway for it to land in. Every box below is placed around
+        # those two numbers.
         (0, 0, 43, 51, "SKY"),
         # the crown, stepped so it reads as a curve once blurred - 2px steps, never 1
         (8, 1, 35, 3, "GLASS_LO"),
@@ -1556,21 +1616,33 @@ BUILDINGS["socketcity"] = Building(
         (31, 7, 32, 15, "MULLION"),
         (4, 7, 11, 10, "GLASS_HI"),       # a highlight raking across the crown
         (14, 7, 21, 10, "GLASS_HI"),
-        (2, 34, 41, 37, "MULLION"),       # the transom above the shopfront
-        (3, 38, 40, 47, "DARK"),          # the display windows
-        (5, 40, 12, 46, "GOODS"),         # appliances behind the glass - 8x7, survives blur
-        (18, 40, 25, 46, "GOODS"),
-        (31, 40, 38, 46, "GOODS"),
-        (14, 38, 16, 47, "MULLION"),      # the two dividers, 3px so they survive
-        (27, 38, 29, 47, "MULLION"),
-        (0, 48, 43, 51, "BASE"),          # the plinth
+        (2, 34, 41, 37, "MULLION"),       # the fascia above the shopfront
+        # --- THE GROUND FLOOR, built around the doorway ------------------------------
+        # What says ENTRANCE rather than WINDOW at this size is not detail, it is one
+        # relation: the middle bay runs all the way to the pavement while the two beside it
+        # stop on a stall riser. Three bays, the centre one open to the floor.
+        (2, 38, 41, 49, "DARK"),          # the recessed shopfront
+        (3, 40, 12, 46, "GOODS"),         # appliances behind the left window - 10x7
+        (31, 40, 40, 46, "GOODS"),        # and the right
+        (2, 47, 12, 49, "BASE"),          # the stall riser the left window stands on
+        (31, 47, 41, 49, "BASE"),         # and the right
+        (13, 38, 14, 49, "MULLION"),      # the entrance's left jamb, 2px so it survives
+        (29, 38, 30, 49, "MULLION"),      # and its right
+        (15, 38, 28, 39, "MULLION"),      # its head rail - `head_rows` 2 keeps this
+        (15, 40, 28, 49, "GLASS_LO"),     # THE ENTRANCE, glazed, down to the floor
+        (21, 40, 22, 49, "MULLION"),      # the stile where her two leaves meet
+        (0, 50, 43, 51, "PAVE"),          # the pavement her feet stand on
     ],
     # Glass, reflection and depth behind it - the vocabulary the Factory proved. Not one
     # colour word: GLASS, DARK and FOLIAGE above already say every colour in the picture.
+    # THE ENTRANCE IS NAMED IN THE PROMPT because the init alone did not get one last time.
+    # Still not one colour word: GLASS, DARK, BASE, PAVE and FOLIAGE above already say
+    # every colour in the picture, and `aluminium`, `steel` and `glazed` are materials.
     prompt=("a photograph of a modern glass fronted appliance showroom, curved glazed "
-            "facade, polished aluminium mullions, reflections and depth behind the glass, "
-            "lit interior with appliances on display, brushed steel, bright overcast "
-            "daylight, sharp focus, fine detail, architectural photography"),
+            "facade, a tall glazed entrance with double doors at street level in the "
+            "centre of the shopfront, polished aluminium mullions, reflections and depth "
+            "behind the glass, lit interior with appliances on display, brushed steel, "
+            "bright overcast daylight, sharp focus, fine detail, architectural photography"),
     # The corners carry Sierra's trees. Green is the one thing in this cel that is not the
     # building, and nothing in the building is green.
     # THE MATTE DRAWS THE OUTLINE, NOT A COLOUR TEST. `mode: green` kept whatever of HER
@@ -1585,6 +1657,32 @@ BUILDINGS["socketcity"] = Building(
     # being scenery are different things.
     surround={"mode": "rects", "keep": [(0, 0, 43, 51)]},
     scenery=("SKY",),
+    # HER DOME, MEASURED COLUMN BY COLUMN OFF HER OWN BOARD, and the reason this field
+    # exists at all. The init's crown is stepped boxes, `building_matte` krons them up at
+    # cel resolution, and the result was EIGHT treads with a 36 px riser at 12x - a
+    # ziggurat where she drew an arc. tools/crown_mask.py interpolates these samples at
+    # 16 px per cel px instead, so the outline steps at 1/16 of a cel.
+    #
+    # The samples are the topmost row of her cel 8 that is neither her sky nor her foliage,
+    # read off `png12x-new` at cel resolution:
+    #
+    #   col  4  5  6  7  8  9 10 | 11..22 | 23..32 | 33..35 | 36 37 38 39 40 41
+    #   row 11 10  8  7  6  4  3 |   2    |   1    |   2    |  4  7  9 10 12 14
+    #
+    # COLUMNS 0..3 ARE NOT HERS AND ARE NOT USED. The same test returns 4, 2, 2, 3 there,
+    # which is not a building: it is the dark branch of her tree at the top-left corner,
+    # and a colour test cannot tell that from glazing (CAST.md 4, again). Columns 2 and 3
+    # continue her own shoulder's slope instead - 13 and 12 - and are marked as the only
+    # two samples here that were not read off the board.
+    #
+    # Her shoulders sit far lower than the init's: at column 8 the init says row 1 and she
+    # says row 6. Following her costs the upper corners of the generated glazing and gives
+    # back the arc, which is the whole point.
+    crown=((2, 13.0), (3, 12.0),                       # extrapolated, not measured
+           (4, 11.0), (5, 10.0), (6, 8.0), (7, 7.0), (8, 6.0), (9, 4.0), (10, 3.0),
+           (11, 2.0), (22, 2.0), (23, 1.0), (32, 1.0), (33, 2.0), (35, 2.0),
+           (36, 4.0), (37, 7.0), (38, 9.0), (39, 10.0), (40, 12.0), (41, 14.0)),
+    matte_file="matte_704x832.png",
     # the eraser, sized to the old install's footprint
     clear=(255, 132, 298, 184),
     name_lines=["WATT A", "BARGAIN"],
@@ -1646,7 +1744,12 @@ BUILDINGS["socketcity"] = Building(
                  ink=(0xC0, 0x38, 0x38),
                  lines=["WATT A BARGAIN"]),
     ],
-    notes=("The letter S of `Socket` is drawn as an electrical PLUG - a device and a letter "
+    notes=("REBUILT around its own doorway - see BUILDINGS.md 50. The first facade in the "
+           "programme whose entrance rows were chosen from `DoorFor` BEFORE the init was "
+           "written rather than measured afterwards, and the only one whose door came out "
+           "within one row. The previous generation is kept at tools/samples/"
+           "socketcity-rename-OLD. "
+           "The letter S of `Socket` is drawn as an electrical PLUG - a device and a letter "
            "at once. It is 36% of the red pixels with a 10x13 body, so the name takes most "
            "of the area and a standalone device fits beside it. `Watt a Bargain` puns on "
            "the watt rather than the socket, so a filament bulb is the more apt device; "

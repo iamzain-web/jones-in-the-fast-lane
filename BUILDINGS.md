@@ -11,7 +11,7 @@ Order is his. This file is the record of what is done, so nobody has to reconstr
 | 9 | Hi-Tech University | **Open Door University** | photoreal | **DONE** — verified on the town board |
 | 7 | Employment Office | **Hire Ground** | photoreal | **DONE** — verified on the town board |
 | 6 | Factory | **The Industrial Revolution** | photoreal | **rebuilt under the sign technique** — a board on posts, 166% → 125% of the building's width |
-| 10 | Socket City | **Watt a Bargain** | photoreal | **DONE** — verified on the town board; device is a filament bulb |
+| 10 | Socket City | **Watt a Bargain** | photoreal | **REBUILT** — see §50. The first façade whose DOORWAY was placed from `DoorFor` before the init was written; it came out one row off where the other twelve needed up to nine. Device is a filament bulb |
 | 1 | Low-Cost Housing | — | — | not started |
 | 2 | Rent Office | **Rentflix** | photoreal | **DONE** — eighth of thirteen |
 | 3 | Security Apartments | — | — | not started |
@@ -2825,6 +2825,357 @@ board. The 21 spoken lines in text 210 **were** rewritten and re-recorded — se
 but the three resource strings above are still Sierra's bytes and are the coordinator's to
 decide on.
 
+## 52. THE CROWN SWEEP, AND THE MARGIN CHECK CAUGHT ME MAKING A BUILDING BIGGER
+
+Two of the three were fixed. The third should not be, and the instruction to **expect the
+margin kept for her to go UP** caught a real error on the way.
+
+### A LINE THROUGH A STAIRCASE HAS TO SPLIT ITS RISERS
+
+The first crowns written for Bare Necessities and Common Threads pinned the interpolated
+line at the **top of each tread** — the same endpoints the init already had, which sounded
+conservative. The margin check disagreed:
+
+| | her board kept, before | after the first attempt |
+|---|---|---|
+| Bare Necessities | 221 px (13.9%) | **217 px (13.6%)** — DOWN |
+| Common Threads | 390 px (27.1%) | 400 px (27.8%) — up |
+
+A line pinned at the top of the treads rides **above** the staircase for most of its length,
+so the building quietly got bigger — exactly the direction a silhouette fix must never go.
+Four pixels is nothing to look at and everything to measure, and it was found only because
+the number was being watched rather than averaged.
+
+The unbiased construction is to pass the line through each **riser's own midpoint**: half of
+every tread is given back and half is taken. `crown_mask.py --suggest` now prints those
+points for any building. Re-authored that way:
+
+| | her board kept, before | after |
+|---|---|---|
+| Bare Necessities | 221 px (13.9%) | **221 px (13.9%)** |
+| Common Threads | 390 px (27.1%) | **390 px (27.1%)** |
+
+**Exactly neutral, to the pixel, on both.** That is the right answer here and it is worth
+separating from Watt a Bargain's: there the margin *rose* 288 → 370 px because the shape
+itself changed — her dome sits lower than the init's square crown. Here only the RESOLUTION
+changes, so neutral is what correct looks like. "Expect it to go up" holds when you re-measure
+the shape; "expect it not to go down" is the rule that holds always.
+
+One detail that falls out of the same reasoning: where the init is genuinely **flat** over a
+long run, the flat IS the edge and is pinned at its own value. Splitting the risers there
+would drop a long roofline by half a cel row for no reason.
+
+### NEEDFUL THINGS IS NOT FIXED, AND HERE IS WHY
+
+Its `init` reads 11, 11, 11, 3, 0, …, 0, 3, 11, 11. That is **a vertical wall with one
+3-row notch beside it**, not a staircase, and her own board draws the same thing: measured as
+the first non-foliage row per column, her foliage runs down to about row 10 at columns 0..2
+and her building starts at row 3 from column 3 — **a right angle**. Interpolating it would
+turn her corner into a two-column bevel she does not have.
+
+The 36 px notch is one step, isolated, on a 96 px wall. Smoothing a single step is not
+smoothing a staircase; it is inventing a chamfer. Left alone, recorded here.
+
+### AND HER TREE GOT ONE MORE COLOUR TEST
+
+Bare Necessities' left shoulder could not be read with the test used at Watt a Bargain. Her
+foliage there is in **shadow** — `29,41,40`, green-dominant but barely — and a test of
+`G > R + 8 and G > B + 8` classes it as building, putting her roofline at row 3 where it is
+actually row 11. The test that works has to allow foliage that is no bluer than it is green:
+`G > R + 4 and G > B − 4`. That is the **fourth** time in this programme a colour test has
+confidently measured a tree, and the first time it was a tree in shadow.
+
+With it, her outline reads:
+
+```
+col  3  4  5  6  7  8 ... 36 37 38 39 | 40 41 42
+row 11  7  5  5  4  4 ...  4  4  3  3 | 19 18 20
+```
+
+— a steeper diagonal than the init's, starting a column further right, and a **cliff** at
+column 40 where ours bevels. Following her there would narrow a shipped building, which is a
+design change rather than a resolution fix, so it is written into the table and not acted on.
+
+## 51. A ROOFLINE IS A FUNCTION OF X, AND `init` CANNOT DRAW ONE
+
+`install_building.building_matte` builds the silhouette from the `init` boxes — every box
+whose palette key is not in `scenery` — and then `np.kron`s it up to the shipping rung.
+**That is exact, and it is exact in cel terms only.** On a flat roof nothing is lost. On a
+curve, everything is: Watt a Bargain's dome came out as six treads with a 36 px riser at
+12x, which reads as a ziggurat rather than a roofline.
+
+This is the identical wall the General Dealer hit from the other direction (§44: *"authored
+on the cel grid its outline staircases in 12-px steps at the shipping rung"*), and it takes
+the identical answer — author the outline at the **generation** resolution. The difference
+is the shape of the authored thing: the General Dealer's is a list of rects because a cap is
+a blob; a roofline is a **function of x**, so this one is a profile.
+
+### `crown`, AND `tools/crown_mask.py`
+
+A new optional field on `Building`: samples `(col, top)` in cel units, interpolated across
+the generated columns and written out as a `matte_file`. For Watt a Bargain the samples are
+**measured column by column off her own board** — the topmost row of her cel 8 that is
+neither her sky nor her foliage:
+
+```
+col  4  5  6  7  8  9 10 | 11..22 | 23..32 | 33..35 | 36 37 38 39 40 41
+row 11 10  8  7  6  4  3 |   2    |   1    |   2    |  4  7  9 10 12 14
+```
+
+**Columns 0..3 are not hers and are not used.** The same test returns 4, 2, 2, 3 there,
+which is not a building — it is the dark branch of her tree at the top-left corner, and a
+colour test cannot tell that from glazing. CAST.md 4, again, and the third time in this
+programme that a colour test has confidently measured a tree. Columns 2 and 3 continue her
+own shoulder's slope instead, and are marked in the table as the only two samples that were
+not read off the board.
+
+| | worst step in the roofline |
+|---|---|
+| the init's boxes | 3 cel rows = **36 px** at 12x, six times |
+| this matte, interpolated at 16 px per cel px | 0.188 cel rows = **2.2 px**, mean 0.036 |
+
+Her shoulders sit far lower than the init's — at column 8 the init says row 1 and she says
+row 6 — so following her costs the upper corners of the generated glazing and gives back
+the arc. The audit agrees it is the right direction: **the margin kept for her went from 288
+px (12.6%) to 370 px (16.2%)**, and clauses 1, 2 and 3 are unchanged at 0 / 0 / 0.
+
+### HOW MANY OTHERS HAVE IT — `crown_mask.py --survey`
+
+A side wall is not a step. One big drop in one column is a vertical corner and buildings
+have those; what reads as a staircase is a **sloping** edge cut into whole-cel treads, so
+the number reported is the worst riser inside a run of two or more steps going the same way.
+
+| building | silhouette from | worst riser in a slope | steps |
+|---|---|---|---|
+| **Bare Necessities** | `init` boxes | **12 cel rows = 144 px** | 5 |
+| **Needful Things** | `init` boxes | **8 cel rows = 96 px** | 4 |
+| **Common Threads** | `init` boxes | 3 cel rows = 36 px | 8 |
+| Watt a Bargain | **an authored `crown`** | **0.188 rows = 2.2 px** | — |
+| Villa Locke & Keyes | `init` boxes | 0 — four isolated corners, no slope | 4 |
+| Hire Ground, Casa El Cheapo, Rentflix | `init` boxes | 0 — flat rooflines | 0 |
+| The Industrial Revolution, General Dealer, Bun Believable, the town centre | authored mattes | — | — |
+| Open Door University | no matte — the full rectangle | — | — |
+
+**Three buildings have the fault.** Two of those numbers were then found to be wrong, and
+the correction is in §52.
+
+### THE SWEEP, AND THE TWO BIGGEST NUMBERS WERE CORNERS
+
+The first version of `--survey` said Bare Necessities stepped **12 cel rows** and Needful
+Things **8**. Both are wrong by a factor of four to six, and the reason is the same mistake
+the first version made in the other direction: **a corner standing next to a staircase is
+still a corner.**
+
+Bare Necessities' outline steps 12 rows between columns 0 and 1 and then 2, 2, 2. The 12 is
+the vertical left wall of the shopfront; it looks like a wall because it is one. Only the
+2s are treads. Needful Things is the same shape — an 8-row wall beside a 3-row tread. So
+the test now groups the steps into runs going the same way and counts a step as a tread only
+while it is **no more than twice the smallest step in that run**, reporting the corner
+separately as *"not a fault"*.
+
+| building | worst TREAD | steps | worst plain corner |
+|---|---|---|---|
+| Needful Things | 3 cel rows = 36 px | 4 | 8 rows |
+| Common Threads | 3 cel rows = 36 px | 8 | — |
+| Bare Necessities | 2 cel rows = 24 px | 5 | 12 rows |
+| Villa Locke & Keyes | 0 — four isolated corners | 4 | 3 rows |
+| Hire Ground, Casa El Cheapo, Rentflix | 0 — flat rooflines | 0 | — |
+
+So the real spread across the whole board is 2 to 3 cel rows, and **Watt a Bargain's six
+treads were never the worst; Common Threads' eight were**, which is why it looked worst at
+12x despite the risers being identical.
+
+### WHAT WAS DONE
+
+**Bare Necessities and Common Threads** get authored crowns. **Needful Things does not**,
+and that is the finding that disagreed with the Watt a Bargain run — see §52.
+
+| | worst step, before | after |
+|---|---|---|
+| Bare Necessities | 2 cel rows = **24 px** | 0.042 rows = **0.5 px**, mean 0.012 |
+| Common Threads | 3 cel rows = **36 px** | 0.078 rows = **0.9 px**, mean 0.028 |
+
+Deliverables: `tools/samples/{blacksmarket,qtclothing}_crown_{12,4}x.png`, init boxes left,
+authored crown right, at native resolution.
+
+Both doors rebuilt `from_facade` afterwards and re-verified shut: **max 0.000, mean 0.000**,
+and so are all eleven. Audits unchanged and clean: clause 1 **0 px / 0.0%**, clause 2 **0 px
+stranded**, clause 3 **0 SLAB** on both.
+
+## 50. WATT A BARGAIN, REBUILT AROUND ITS OWN DOORWAY — THE FIRST ONE DONE IN THAT ORDER
+
+Twelve buildings were generated and then measured to find out where their door had landed.
+Three of them needed an offset to recover, and one — Casa El Cheapo — **still cannot be
+fully covered at any offset**, because its painted door is eleven rows and Sierra's leaf is
+six. This one was done the other way round, and it is the argument for doing the rest that
+way if any are ever redone.
+
+**The doorway's rows were chosen before anything else in the init.** `DoorFor` puts loop 8
+at (277,183); `AddCastView` draws a 14x14 cel at `(x − w/2, y + 1 − h)`, so the sprite
+covers game x 270..283 y 170..183, and inside that her **leaf body** is rows 0..11
+(y 170..181) with only the swinging feet in rows 12..13. Against this region's origin
+(255,132):
+
+```
+the doorway   cel cols 15..28, cel rows 38..49
+her feet      cel rows 50..51, which have to be pavement and not shopfront
+```
+
+Every box in the init is placed around those two numbers. The previous façade put its whole
+ground floor in the last three rows with a display window above, so her leaf had nothing to
+seat on — and `CastDoors` can move a sprite, but it cannot invent a doorway for it to land
+in.
+
+### WHAT SAYS "ENTRANCE" AT 44 CEL PX IS A RELATION, NOT DETAIL
+
+Three bays. The middle one runs all the way to the pavement; the two beside it stop on a
+stall riser. That contrast is the whole device — at this size there is no room for a handle,
+a push plate or a threshold mat, and none of them would survive the downscale anyway.
+
+The prompt names the entrance as well, because the init alone did not get one last time.
+Still not one colour word in the positive prompt: `GLASS`, `DARK`, `BASE`, `PAVE` and
+`FOLIAGE` already say every colour in the picture, and *aluminium*, *steel* and *glazed* are
+materials.
+
+Generated at the table's defaults — scale 16, strength 0.88, control 0.35, cfg 9.0, steps
+32, seed 7 — 704x832 = 585,728 px, inside the 810k ceiling, on a GPU checked free first.
+
+**It came back with a glazed double door at street level, centred, under a head rail, with
+lit display windows either side.** First attempt, no reroll.
+
+### THE SKY LOOKED WRONG AND MEASURED FINE
+
+The render is dusk-blue and my first reaction was that it would read as a hole in a daylight
+board. Measured:
+
+| | mean luminance |
+|---|---|
+| the new generation | 121.7 |
+| her original cel 8 | 127.1 |
+| the whole board | 126.5 |
+| the façade it replaces | 136.8 |
+
+Five levels under the board's own average. The eye was reading the *hue*, not the value, and
+there was nothing to fix. Recorded because "it looks dark" nearly cost a GPU round.
+
+### THEN THE DOOR, AND THE OFFSET IS ONE ROW
+
+Measured on the result at 12x, as the median of each block:
+
+```
+y 172        the head rail, 1A263C..2A4975 across the opening
+y 173..182   the entrance glazing, median 729CA8
+y 183        the threshold line, 0D0818
+x 270        the left jamb 0B080B  |  x 282..283 the right
+x 271..281   eleven columns of glazing between them
+```
+
+Her body is y 170..181 against glazing that ends at y 182, so **`SocketCity => (0, 1)`**
+seats it flush and `head_rows: 2` lands on the head rail. **One row** — against nine, five
+and three for the façades that were generated without the sprite in mind. That one row is
+the generator's own tolerance, not a mistake in the placement.
+
+`foot_rows` 2, and `opening_cols` (1,11) for the eleven columns.
+
+### BOTH LOGGED DEFECTS ARE GONE
+
+- **`w[1]` was 4 and measures 6.** The old table's own note recorded `cel 0 x 5` for this
+  loop — an open column in the SHUT cel, which cannot happen, and is the tell that the
+  threshold which admitted it also moved cel 1. The interior-colour test reads loop 8 as
+  shut / 6..7 / 4..9 / 2..11, so **7, 6, 4, 2**. The door now opens in four steps instead of
+  going shut-to-two-thirds in one frame.
+- **The 1438 painted feet pixels are 0.** The old material held eleven of fourteen rows shut
+  with `head_rows: 11` and opened the three underneath, because three rows was all there was.
+  With a real entrance it is `head_rows: 2`, `foot_rows: 2`, and the sweep over all eleven
+  doors for interior painted below the leaf body now returns **zero everywhere**.
+
+### THE OPENING, AND A GRADIENT IS NOT A ROOM
+
+First build ran `74624C` at the head down through `5E5248` and `4A4038` to `3A342E` at the
+floor, every row uniform across its full width. That is a gradient, and a gradient reads as a
+flat wash at 12x — the same fault sections 45 and 47 both opened with, arrived at a third
+time by a different route.
+
+What makes a room a room is that **the lit part does not touch the sides.** The back wall is
+now inset at both sides and stops short of the floor, so dark returns frame it; the
+appliance run and the floor reach both walls, because floors do. The values are pitched
+under the leaf they replace — this leaf is bright glazing at median luminance 145, and the
+showroom behind it measures `A98F74` through the display windows, so the opening is that
+showroom seen directly, warm and lit but without the glass's own sky reflection.
+
+One honest blemish: his glazing is **eleven** columns and her leaves never expose more than
+ten, so a single column of façade glass stays inside the opening at the left. It reads as a
+glazed sidelight. No offset fixes it — moving it left only mirrors it.
+
+**And `opening_cols` cannot fix it either, which is worth stating precisely because it is
+the obvious thing to reach for.** A clamp can only make an opening NARROWER; it cannot
+reveal a column her leaf is covering. Measured, body rows only, at every value tried:
+
+| | cel 0 | cel 1 | cel 2 | cel 3 |
+|---|---|---|---|---|
+| no clamp | shut | x 276..277 | x 274..279 | x 272..281 |
+| `(1,11)` | shut | x 276..277 | x 274..279 | x 272..281 |
+| `(2,11)` — narrower | shut | x 276..277 | x 274..279 | x 272..281 |
+
+Every one of her openings is already inside `[1,11]`, so **the clamp on this building is
+inert today** and is kept only for the case below. The one thing that would seat x 271 is
+`w[3] = 1` instead of her measured 2 — and then the clamp earns its place: without it the
+opening runs x 271..282 and eats his right jamb; with it, x 271..281, which is **exactly his
+eleven glazed columns**. That is a change to her animation rather than to the clamp, so it
+is recorded as an available trade and not taken: her leaf widths are read everywhere else in
+this programme, never chosen.
+
+### THE AUDITS
+
+| clause | socketcity |
+|---|---|
+| 1 — her art inside the silhouette | 0 px, 0.0% |
+| 2 — ours stranded outside the region | 0 px |
+| 3 — SLAB in the margin | 0 (1595 px of join rim) |
+| margin still hers | 288 of 2288 px, 12.6% |
+
+`margin_check` reports 237 px differing outside the region at x 241..249 y 118..146 and
+names them as a neighbour's work; they fall inside the **town centre's** region and **Open
+Door University's**, not this one.
+
+Shut-cel identity re-verified across all eleven `from_facade` doors: max 0.000, mean 0.000.
+Neighbour check run with the offset applied: the footprint reaches y 184, one row below its
+own region, onto her pavement — which is what `foot_rows` 2 is for — and touches no other
+building's region.
+
+### `no_text_guard` IS BLIND ON THIS BUILDING AT EVERY CROP I TRIED
+
+Section 47 found it defeated by busy texture and demonstrated it with a tight crop that made
+it fail. **Here it does not fail anywhere.** Four ways, every one on an image that
+demonstrably contains large lettering:
+
+| input | result |
+|---|---|
+| the whole generation, 704x832 at 16x | pass |
+| HER original 44x52 region at 12x, which says `Socket City` | pass |
+| OURS at 12x, which says `WATT A BARGAIN` in 5 px capitals | pass |
+| OURS cropped to the 28x20 sign, at 12x and again at 16x | pass |
+
+So on this façade the guard carries **no information at all**, not even the partial signal it
+gave at Bun Believable. A showroom full of appliances behind glass is exactly the texture
+that defeats it, and this is now the second building where its pass has been shown to mean
+nothing. It should not be quoted as evidence for this one.
+
+### ONE THING NOT FIXED IN THIS PASS — AND THEN IT WAS, IN §51
+
+**The crown was a staircase.** The init draws Sierra's dome as stepped boxes and
+`building_matte` is the authored silhouette at cel resolution, so the roofline was literally
+six steps: measured off the init, the column tops ran 9 / 6 / 3 / 1 / 3 / 6 / 9 in blocks
+one to three columns wide and up to three cel rows tall. At 12x that is a 12-to-36 px tread
+with a 36 px riser. **Section 51 fixes it and counts how many other buildings have it.** This is unchanged from the façade it replaces — the init's crown boxes
+were not touched — and it is outside the brief, which was the entrance. The fix, if it is
+wanted, is the one the General Dealer used: a `matte_file` authored at generation resolution
+so the outline can step at a quarter of a cel instead of a whole one.
+
+Deliverables: `tools/samples/socketcity_before_after_{12,4}x.png` and
+`tools/samples/socketcity_door_{12,4}x.png`. The previous generation is kept intact at
+`tools/samples/socketcity-rename-OLD`.
+
 ## 49. THE LAST SIX DOORS, AND THE LEAF WIDTHS WERE DERIVED RATHER THAN READ
 
 Hire Ground, Rentflix, Casa El Cheapo, Open Door University, Needful Things and Common
@@ -3436,7 +3787,7 @@ looked at as well.
 |---|---|---|---|---|
 | **Factory** | 5, x 45..54 y 171..181 | **yes, new** | **1.01** | **his window and sign - the defect above**; now (0,+11) |
 | **Bare Necessities** | 3, x 39..52 y 92..105 | **yes, new** | **1.68** | a pale shutter panel with a red boss. Flush; no offset. |
-| Watt a Bargain | 8, x 270..283 y 170..183 | yes | 1.03 | **a window**, the middle one of three. No offset; see §49 |
+| **Watt a Bargain** | 8, x 270..283 y 171..184 | **yes, rebuilt** | 1.03 | **a real entrance**, generated for this sprite — §50. (0,+1), `opening_cols` (1,11) |
 | Common Threads | 9, x 273..281 y 103..113 | **yes, new** | 1.07 | the central opening between the mannequins. No offset; `opening_cols` (1,6) |
 | Needful Things | 12, x 216..225 y 23..34 | **yes, new** | 0.99 | the recessed centre of the shopfront. No offset |
 | General Dealer | 11, x 270..294 y 24..34 | **yes, new** | 0.98 | its painted shut doors, authored to this footprint |
@@ -3546,7 +3897,7 @@ region strictly contains the cel. Measured, then looked at at native 12x:
 |---|---|---|
 | Common Threads | 390 of 1440 (27%) | her lawn, path and trees round the shop |
 | Bare Necessities | 221 of 1591 (14%) | her lawn above, her pavement below |
-| Watt a Bargain | 300 of 2288 (13%) | her foliage in the top corners, her pavement |
+| Watt a Bargain | 288 of 2288 (12.6%) | her foliage in the top corners, her pavement (rebuilt — §50) |
 | Rentflix | 70 of 902 (8%) | her bushes and path below |
 | Needful Things | 61 of 1092 (6%) | her lawn and sky in the roof corners |
 | Villa Locke & Keyes | 78 of 1849 (4%) | her sky and the board's margin |
