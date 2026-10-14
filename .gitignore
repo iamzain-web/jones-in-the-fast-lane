@@ -50,3 +50,6 @@ __pycache__/
 /tools/Upscale/*
 !/tools/Upscale/*.cs
 !/tools/Upscale/*.csproj
+
+# Build output: PublishJonesArt copies these out of assets/, which is itself ignored.
+/src/Jones.App/Jones.App.Browser/wwwroot/art/

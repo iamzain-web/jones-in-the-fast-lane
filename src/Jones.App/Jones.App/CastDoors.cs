@@ -66,13 +66,17 @@ public static class CastDoors
     /// </summary>
     private static (int Dx, int Dy) OffsetIn(string set, LocationId id) => set switch
     {
-        // The only set that moves any door today, and it moves TWO. The door survey first
-        // flagged three on a dark/wall ratio; measuring them one at a time cleared Bare
-        // Necessities (her door's bottom row is 105 and the building's base row is 105 -
-        // flush) and Watt a Bargain, so the ratio was wrong and the measurement governs.
-        // The Factory is here because its doorway moved nine rows; Bun Believable because
-        // its doorway moved one. Every other renamed building already has its painted door
-        // under the sprite, which is why `from_facade` works on them untouched.
+        // The only set that moves any door, and after measuring all nine rebuilt buildings
+        // one at a time it moves FIVE. The door survey's original shortlist came off a
+        // dark/wall ratio and that ratio has now been wrong three times — it cleared Hire
+        // Ground at 0.40 and Rentflix at 0.54, both of which needed an offset, and it
+        // flagged Bare Necessities at 1.68 and Monolith at 1.24, neither of which did. It
+        // is a first-pass hint and nothing here rests on it.
+        //
+        // What each entry rests on is the same measurement every time: the painted doorway
+        // read off the installed façade at 12x, against the footprint `DoorFor` produces.
+        // Five moved — the Factory by nine rows, Casa El Cheapo by five, Rentflix by three
+        // upwards, Bun Believable and Hire Ground by one. Four did not, and are absent.
         "cast0" => id switch
         {
             // +11, NOT +9, AND THE DIFFERENCE IS HER OWN ALPHA. The base-row difference is
@@ -126,6 +130,50 @@ public static class CastDoors
             // `opening_cols: (3,10)` in door_cels.py then keeps the hole inside his jambs:
             // her sprite is 14 cel px wide and his panes are 8.
             LocationId.MonolithBurgers => (1, 1),
+
+            // HIRE GROUND, +1 DOWN. His timber double door measures x 92..101 y 172..182
+            // off the board at 12x — the same ten columns as her sprite, which is the first
+            // exact horizontal match in the programme, so dx is genuinely 0 here. Her leaf
+            // body is y 171..181, one row high: at 0 its top row sits on his lintel and his
+            // bottom door row shows below the leaf. At +1 the body is y 172..182, flush top
+            // and bottom, and her feet land on his pale step at y 183..184.
+            LocationId.EmploymentOffice => (0, 1),
+
+            // RENTFLIX, 3 ROWS UP, and it is the only NEGATIVE offset in this table. His
+            // glazed shop door is x 102..108 — her exact seven columns again — but y 17..24,
+            // three rows above where DoorFor puts her sprite. Her body is 9 rows against his
+            // 8, so −3 seats the body's bottom on y 24 and `head_rows: 1` keeps the row
+            // above as façade. The building's region ends at y 24, so her feet at y 25..26
+            // are standing on her own board below it.
+            //
+            // A building may overhang the marble's path; it may also sit HIGHER than she
+            // drew it. The rule in the remarks holds either way — the doorway is what has
+            // to be under the sprite.
+            LocationId.RentOffice => (0, -3),
+
+            // CASA EL CHEAPO, −1 ACROSS AND +5 DOWN, and it is the one that does not fit.
+            // His timber door is x 139..146 y 23..33 — eleven rows — and her loop 0 sprite
+            // is 8x8 with a SIX row body. No offset makes a six-row leaf cover an eleven-row
+            // door, so the choice is which half of his door opens:
+            //
+            //     dy  0   body y 23..28, his door's top six rows. The opening is a hole in
+            //             the upper half of a door whose lower half is still painted shut,
+            //             and the marble walks into the part that did not move.
+            //     dy +5   body y 28..33, BOTTOM FLUSH with his door. His top five rows stay
+            //             as façade and read as the door's head; the opening reaches the
+            //             floor, which is the thing Zain asked for by name.
+            //
+            // dx −1 because his jambs measure #4E4E4D at x 138 and #3A3A3F at x 147, so the
+            // leaf is x 139..146 against her footprint's x 140..147.
+            LocationId.LowCostHousing => (-1, 5),
+
+            // NOT HERE, AND THAT IS ALSO A MEASUREMENT. Open Door University, Needful Things
+            // and Common Threads were each measured off the board at 12x and each came back
+            // zero — her body rows ARE the painted doorway's rows in all three. They are
+            // handled entirely by `head_rows`, `foot_rows` and `opening_cols` in
+            // door_cels.py, which shape the opening without moving the sprite. A building
+            // that does not need an offset must not have one: its absence here is what
+            // keeps Sierra's own coordinate authoritative for it.
 
             _                  => (0, 0),
         },

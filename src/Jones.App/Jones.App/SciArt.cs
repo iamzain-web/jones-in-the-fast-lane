@@ -90,7 +90,13 @@ public static class SciArt
                 // Deliberately NOT the shared instance from Cel(): that one already owns the
                 // base frame's twin, and the table holds one factory per bitmap reference.
                 bmp = Load($"{Root}view_{view}_l{loop}_c{cel}.png");
-                if (bmp is not null) RegisterHighRes(bmp, () => LoadCel(tween, tweenFile));
+                if (bmp is not null)
+                    RegisterHighRes(bmp, () =>
+                    {
+                        var cel = LoadCel(tween, tweenFile);
+                        _twinPending = cel is null && RenderScale.Store.Pending(tween, tweenFile);
+                        return cel;
+                    });
                 Net.ArtRecipes.Note(bmp, Jones.Net.ArtRef.SubCel(view, loop, cel, sub));
             }
         }
@@ -168,6 +174,19 @@ public static class SciArt
     private static readonly Dictionary<Bitmap, Bitmap?> Loaded =
         new(ReferenceEqualityComparer.Instance);
 
+    /// <summary>
+    /// Set by a twin factory when the cel it wanted is IN FLIGHT rather than absent, and
+    /// read by <see cref="HighRes"/> immediately afterwards to decide whether the null it
+    /// got is worth remembering.
+    ///
+    /// <para>
+    /// A plain static because every one of these runs on the UI thread, during a draw, one
+    /// at a time - the same reason the caches above need no lock. It is cleared before each
+    /// factory call so a stale true cannot leak from the previous cel.
+    /// </para>
+    /// </summary>
+    private static bool _twinPending;
+
     // TEMPORARY DIAGNOSTIC — remove once the university overlay is settled. Writes to
     // %TEMP%\jones_art_trace.log when JONES_ART_TRACE is set, and is completely inert
     // otherwise. A WinExe has no console, so this cannot be Console.WriteLine.
@@ -202,7 +221,13 @@ public static class SciArt
         {
             var dir = Resolve(file);
             Trace($"  resolve({file}) -> {dir ?? "<NOT FOUND>"}");
-            return dir is { } d ? LoadCel(d, file) : null;
+            if (dir is not { } d) return null;
+
+            var bmp = LoadCel(d, file);
+            // Nothing came back: say whether that is because the store is still fetching
+            // it, which is the one case HighRes must not write down.
+            _twinPending = bmp is null && RenderScale.Store.Pending(d, file);
+            return bmp;
         });
     }
 
@@ -322,6 +347,7 @@ public static class SciArt
             return oneX;
         }
 
+        _twinPending = false;         // set by the factory below if the bytes are in flight
         var hi = factory();
 
         // Guard against an upscale that is not the scale we are drawing at: a stale or
@@ -339,6 +365,14 @@ public static class SciArt
 
         Trace($"HighRes(1x {oneX.PixelSize.Width}x{oneX.PixelSize.Height}) -> " +
               (hi is null ? "1x pixels" : $"twin {hi.PixelSize.Width}x{hi.PixelSize.Height}"));
+
+        // "NOT YET" IS NOT "NOT HERE", AND WRITING IT DOWN WOULD MAKE IT PERMANENT. On a
+        // head whose art arrives over the network the first ask for a cel starts a fetch
+        // and returns nothing; caching that would pin this cel to Sierra's 1990 pixels for
+        // the life of the process, and the bug would look exactly like art that was never
+        // shipped. Leaving it uncached costs one dictionary miss per draw until the bytes
+        // land, and the store raises ArtStore.Arrived when they do.
+        if (hi is null && _twinPending) return oneX;
 
         Loaded[oneX] = hi;
         return hi ?? oneX;

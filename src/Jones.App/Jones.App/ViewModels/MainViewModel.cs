@@ -137,6 +137,13 @@ public sealed partial class MainViewModel : ViewModelBase
 
     public MainViewModel()
     {
+        // ART THAT ARRIVES AFTER IT WAS FIRST ASKED FOR. On the browser head a cel's bytes
+        // come over the network, so the first draw of a screen gets Sierra's 1x pixels and
+        // the real art lands a moment later; this is what turns that into a redraw instead
+        // of a permanent fallback. Never raised on the desktop or Android heads, where a
+        // store either has the bytes or does not - see ArtStore.Pending.
+        ArtStore.Arrived += OnArtArrived;
+
         for (var p = 0; p < 4; p++)
             for (var g = 0; g < 4; g++)
                 _goals[p, g] = 50; // the class default in room1.sc
@@ -6204,6 +6211,18 @@ public sealed partial class MainViewModel : ViewModelBase
     // MainViewModel.SaveRestore.cs. NOR ARE F1, F10 and Esc: Help and About are runs of
     // modal `Print`s, which the port now has, and Esc opens the menu bar, which it now has
     // too - the view hands it over in MainView.axaml.cs once nothing else has claimed it.
+
+    /// <summary>
+    /// Bytes a store was waiting for have landed. Re-raise every binding so the converter
+    /// asks <see cref="SciArt.HighRes"/> again, which will now find the cel it could not
+    /// find before.
+    ///
+    /// <para>
+    /// POSTED TO THE UI THREAD because a fetch completes on whatever thread the runtime
+    /// finished it on, and every binding this touches is owned by the UI thread.
+    /// </para>
+    /// </summary>
+    private void OnArtArrived() => Avalonia.Threading.Dispatcher.UIThread.Post(RefreshAll);
 
     private void RefreshAll()
     {

@@ -2825,6 +2825,132 @@ board. The 21 spoken lines in text 210 **were** rewritten and re-recorded — se
 but the three resource strings above are still Sierra's bytes and are the coordinator's to
 decide on.
 
+## 49. THE LAST SIX DOORS, AND THE LEAF WIDTHS WERE DERIVED RATHER THAN READ
+
+Hire Ground, Rentflix, Casa El Cheapo, Open Door University, Needful Things and Common
+Threads. With these, **all eleven rebuilt buildings now take their door leaves
+`from_facade`**, and every shut cel is pixel-identical to the board beneath it: max 0.000,
+mean 0.000 under its own alpha, on all eleven.
+
+### A METHOD FOR `w`, BECAUSE THE OBVIOUS ONE FAILS
+
+Her leaf widths had been hand-read off luminance, building by building. That does not scale
+and it is not reliable: loop 7's opening is **five levels** darker than its own leaf, and a
+per-column *drop* against cel 0 is defeated by dithering on loops 10 and 11, which move
+columns by 20 either way. Both methods disagreed with the three hand-measured tables.
+
+What works is a colour test:
+
+1. take the colours cel 3 **gained** over cel 0 across the leaf body (≥ 3 px). That is
+   Sierra's interior ladder for that loop — `281818 / 483838 / 604848 / 682028 / 984028` on
+   most of them, `682028` alone on the two she drew darkest.
+2. per column, the fraction of the body painted in any of them.
+3. a column is open above 0.6; `w` is the narrower of the two leaves.
+
+It reproduces the Factory's `[5,4,3,1]`, Bare Necessities' `[7,5,4,3]` and Bun Believable's
+`[7,6,4,2]` **without being told them**, which is the check that makes its six new answers
+worth trusting.
+
+| | `w` | derived |
+|---|---|---|
+| Hire Ground | 5, 4, 2, 1 | |
+| Rentflix | 7, 6, 3, 1 | hinge LEFT — a single leaf off the left jamb |
+| Casa El Cheapo | 4, 3, 2, 1 | |
+| Open Door University | 5, 4, 3, 2 | the one luminance could not read at all |
+| Needful Things | 5, 4, 2, 1 | |
+| Common Threads | 5, 3, 2, 1 | |
+
+**Two disagreements with what was already in the table, and they are handled differently.**
+Rentflix's cel 1 was `4` and measures `6` — at 4 the door jumped from shut to two-thirds
+open in one frame, and since this door was being rebuilt anyway the measurement was taken.
+Watt a Bargain's cel 1 is `4` in the table and measures `6` too, but that building is
+shipped, approved and not in this job, so **the 4 stands and this is the note** — if its
+cel 1 ever looks like it opens too far too fast, that is where to look.
+
+### THREE MOVED, THREE DID NOT, AND ZERO IS ALSO A MEASUREMENT
+
+Every offset was read off the installed façade at 12x as the median of each block.
+
+| | his painted doorway | her footprint | offset |
+|---|---|---|---|
+| Hire Ground | x 92..101 y 172..182 | x 92..101, body y 171..181 | **(0, +1)** |
+| Rentflix | x 102..108 y 17..24 | x 102..108, body y 19..27 | **(0, −3)** |
+| Casa El Cheapo | x 139..146 y 23..33 | x 140..147, body y 23..28 | **(−1, +5)** |
+| Open Door University | x 218..221 y 168..177 | x 215..224, body y 168..177 | (0, 0) |
+| Needful Things | x 216..225 y 23..32 | x 216..225, body y 23..32 | (0, 0) |
+| Common Threads | x 274..279 y 106..111 | x 273..281, body y 103..111 | (0, 0) |
+
+Three of the six match **horizontally to the column** — the first exact matches in the
+programme — and three needed nothing at all. A building that does not need an offset must
+not get one; its absence in `CastDoors` is what keeps Sierra's own coordinate authoritative
+for it.
+
+**Rentflix is the only NEGATIVE offset so far.** A building may overhang the marble's path,
+and it may also sit *higher* than she drew it; the rule in `CastDoors`' own remarks holds
+either way, because what has to be under the sprite is the doorway.
+
+**And the `dark/wall` ratio has now been wrong three more times in the same direction.** It
+cleared Hire Ground at 0.40 and Rentflix at 0.54 — both of which needed an offset — and had
+flagged Bare Necessities at 1.68 and Monolith at 1.24, neither of which did. It stays as a
+first-pass hint and nothing rests on it.
+
+### CASA EL CHEAPO DOES NOT FIT, AND THE CHOICE IS WHICH HALF OPENS
+
+His timber door is **eleven rows**; her loop 0 sprite is 8x8 with a **six-row** body. No
+offset makes a six-row leaf cover an eleven-row door.
+
+- `dy 0` — body y 23..28, his door's top six rows. The opening is a hole in the upper half
+  of a door whose lower half is still painted shut, and the marble walks into the part that
+  did not move.
+- `dy +5` — body y 28..33, bottom flush. His top five rows stay façade and read as the
+  door's head; **the opening reaches the floor**, which is the thing Zain asked for by name.
+
++5, and it is the Factory's rule applied unchanged: seat her *leaf's* bottom on his door's
+bottom, never her cel's.
+
+### `opening_cols` EARNED ITS KEEP TWICE
+
+- **Open Door University** — her sprite is 10 wide and his pointed arch is **four**
+  (x 218..221, measured at 4..14 against the stone jambs' 91..114). `(3,6)`. `head_rows` 1
+  as well, because the arch is pointed and its top row is only two columns wide.
+- **Common Threads** — his opening is six columns and the **mannequins** flanking it
+  measure 187..232 against the doorway's 37..66. `(1,6)`; without it cel 3 opens a hole
+  straight through both of them. `head_rows` 3, because rows 0..2 of her footprint are his
+  pale shopfront rail, not the door.
+
+### ONE RECIPE FOR SIX INTERIORS, AND IT WAS TOO LIGHT FIRST TIME
+
+Each opening gets three things and no more: **her own ladder** as hard-edged bands, used
+verbatim because it is the only evidence about any of these interiors; a **structure** of a
+dark soffit, a lit back wall inset from both jambs, and a floor; and **furniture only where
+the opening is nine columns or wider** — a counter at Hire Ground, a rack of pledges at
+Needful Things. At four to eight columns, structure is value, and that finding is not
+re-litigated per building.
+
+The first build used values pitched like Bun Believable's, whose leaves are **glass**.
+These leaves are dark painted doors — Hire Ground's medians at `3D2717`, Open Door
+University's portal at `0C0A06` — so a mid-tone interior came out *lighter* than the door it
+replaced and all six read as pale slabs. The rule that was missing: **an opening is darker
+than the leaf that was covering it**, whatever the leaf is made of. Re-pitched against each
+door's own measured p10, they read as doorways.
+
+### WHAT THE SWEEP FOUND THAT WAS NOT PART OF THE JOB
+
+- **A DUPLICATE KEY IN `MATERIAL`.** Rentflix had a second entry *later* in the same dict
+  literal — the synthetic glazed leaf its first door was built from. Python takes the last
+  one silently, so the `from_facade` entry would have been thrown away with no error and no
+  warning. Removed; the file is now checked for duplicates with `ast`.
+- **WATT A BARGAIN PAINTS ITS FEET.** A sweep of all eleven doors for interior painted below
+  the leaf body — the fault `foot_rows` exists for — comes back zero everywhere except
+  Socket City's loop 8, which puts 1438 px of `in_floor` in its feet rows at y 182..183.
+  Those rows are inside its own region, so this is not the General Dealer's grey slab, and
+  its opening is only three rows tall as it is; `foot_rows` there would cut it to one. The
+  real fix is the one its own note already states — a façade with an entrance in it.
+  **Reported, not changed.**
+
+Deliverables: `tools/samples/six_doors_{12,4}x.png`, all four cels of each, at native
+resolution, composited on the board exactly as the game draws them.
+
 ## 48. THE RENAME REACHED THE VOICE, AND ONE LINE IS TOO LONG
 
 This is the first rename where the spoken clips did **not** keep the old name. The standing
@@ -3308,16 +3434,16 @@ looked at as well.
 
 | building | loop, footprint | cels in cast0 | dark/wall | what is actually there |
 |---|---|---|---|---|
-| **Factory** | 5, x 45..54 y 171..181 | **yes, new** | **1.01** | **his window and sign - the defect above** |
-| **Bare Necessities** | 3, x 39..52 y 92..105 | no - 1990 | **1.68** | a pale shutter panel with a red boss. No opening. |
-| Watt a Bargain | 8, x 270..283 y 170..183 | no - 1990 | 1.03 | **a window**, the middle one of three |
-| Common Threads | 9, x 273..281 y 103..113 | no - 1990 | 1.07 | the central opening between the mannequins - plausible |
-| Needful Things | 12, x 216..225 y 23..34 | no - 1990 | 0.99 | the recessed centre of the shopfront - plausible |
-| General Dealer | 11, x 270..294 y 24..34 | no - 1990 | 0.98 | its painted shut doors, authored to this footprint |
-| Open Door University | 7, x 215..224 y 168..179 | no - 1990 | 0.90 | its central portal |
-| Casa El Cheapo | 0, x 140..147 y 23..30 | no - 1990 | 0.66 | its painted portcullis door |
-| Hire Ground | 6, x 92..101 y 171..183 | no - 1990 | **0.40** | its timber part-glazed door |
-| Rentflix | 1, x 102..108 y 19..29 | yes | 0.54 | its glazed shop door |
+| **Factory** | 5, x 45..54 y 171..181 | **yes, new** | **1.01** | **his window and sign - the defect above**; now (0,+11) |
+| **Bare Necessities** | 3, x 39..52 y 92..105 | **yes, new** | **1.68** | a pale shutter panel with a red boss. Flush; no offset. |
+| Watt a Bargain | 8, x 270..283 y 170..183 | yes | 1.03 | **a window**, the middle one of three. No offset; see §49 |
+| Common Threads | 9, x 273..281 y 103..113 | **yes, new** | 1.07 | the central opening between the mannequins. No offset; `opening_cols` (1,6) |
+| Needful Things | 12, x 216..225 y 23..34 | **yes, new** | 0.99 | the recessed centre of the shopfront. No offset |
+| General Dealer | 11, x 270..294 y 24..34 | **yes, new** | 0.98 | its painted shut doors, authored to this footprint |
+| Open Door University | 7, x 215..224 y 168..179 | **yes, new** | 0.90 | its central portal, four columns wide. `opening_cols` (3,6) |
+| Casa El Cheapo | 0, x 139..146 y 28..35 | **yes, new** | 0.66 | an ELEVEN row timber door against a six row leaf; (−1,+5) |
+| Hire Ground | 6, x 92..101 y 172..184 | **yes, new** | **0.40** | its timber double door; (0,+1) |
+| Rentflix | 1, x 102..108 y 16..26 | **yes, rebuilt** | 0.54 | its glazed shop door, three rows HIGHER than her sprite; (0,−3) |
 | Villa Locke & Keyes | 2, x 23..34 y 33..44 | yes | 0.89 | its panelled portal |
 | **Bun Believable** | 10, x 282..295 y 67..76 | **yes, new** | — | **his glazed double door, after a (+1,+1) offset - section 47** |
 | the Bank | 4 | no - 1990 | 0.81 | not renamed; 1990 door over 1990 art is consistent |

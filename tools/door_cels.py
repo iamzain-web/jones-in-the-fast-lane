@@ -54,7 +54,8 @@ PNG1X = os.path.join(ASSETS, "png")
 DOORS = {"factory": (5, 50, 181), "rentoffice": (1, 105, 29), "pawnshop": (12, 221, 34), "employment": (6, 97, 183),
          "security": (2, 29, 44), "zmart": (11, 282, 34), "monolith": (10, 288, 75),
          "university": (7, 220, 179), "socketcity": (8, 277, 183),
-         "qtclothing": (9, 277, 113), "blacksmarket": (3, 46, 105)}
+         "qtclothing": (9, 277, 113), "blacksmarket": (3, 46, 105),
+         "lowcost": (0, 144, 30)}
 
 # Materials, keyed by building. Sampled to sit with that facade's own palette and light.
 MATERIAL = {
@@ -366,6 +367,200 @@ MATERIAL = {
         "pane":     (0x82, 0xA6, 0xC4), "pane_hi": (0xA7, 0xC4, 0xD8),
         "iron":     (0x4E, 0x52, 0x54), "iron_hi": (0xA2, 0xA1, 0xA3),
     },
+    # ------------------------------------------------------------------ the six, together
+    #
+    # ONE RECIPE, SIX BUILDINGS, AND THE RESTRAINT IS THE POINT. Each of these gets exactly
+    # three things and no more:
+    #
+    #   1. HER OWN LADDER as hard-edged bands - 281818 / 483838 / 604848 / 682028 / 984028,
+    #      the five values Sierra paints inside every door loop in view 751. It is the only
+    #      EVIDENCE about any of these interiors and it is used verbatim, not re-tinted.
+    #   2. A STRUCTURE of three values over it: a dark soffit, a lit back wall inset from
+    #      both jambs so the opening reads as a room rather than a painted panel, and a
+    #      floor. This is the arrangement sections 45 and 47 arrived at after a flat ladder
+    #      composited as "a god damn block" twice.
+    #   3. Furniture ONLY where the opening is 9 columns or wider - a counter at Hire Ground
+    #      and a rack at Needful Things. At 4 to 8 columns, structure is value and anything
+    #      smaller than a cel pixel is invention; that is this programme's own finding and
+    #      it is not re-litigated per building.
+    #
+    # No lettering anywhere in any of them. `board` is each door's own measured p10, so the
+    # leading stile is that door's darkest edge rather than a colour chosen to suit it.
+    #
+    # ALL SIX TAKE THEIR LEAVES `from_facade`. The mechanism has now held at max 0.000 /
+    # mean 0.000 on five buildings including through a rebuild, so there is no reason left
+    # to paint a synthetic leaf over a facade that already draws the door.
+
+    # HIRE GROUND. His timber double door measures x 92..101 y 172..182 off the board at
+    # 12x - the SAME ten columns as her sprite, which is the first exact horizontal match in
+    # the programme. Vertically it is one row low: her body is y 171..181, so dy +1 seats it
+    # on y 172..182 and her feet land on his pale step at y 183..184.
+    "employment": {
+        "from_facade": True,
+        "head_rows": 0,
+        "foot_rows": 2,
+        "in_top": (0x28, 0x18, 0x18), "in_mid": (0x48, 0x38, 0x38),
+        "in_low": (0x60, 0x48, 0x48), "in_floor": (0x98, 0x40, 0x28),
+        "bands": [(0, 1, "in_top"), (2, 4, "in_mid"), (5, 8, "in_low"), (9, 10, "in_floor")],
+        "in_ceil": (0x0C, 0x08, 0x06), "in_dark": (0x18, 0x10, 0x0C),
+        "in_back": (0x3A, 0x28, 0x18), "in_back_hi": (0x50, 0x3A, 0x22),
+        "in_shelf": (0x44, 0x34, 0x1E), "in_shelf_hi": (0x6A, 0x52, 0x34),
+        "in_fl_front": (0x28, 0x1E, 0x18),
+        # A rect covers [y0, y1+1), so a band from row 6.5 to row 6.9 is written y1 = 5.9.
+        "interior": [
+            (0, 0, 9, 0, "in_ceil"),             # the soffit
+            (0, 1, 9, 10, "in_dark"),            # the room
+            (1.5, 1, 7.5, 4.5, "in_back"),       # the lit wall at the back of the office
+            (1.5, 1, 7.5, 2.0, "in_back_hi"),
+            (0, 6.5, 9, 5.9, "in_shelf_hi"),     # THE COUNTER's lit top edge
+            (0, 6.9, 9, 7.4, "in_shelf"),        # and its front
+            (0, 8.4, 9, 10, "in_fl_front"),      # the floor
+        ],
+        "board": (0x2C, 0x18, 0x06),
+    },
+
+    # RENTFLIX. His glazed shop door is x 102..108 - again her exact seven columns - but
+    # y 17..24, THREE ROWS ABOVE where her sprite puts it. Her body is 9 rows against his
+    # 8, so dy -3 seats the body's bottom on y 24 and `head_rows` 1 keeps the row above it
+    # as facade. The building's region ends at y 24, so her feet at y 25..26 are on her own
+    # board below it - `foot_rows` 2.
+    "rentoffice": {
+        "from_facade": True,
+        "head_rows": 1,
+        "foot_rows": 2,
+        "in_top": (0x28, 0x18, 0x18), "in_mid": (0x48, 0x38, 0x38),
+        "in_low": (0x60, 0x48, 0x48), "in_floor": (0x98, 0x40, 0x28),
+        "bands": [(1, 2, "in_top"), (3, 4, "in_mid"), (5, 6, "in_low"), (7, 8, "in_floor")],
+        "in_ceil": (0x0C, 0x0C, 0x0E), "in_dark": (0x16, 0x16, 0x18),
+        "in_back": (0x30, 0x2E, 0x32), "in_back_hi": (0x46, 0x42, 0x48),
+        "in_fl_front": (0x22, 0x1F, 0x22),
+        "interior": [
+            (0, 1, 6, 1, "in_ceil"),
+            (0, 2, 6, 8, "in_dark"),
+            (1, 2, 5, 5.5, "in_back"),
+            (1, 2, 5, 3.2, "in_back_hi"),
+            (0, 6.6, 6, 8, "in_fl_front"),
+        ],
+        "board": (0x22, 0x20, 0x24),
+    },
+
+    # CASA EL CHEAPO, AND IT IS THE ONE THAT DOES NOT FIT. His timber door measures
+    # x 139..146 y 23..33 - ELEVEN rows - and her loop 0 sprite is 8x8 with a SIX row body.
+    # No offset makes a six-row leaf cover an eleven-row door.
+    #
+    #     dy  0   body y 23..28, the door's TOP six rows. The opening is a hole in the
+    #             upper half of a door whose lower half is still painted shut, and the
+    #             marble walks into the part that did not move.
+    #     dy +5   body y 28..33, BOTTOM FLUSH with his door. The top five rows stay as
+    #             facade and read as the door's head; the opening reaches the floor, which
+    #             is the one thing Zain asked for by name.
+    #
+    # +5 it is, and this follows the Factory's rule exactly - seat her LEAF's bottom on his
+    # door's bottom, not her cel's. dx -1 because his jambs are at x 138 (#4E4E4D) and
+    # x 147 (#3A3A3F), so the leaf is x 139..146 against her footprint's x 140..147.
+    "lowcost": {
+        "from_facade": True,
+        "head_rows": 0,
+        "foot_rows": 2,
+        "in_top": (0x28, 0x18, 0x18), "in_mid": (0x48, 0x38, 0x38),
+        "in_low": (0x60, 0x48, 0x48), "in_floor": (0x98, 0x40, 0x28),
+        "bands": [(0, 1, "in_top"), (2, 3, "in_mid"), (4, 4, "in_low"), (5, 5, "in_floor")],
+        "in_ceil": (0x12, 0x0C, 0x08), "in_dark": (0x22, 0x18, 0x12),
+        "in_back": (0x46, 0x30, 0x1E), "in_back_hi": (0x5E, 0x42, 0x28),
+        "in_fl_front": (0x2A, 0x20, 0x18),
+        "interior": [
+            (0, 0, 7, 0, "in_ceil"),
+            (0, 1, 7, 5, "in_dark"),
+            (1, 1, 5, 3.4, "in_back"),           # the lit hallway beyond
+            (1, 1, 5, 1.8, "in_back_hi"),
+            (0, 4.5, 7, 5, "in_fl_front"),
+        ],
+        "board": (0x57, 0x3D, 0x29),
+    },
+
+    # OPEN DOOR UNIVERSITY. Her sprite is 10 wide; his pointed arch is FOUR - x 218..221,
+    # measured at 4..14 against the stone jambs' 91..114 either side - so `opening_cols`
+    # (3,6) does the whole job and the footprint needs no offset at all: her body y 168..177
+    # IS his portal. `head_rows` 1 because the arch is pointed and its top row is only two
+    # columns wide; opening the full four there would eat his stonework.
+    #
+    # NO FURNITURE. Four columns is below the floor where anything but value survives, and
+    # this is the darkest door on the board - his portal medians at 0C0A06.
+    "university": {
+        "from_facade": True,
+        "head_rows": 1,
+        "foot_rows": 2,
+        "in_top": (0x28, 0x18, 0x18), "in_mid": (0x48, 0x38, 0x38),
+        "in_low": (0x60, 0x48, 0x48), "in_floor": (0x98, 0x40, 0x28),
+        "bands": [(1, 2, "in_top"), (3, 5, "in_mid"), (6, 7, "in_low"), (8, 9, "in_floor")],
+        "in_ceil": (0x06, 0x04, 0x04), "in_dark": (0x10, 0x0C, 0x0A),
+        "in_back": (0x4A, 0x2A, 0x20), "in_back_hi": (0x6A, 0x3C, 0x28),
+        "in_fl_front": (0x1A, 0x14, 0x12),
+        "interior": [
+            (3, 1, 6, 1, "in_ceil"),
+            (3, 2, 6, 9, "in_dark"),
+            (3.6, 2, 5.4, 6, "in_back"),         # lamplight down the hall
+            (3.6, 2, 5.4, 3.6, "in_back_hi"),
+            (3, 7.6, 6, 9, "in_fl_front"),
+        ],
+        "board": (0x09, 0x03, 0x04),
+    },
+
+    # NEEDFUL THINGS. His recessed centre bay is x 216..225 y 23..32 - her exact ten columns
+    # again - and her body is y 23..32, so this one needs nothing moved. `head_rows` 1 keeps
+    # his timber lintel at y 23 (46302E..6F5846, distinctly browner than the maroon below
+    # it); `foot_rows` 2 because the pawn shop's region ends at y 32 and her last two rows
+    # are standing on HER GRASS at y 33..34 - section 12's two rows, confirmed at 9BCE90.
+    "pawnshop": {
+        "from_facade": True,
+        "head_rows": 1,
+        "foot_rows": 2,
+        "in_top": (0x28, 0x18, 0x18), "in_mid": (0x48, 0x38, 0x38),
+        "in_low": (0x60, 0x48, 0x48), "in_floor": (0x98, 0x40, 0x28),
+        "bands": [(1, 2, "in_top"), (3, 5, "in_mid"), (6, 7, "in_low"), (8, 9, "in_floor")],
+        "in_ceil": (0x10, 0x0A, 0x0C), "in_dark": (0x1E, 0x14, 0x18),
+        "in_back": (0x44, 0x26, 0x2C), "in_back_hi": (0x5C, 0x36, 0x34),
+        "in_shelf": (0x50, 0x30, 0x2E), "in_rack": (0x5E, 0x38, 0x34),
+        "in_fl_front": (0x26, 0x1A, 0x1C),
+        "interior": [
+            (0, 1, 9, 1, "in_ceil"),
+            (0, 2, 9, 9, "in_dark"),
+            (1.4, 2, 7.6, 5.5, "in_back"),       # the lit wall behind the counter
+            (1.4, 2, 7.6, 2.6, "in_back_hi"),
+            (0, 7.4, 9, 9, "in_fl_front"),
+        ],
+        # A RACK OF PLEDGES, as a rhythm and not as objects - the same device Bun Believable
+        # uses, at the same quarter duty and one value step off the wall it is drawn on.
+        "shelves": [(1.6, 7.4, 2.6, 5.2, 0.55, 0.3)],
+        "board": (0x6A, 0x24, 0x3B),
+    },
+
+    # COMMON THREADS. His opening is x 274..279 y 106..111; the two MANNEQUINS flanking it
+    # measure 187..232 against the doorway's 37..66, which is why `opening_cols` is (1,6) -
+    # her cel 3 would otherwise open a hole straight through both of them. `head_rows` 3
+    # because rows 0..2 of her footprint are his pale shopfront rail at y 103..105, not the
+    # door; `foot_rows` 2 for the pavement at y 112..113. No offset: her body's bottom row
+    # IS his doorway's bottom row.
+    "qtclothing": {
+        "from_facade": True,
+        "head_rows": 3,
+        "foot_rows": 2,
+        "in_top": (0x28, 0x18, 0x18), "in_mid": (0x48, 0x38, 0x38),
+        "in_low": (0x60, 0x48, 0x48), "in_floor": (0x98, 0x40, 0x28),
+        "bands": [(3, 4, "in_top"), (5, 6, "in_mid"), (7, 7, "in_low"), (8, 8, "in_floor")],
+        "in_ceil": (0x0C, 0x0C, 0x08), "in_dark": (0x1A, 0x1A, 0x12),
+        "in_back": (0x34, 0x30, 0x20), "in_back_hi": (0x4A, 0x45, 0x2C),
+        "in_fl_front": (0x20, 0x1E, 0x16),
+        "interior": [
+            (1, 3, 6, 3, "in_ceil"),
+            (1, 4, 6, 8, "in_dark"),
+            (1.6, 4, 5.4, 6.4, "in_back"),       # the lit shop beyond the mannequins
+            (1.6, 4, 5.4, 4.8, "in_back_hi"),
+            (1, 7.6, 6, 8, "in_fl_front"),
+        ],
+        "board": (0x24, 0x21, 0x22),
+    },
+
     # BARE NECESSITIES. Measured: her door's bottom row is 105 and the building's base row
     # is 105 - FLUSH, so this one needs no offset at all and has no entry in CastDoors.cs.
     # The earlier survey called it a placement defect on a dark/wall ratio of 1.68; looked
@@ -403,23 +598,12 @@ MATERIAL = {
         "in_warm":  (0x5E, 0x4C, 0x38),   # the showroom's #8E7458, in shadow
         "in_floor": (0x74, 0x5E, 0x46),
     },
-    "rentoffice": {
-        # A GLAZED SHOP DOOR, not a boarded one. The Factory's treatment would put vertical
-        # planking and iron straps on a letting agency's entrance.
-        "glazed": True,
-        "in_top":   (0x18, 0x16, 0x1A),
-        "in_mid":   (0x3C, 0x38, 0x3E),
-        "in_low":   (0x6A, 0x56, 0x3E),
-        "in_floor": (0xC8, 0xA0, 0x68),
-        "leaf":     (0x2A, 0x24, 0x26),   # the dark frame
-        "leaf_hi":  (0x6A, 0x62, 0x62),
-        "leaf_lo":  (0x12, 0x10, 0x12),
-        "board":    (0x20, 0x1C, 0x1E),
-        "iron":     (0x1E, 0x1C, 0x1C),
-        "iron_hi":  (0x9A, 0x96, 0x92),
-        "pane":     (0x46, 0x4A, 0x52),   # what shows through the leaf's own glass
-        "pane_hi":  (0x8E, 0x92, 0x98),
-    },
+    # RENTFLIX HAD A SECOND ENTRY HERE AND IT IS GONE. It was the synthetic glazed leaf the
+    # first version of this door was built from - `leaf` / `leaf_hi` / `pane` / `iron`, a
+    # whole door painted from scratch over a facade that already draws one. Because it sat
+    # LATER in this dict than the real entry, Python would have taken it and silently thrown
+    # the `from_facade` version away: a duplicate key in a literal is not an error. The one
+    # above is the only Rentflix material now.
 }
 
 SUPER = 4          # build at 4x the target rung, then box down: clean antialiasing
@@ -429,7 +613,7 @@ LOCATION = {"factory": "Factory", "rentoffice": "RentOffice", "pawnshop": "PawnS
             "employment": "EmploymentOffice", "security": "SecurityApartments",
             "zmart": "ZMart", "university": "HiTechU", "socketcity": "SocketCity",
             "qtclothing": "QtClothing", "blacksmarket": "BlacksMarket",
-            "monolith": "MonolithBurgers"}
+            "monolith": "MonolithBurgers", "lowcost": "LowCostHousing"}
 
 
 def cast_offset(set_name, who):
@@ -492,7 +676,40 @@ LEAF = {
     # 63 is her interior. So the leaf width per cel is 7, 6, 4, 2 counted from each side,
     # read rather than chosen - a pair of glazed leaves parting from the centre.
     "monolith":  {"hinge": "both", "w": [7, 6, 4, 2], "opening_cols": (3, 10)},
-    "rentoffice": {"hinge": "left", "w": [7, 4, 3, 1]},
+
+    # THE SIX CORRECTLY-PLACED DOORS, and every `w` below was DERIVED rather than read off a
+    # screen. The method, which reproduces the three hand-measured tables above exactly:
+    #
+    #   1. take the colours cel 3 gained over cel 0 across the leaf body (>= 3 px). That is
+    #      Sierra's interior ladder for that loop - 281818 / 483838 / 604848 / 682028 /
+    #      984028 on most of them, and 682028 alone on the two she drew darkest.
+    #   2. per column, the fraction of the body painted in any of them.
+    #   3. a column is OPEN above 0.6; `w` is the narrower of the two leaves.
+    #
+    # It matters because the obvious measure does not work. Luminance alone fails on loop 7,
+    # whose opening is only five levels darker than its own leaf; a per-column DROP against
+    # cel 0 fails on loop 10 and loop 11, where dithering moves columns by 20 either way. The
+    # colour test is the one that agrees with the Factory's [5,4,3,1], Bare Necessities'
+    # [7,5,4,3] and Bun Believable's [7,6,4,2] without being told them.
+    #
+    # ONE DISAGREEMENT, REPORTED AND NOT CHANGED: it reads Watt a Bargain's loop 8 as
+    # [7,6,4,2] where the table above says [7,4,4,2]. That building is shipped and approved
+    # and its door is not in this job, so the 4 stands; but if its cel 1 ever looks like it
+    # opens too far too fast, that is where to look.
+    "employment": {"hinge": "both", "w": [5, 4, 2, 1]},
+    "lowcost":   {"hinge": "both", "w": [4, 3, 2, 1]},
+    "university": {"hinge": "both", "w": [5, 4, 3, 2], "opening_cols": (3, 6)},
+    "pawnshop":  {"hinge": "both", "w": [5, 4, 2, 1]},
+    # HER SPRITE IS 9 WIDE AND HIS OPENING IS 6: the mannequins stand at x 271..273 and
+    # x 280..281 at a measured 187..232 against the doorway's 37..66, so cel 3's 1..7 would
+    # open a hole through both of them.
+    "qtclothing": {"hinge": "both", "w": [5, 3, 2, 1], "opening_cols": (1, 6)},
+    # 6, NOT 4, AT CEL 1. The colour test below reads her loop 1 as opening column 6 only at
+    # cel 1, then 3..6, then 1..6 - a single leaf swinging off the left jamb. The 4 here was
+    # eyeballed off a luminance that is 68..74 for her leaf against 54 for her interior, a
+    # 15-level difference on a dithered 7x11 sprite. At 4 the door jumped from shut to
+    # two-thirds open in one frame.
+    "rentoffice": {"hinge": "left", "w": [7, 6, 3, 1]},
     # MEASURED, NOT ASSUMED, exactly as the note above requires. Her loop 2 cels are 12x12
     # and fully opaque, so the leaves cannot be read from the alpha at all - the arrangement
     # is in the LUMINANCE. The revealed interior is dark and it grows from the centre:

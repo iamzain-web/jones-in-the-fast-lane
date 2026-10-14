@@ -45,6 +45,38 @@ public abstract class ArtStore
     /// </summary>
     public abstract Stream? Open(string directory, string file);
 
+    /// <summary>
+    /// Whether <see cref="Open"/>'s null meant "NOT HERE" or "NOT YET".
+    ///
+    /// <para>
+    /// A FILESYSTEM HAS NO THIRD ANSWER and this is false for every store that reads one.
+    /// A browser does: its only way to get bytes is <c>fetch</c>, which is asynchronous, on
+    /// a thread that must not block. So its <see cref="Open"/> returns null the first time
+    /// a cel is asked for, starts the request, and answers properly once it lands.
+    /// </para>
+    ///
+    /// <para>
+    /// IT MATTERS BECAUSE <c>SciArt</c> CACHES THE ANSWER. A twin that resolves to null is
+    /// recorded as "this cel has no high-resolution version" and never asked for again —
+    /// correct for a missing file, and permanent 1990 pixels for one that was merely still
+    /// in flight. A store that returns true here is saying: do not write that down.
+    /// </para>
+    /// </summary>
+    public virtual bool Pending(string directory, string file) => false;
+
+    /// <summary>
+    /// Raised by a store when bytes it was waiting for have arrived, so whatever is on
+    /// screen can be drawn again now that there is something better to draw it with.
+    ///
+    /// <para>
+    /// Null on every head that cannot answer "not yet", because nothing will ever raise it.
+    /// </para>
+    /// </summary>
+    public static event Action? Arrived;
+
+    /// <summary>For a store to call once a batch of fetches has landed.</summary>
+    protected static void NotifyArrived() => Arrived?.Invoke();
+
     /// <summary>The store every head gets unless it installs its own.</summary>
     public static readonly ArtStore FileSystem = new FileSystemArtStore();
 }

@@ -38,4 +38,59 @@
   <ItemGroup>
     <ProjectReference Include="..\Jones.App\Jones.App.csproj" />
   </ItemGroup>
+
+  <!-- ==================================================================
+       THE ART, PUBLISHED BESIDE THE PAGE.
+
+       Without it this head draws the 838 cels of Sierra's 1x art compiled into
+       Jones.App - which is what it did for its whole existence, because a head that
+       finds no art falls back silently and falling back looks exactly like working.
+
+       NOT EMBEDDED, NOT BUNDLED, JUST FILES. The 4x set is 57MB across 1203 cels and a
+       player opens a handful of screens, so HttpArtStore fetches each one the first time
+       it is drawn. Embedding them in the assembly would put all 57MB in the initial
+       download; bundling them in a zip would mean fetching and holding all of it to read
+       any of it.
+
+       BOTH DIRECTORIES OR NEITHER. `png4x-cast0` holds the cels we have rebuilt and
+       `png4x` holds all 1071; a set is silent about what it does not replace and the
+       resolver falls through to the ported copy, so shipping the set alone would draw
+       132 cels at 4x beside 939 at 1x.
+
+       THE MANIFEST IS NOT A CONVENIENCE. HTTP has no directory listing, and a set is
+       silent about nine cels in ten, so without it every miss would cost a round trip to
+       learn that the art set does not cover that cel. One text file, written here,
+       read once at startup.
+       ================================================================== -->
+  <PropertyGroup>
+    <JonesAssetRoot>$(MSBuildThisFileDirectory)..\..\..\assets\</JonesAssetRoot>
+    <JonesArtOut>$(MSBuildThisFileDirectory)wwwroot\art\</JonesArtOut>
+    <JonesArtManifest>$(JonesArtOut)art-manifest.txt</JonesArtManifest>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <JonesArtFile Include="$(JonesAssetRoot)png4x\*.png"       ArtDir="png4x" />
+    <JonesArtFile Include="$(JonesAssetRoot)png4x-cast0\*.png" ArtDir="png4x-cast0" />
+  </ItemGroup>
+
+  <!--
+    THIS PROJECT FILE IS AN INPUT, and leaving it out is a real bug that has already
+    shipped once in this repo: with only the files as inputs, REMOVING a line leaves every
+    remaining input older than the output, so MSBuild judges the target up to date and
+    publishes the previous set. See the Android csproj for the incident.
+  -->
+  <Target Name="PublishJonesArt" BeforeTargets="BeforeBuild"
+          Inputs="@(JonesArtFile);$(MSBuildProjectFullPath)" Outputs="$(JonesArtManifest)">
+    <RemoveDir Directories="$(JonesArtOut)" />
+    <Copy SourceFiles="@(JonesArtFile)"
+          DestinationFiles="@(JonesArtFile->'$(JonesArtOut)%(ArtDir)\%(Filename)%(Extension)')" />
+    <WriteLinesToFile File="$(JonesArtManifest)"
+                      Lines="@(JonesArtFile->'%(ArtDir)/%(Filename)%(Extension)')"
+                      Overwrite="true" WriteOnlyWhenDifferent="true" />
+  </Target>
+
+  <!-- Everything under wwwroot is served beside the page; the art lands there above. -->
+  <ItemGroup>
+    <Content Include="wwwroot\art\**" CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
 </Project>
