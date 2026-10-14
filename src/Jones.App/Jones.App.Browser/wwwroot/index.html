@@ -4,8 +4,45 @@
 <head>
     <title>Jones.App.Browser</title>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- viewport-fit=cover reaches under a phone's rounded corners and notch; without
+         user-scalable=no a stray pinch zooms the canvas and there is no way back, because
+         the game owns every pointer gesture inside it. -->
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no, maximum-scale=1.0">
+    <!-- Tells Android Chrome to colour its chrome to match, so the seam is less obvious
+         in the moments before fullscreen is entered. -->
+    <meta name="theme-color" content="#101010">
     <link rel="stylesheet" href="./app.css" />
+    <style>
+        /* THE FULLSCREEN BUTTON.
+
+           On a phone the address bar and the system bars take a third of a short screen,
+           and the board is 320x200 - it is the widest thing in the game and it loses
+           first. The Fullscreen API is the only thing that actually removes browser
+           chrome; a CSS trick cannot.
+
+           It is HTML rather than part of the game deliberately. requestFullscreen must be
+           called from a real user gesture on the document, and it is the PAGE being made
+           fullscreen, not anything the game knows about - the same reason the sound
+           switches live outside the game's 320x200 space rather than in it.
+
+           Hidden while fullscreen: the way out is the phone's own back gesture, which is
+           what a player will reach for anyway. */
+        #fs {
+            position: fixed; right: max(10px, env(safe-area-inset-right));
+            bottom: max(10px, env(safe-area-inset-bottom));
+            width: 44px; height: 44px; padding: 0;
+            display: flex; align-items: center; justify-content: center;
+            border: 0; border-radius: 8px;
+            background: #99000000; background: rgba(0, 0, 0, .6);
+            color: #f0f0f0; cursor: pointer; z-index: 2147483647;
+            -webkit-tap-highlight-color: transparent;
+        }
+        #fs:active { background: rgba(255, 255, 255, .25); }
+        #fs svg { width: 24px; height: 24px; display: block; }
+        /* Gone in fullscreen, and gone where the API is not offered at all - an inert
+           button is worse than no button. */
+        :fullscreen #fs, #fs[hidden] { display: none; }
 </head>
 
 <body style="margin: 0; overflow: hidden">
@@ -30,6 +67,40 @@
         </h2>
     </div>
 </div>
+<button id="fs" hidden title="Fullscreen" aria-label="Fullscreen">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+         stroke-linecap="round" stroke-linejoin="round">
+        <path d="M3 9V4h5M21 9V4h-5M3 15v5h5M21 15v5h-5"/>
+    </svg>
+</button>
+<script>
+    // Shown only where it can work. iOS on a phone does not offer requestFullscreen on an
+    // element at all, so on an iPhone this button correctly never appears rather than
+    // appearing and doing nothing.
+    (function () {
+        var b = document.getElementById('fs');
+        var el = document.documentElement;
+        if (!(el.requestFullscreen || el.webkitRequestFullscreen)) return;
+        b.hidden = false;
+
+        b.addEventListener('click', function () {
+            var p = (el.requestFullscreen || el.webkitRequestFullscreen).call(el,
+                     { navigationUI: 'hide' });
+            // A rejected promise is normal - an unsupported option, a policy, a gesture
+            // the browser did not credit - and must not reach the console as an error.
+            if (p && p.catch) p.catch(function () { });
+
+            // THE BOARD IS 320x200 AND A PHONE IS HELD TALL. Landscape is the orientation
+            // this game has, so ask for it once we are fullscreen, which is the only state
+            // in which a browser will grant a lock. Entirely optional: it throws on
+            // desktop and on anything that declines, and nothing depends on it.
+            try {
+                var o = screen.orientation;
+                if (o && o.lock) { var q = o.lock('landscape'); if (q && q.catch) q.catch(function () { }); }
+            } catch (e) { }
+        });
+    })();
+</script>
 <script type='module' src="./main.js"></script>
 </body>
 

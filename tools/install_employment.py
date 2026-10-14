@@ -154,24 +154,70 @@ def tw(s):
 # bitmap. The deterministic guarantee is untouched: this is still drawn by code, after the
 # generation, into a band the model was never shown, and it still cannot be garbled.
 #
-# Bahnschrift first - it is the condensed grotesque Windows ships and it is the right
-# register for a shopfront sign. The rest are fallbacks, and if none is present the block
-# font is used, so a machine without these fonts still produces correct art.
-SIGN_FONTS = ["bahnschrift.ttf", "seguisb.ttf", "segoeuib.ttf", "arialbd.ttf",
-              "trebucbd.ttf", "verdanab.ttf"]
+# THE FACE IS PINNED, AND A MISSING ONE IS A HARD FAILURE.
+#
+# This used to be a list - bahnschrift, then five fallbacks - and the comment said that a
+# machine without them "still produces correct art". It does not, and the list hid two
+# different defects behind one sentence.
+#
+#   1. BAHNSCHRIFT IS REGULAR WEIGHT AND EVERY OTHER ENTRY WAS BOLD (Segoe UI Semibold,
+#      Segoe UI Bold, Arial Bold, Trebuchet Bold, Verdana Bold). On this machine every sign
+#      on the board is a regular condensed grotesque. On a machine without Bahnschrift
+#      installed, EVERY SIGN WOULD SILENTLY COME OUT BOLD SEGOE UI. Same code, same data,
+#      different art - which is the definition of non-reproducible.
+#   2. If none resolved, `text_mask` returned None and `letter_region` quietly stamped the
+#      3x5 BITMAP at the high rungs. That is precisely the pixelated lettering Zain
+#      rejected - "I don't want it to look pixelated, it's 2026 not 1986" - reappearing as
+#      a fallback nobody would see in a log.
+#
+# A fallback that cannot be distinguished from a hit is a defect generator. So: one face,
+# named; searched for in the repo first so it CAN be shipped if a licence ever allows; an
+# explicit override for a machine that wants a different one ON PURPOSE; and a refusal,
+# with the reason, when it is absent. The 1x cel still uses the 3x5 bitmap - that is a
+# deliberate choice at a resolution where nothing else fits, not a fallback.
+#
+# Bahnschrift ships with Windows and is NOT redistributable, so it cannot be committed
+# here. `assets/fonts` is searched first for whenever that changes.
+SIGN_FACE = "bahnschrift.ttf"
+SIGN_FACE_ENV = "JONES_SIGN_FONT"        # a full path to a .ttf, chosen deliberately
+SIGN_FONT_DIRS = (
+    os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                 "assets", "fonts"),
+    r"C:\Windows\Fonts",
+    "/usr/share/fonts",
+    os.path.expanduser("~/.local/share/fonts"),
+)
+
+
+def sign_face_path():
+    """Where the one pinned face lives, or None. No substitutes."""
+    over = os.environ.get(SIGN_FACE_ENV)
+    if over:
+        return over if os.path.exists(over) else None
+    for d in SIGN_FONT_DIRS:
+        p = os.path.join(d, SIGN_FACE)
+        if os.path.exists(p):
+            return p
+    return None
 
 
 def _font(px):
     from PIL import ImageFont
-    for n in SIGN_FONTS:
-        for d in (r"C:\Windows\Fonts", "/usr/share/fonts"):
-            p = os.path.join(d, n)
-            if os.path.exists(p):
-                try:
-                    return ImageFont.truetype(p, px)
-                except OSError:
-                    pass
-    return None
+    p = sign_face_path()
+    if p is None:
+        raise SystemExit(
+            "THE SIGN TYPEFACE IS MISSING AND THERE IS NO SUBSTITUTE.\n"
+            "  wanted: %s\n"
+            "  looked in: %s\n"
+            "Every sign on the board is set in this one face so the town reads as one\n"
+            "place. Falling back to another face silently re-renders the whole board in a\n"
+            "different weight; falling back to the 3x5 bitmap re-renders it pixelated.\n"
+            "Install it, or point %s at a .ttf you have chosen on purpose."
+            % (SIGN_FACE, ", ".join(SIGN_FONT_DIRS), SIGN_FACE_ENV))
+    try:
+        return ImageFont.truetype(p, px)
+    except OSError as e:
+        raise SystemExit("the sign typeface at %s would not load: %s" % (p, e))
 
 
 def text_mask(lines, box_w, box_h, fill=0.86, leading=0.16):
@@ -394,6 +440,14 @@ def main():
     ap.add_argument("--set", default="cast0", help="art set name (assets/png{F}x-<set>)")
     ap.add_argument("--factors", default="4,12")
     ap.add_argument("--verify", action="store_true", help="report only, write nothing")
+    ap.add_argument("--skip-board", action="store_true",
+                    help="leave board.png and pic_11.png alone and refresh only the "
+                         "picPatch and the view 706 title bands. Hire Ground's BOARD is "
+                         "built by the data-driven path now - gen_building, sign_building, "
+                         "install_building - and this tool still owns the other three "
+                         "surfaces. The picPatch is rebuilt by copying THIS SET'S OWN "
+                         "board into the strip, so it agrees with whatever built the "
+                         "board rather than with this tool's idea of it.")
     args = ap.parse_args()
 
     names = ["board.png", "pic_11.png", PATCH] + TITLE_VIEWS
@@ -431,12 +485,16 @@ def main():
         if board.size != (320 * F, 200 * F):
             raise SystemExit("board is %s, expected %s" % (board.size, (320 * F, 200 * F)))
 
-        bld, body, lo = build_building(F)
-        board.paste(bld, (CEL_X * F, CEL_Y * F), bld)      # masked: see build_building
-        for n in ("board.png", "pic_11.png"):
-            board.save(os.path.join(out, n))
-        print("  wrote board.png and pic_11.png  %dx%d" % (board.width, board.height))
-        print("  plate body #%02X%02X%02X edge #%02X%02X%02X" % (*body, *lo))
+        if args.skip_board:
+            print("  --skip-board: board.png and pic_11.png left as the data-driven path "
+                  "wrote them")
+        else:
+            bld, body, lo = build_building(F)
+            board.paste(bld, (CEL_X * F, CEL_Y * F), bld)   # masked: see build_building
+            for n in ("board.png", "pic_11.png"):
+                board.save(os.path.join(out, n))
+            print("  wrote board.png and pic_11.png  %dx%d" % (board.width, board.height))
+            print("  plate body #%02X%02X%02X edge #%02X%02X%02X" % (*body, *lo))
 
         # --- the picPatch ------------------------------------------------------
         # THE SET'S OWN STRIP FIRST, for the same reason the board takes the set's own

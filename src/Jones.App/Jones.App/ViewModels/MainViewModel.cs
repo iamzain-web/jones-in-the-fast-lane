@@ -1252,7 +1252,12 @@ public sealed partial class MainViewModel : ViewModelBase
             // name in text 700. This port stores `(int)Workplace + 1` instead of `placeNum`,
             // so the place is fetched back through the board.
             var place = Board.ForWorkplace((Workplace)(P.WorksAt - 1));
-            Add(SciText.Get(231, 1, SciText.Get(700, (place?.PlaceNum ?? 0) + 71)));
+            // Her text 700 lists the twelve employers by name; the art set renames the ones
+            // it rebuilt. The resource is never written - this substitutes on the way to the
+            // screen, and substitutes nothing when no set is in force. See CastNames.
+            var placeNum = place?.PlaceNum ?? 0;
+            Add(SciText.Get(231, 1,
+                CastNames.ForPlaceNum(placeNum, SciText.Get(700, placeNum + 71))));
             Add(SciText.Get(231, 2, SciText.Get(700, P.Occupation)));  // "As a %-20s"
             Add(SciText.Get(231, 3, P.Wage));                          // "Hourly wage: $%-11d"
         }
@@ -5816,7 +5821,11 @@ public sealed partial class MainViewModel : ViewModelBase
     /// <summary>
     /// The player's location, named as text 700 names it (`inventories.sc:36`).
     /// </summary>
-    public string WhereText => _game is null ? "" : Board.Get(P.Location).Name;
+    // THE NAME, NOT THE LABEL. `Board.All` keeps Sierra's transcribed names - the tests
+    // identify places by them - and the art set says what its own buildings are called. With
+    // no set in force this is her word, unchanged. See CastNames.
+    public string WhereText =>
+        _game is null ? "" : CastNames.For(P.Location, Board.Get(P.Location).Name);
 
     /// <summary>`Week #%2d` Ã¢â‚¬â€ text 1[2] / 700[85] / 994[0], the same string the board draws.</summary>
     public string WeekText => _game is null ? "" : $"Week #{_game.Calendar.Week,2}";

@@ -211,6 +211,241 @@ blending backdrop out of the transparent pixels. It is not — the output was **
 to the build without it. The contamination is in the source sheet's own lossy edge, so the
 only thing that removes it is removing those pixels.
 
+### THE TALKER PORTRAITS: one face, eleven mouths, and the jitter we chose not to copy
+
+Zain, on the Factory's shopkeeper: *"this looks ridiculous!!!, doesn't even look like a human
+being!!!"* and *"Change the lady's face, same colour hair and similar characteristics, but
+much more realistic face"*.
+
+**Eleven cels, not one.** `LipSync.cs` drives `_talkerCel` 0..10 from the game's own sync
+tables at 60Hz. One cel freezes her mouth. Eleven independently generated faces flicker,
+because nothing holds a diffusion model to the same cheekbones twice.
+
+**So: one face is generated, and the other ten are that same face with only a mouth box
+replaced.** Everything outside the box is copied byte for byte. Flicker is not reduced, it is
+**made impossible** — there is nothing outside the box that *could* differ. Same move as the
+constructed signs and the constructed shoes: make the defect impossible rather than measure
+whether it happened.
+
+**And we deliberately do not reproduce her jitter.** Measured across her eleven cels, the
+per-pixel standard deviation is **4.9**, **64.8% of pixels change somewhere**, and a
+mouth-sized box holds only **41%** of the strongest variation. That is not animation —
+**her eleven cels are eleven separate photographs of a real actor**, so her head moves
+between frames. A still head with only the mouth moving is *better* than the original, and
+it is what makes copy-outside-the-box legitimate rather than a compromise.
+
+**The mouth shapes are hers, verbatim.** The sync tables index these eleven positions by
+meaning — closed, open with teeth, the dark "O" at cel 6, back to closed — and **smooth but
+wrong lip-sync is worse than what we have**. So each cel's mouth is conditioned on the soft
+edges of *her own mouth in that cel*: structure measured off her art and unable to be
+invented, rendering ours.
+
+**Her field and frame are restored, never generated** — a flat `(0,32,144)` blue, 29.9% of
+the portrait, and a 1px black border, both exact. The model only ever has to get the person
+right.
+
+#### The invariant broke on the one line that was housekeeping
+
+The first run of stage two failed its own check: **5,324 pixels differed outside the mouth
+box.** The cause was `restore(out, cels[c], S)` — each cel's blue field being restored against
+*its own* original. Her field has a slightly different silhouette in every frame *because her
+head moves*, so the restore wrote a different boundary per cel and put her jitter straight
+back in, through the housekeeping step rather than through the generation.
+
+One mask, from cel 0, for all eleven.
+
+**A design that makes a defect impossible still has to be checked**, because the thing that
+breaks it is never the part you were thinking about. The check is now a refusal in the
+installer: if a single pixel differs outside the mouth box, it will not install.
+
+#### Two things the mouth pass got wrong, and both were about SCALE
+
+The first run of stage two produced **six of eleven cels as coloured swirls** rather than
+mouths. Two causes, and neither was the mouth box or the strength.
+
+**THE PROMPT MUST DESCRIBE THE CROP, NOT THE SUBJECT THE CROP CAME FROM.** The mouth pass was
+handed the portrait's own prompt — *"a photograph of a smiling woman… plain blue background,
+studio portrait, three quarter view"* — and asked to satisfy it inside a **348x252 crop of a
+chin**. The model did what it was told and tried to fit a whole studio portrait in there.
+This is the same failure as asking for *"an apartment building"* in a near-square frame and
+getting a doorway close-up: a crop is its own picture and needs its own description.
+
+**AND A SECOND DIAGNOSIS THAT I THEN MEASURED AND FOUND LARGELY WRONG**, which is worth more
+than the fix. I also blamed the conditioning: her mouth is 29x21 cel pixels of **dithered
+16-colour 1990 art**, so at a 0.7 px blur its soft "edges" should be the dither pattern
+rather than the lips, driving the pass with a texture-noise map at `control 0.85`. That
+reasoning is sound and it is *not what was happening*. Rendering the conditioning at both
+blurs side by side — 0.7 px against 4.8 px — shows **two nearly identical maps**: the jaw
+line, the chin and the mouth as a small bright blob, in both. The dither was already being
+smoothed away by the LANCZOS upscale.
+
+So the swirls were the prompt, not the conditioning. The blur was widened and the
+conditioning scale dropped to 0.60 anyway, because neither hurts — but **the honest record is
+that one of the two fixes was aimed at a cause that was not there.**
+
+What the comparison *did* show is a real problem the first diagnosis walked past: **most of
+the conditioning map is jaw and chin, and the mouth is a small part of it.** The box is
+29x21 cel px of which the mouth proper is a fraction, so the structure that actually carries
+the lip-sync is a minority of the signal being conditioned on.
+
+**The general form: when conditioning on upscaled low-resolution art, look at the
+conditioning image itself** — both to check the structure survived the upscale, and to check
+that the thing you care about is actually the thing the map is mostly made of. Looking at it
+is what separated the real cause from the plausible one here.
+
+#### The box was visible, and the fix had to live inside it
+
+With real mouths generating, the next run showed the thing the design had not accounted for:
+**a rectangle across the lower face.** The patch's tone and grain did not match the base's, so
+the box edge read as a hard step even though the mouths themselves were right.
+
+The obvious fix is to feather the join — and §17 forbids feathering. But **§17 is about never
+blurring a join with SIERRA'S art to disguise it**, and here both sides are ours: the edge is
+an artefact of our own tiling, the same thing `detail_tiles` corrects across its overlaps.
+What the rule does still forbid is anything that would touch pixels outside the box, because
+the byte-identical invariant is the whole reason this design holds the face still.
+
+So both halves of the fix live **strictly inside the box**:
+
+1. **Level match.** The patch is shifted per channel so its mean over a ring just inside the
+   border equals the base's mean over the same ring. That removes the tone step, which is
+   what the eye actually catches.
+2. **A ramp, inside the border.** The patch fades to the base over four cel pixels at the box
+   edge, so at the border itself the result *is* the base. The seam is not hidden — there is
+   nothing there to hide.
+
+Every pixel outside the box is still untouched, so the invariant check still reads zero.
+
+#### The pass with nothing to change is the one that damages something
+
+With the seam fixed, seven of the eleven cels were clean and four were not: **cel 2 badly
+broken** with orange swirls, **cel 1** with purple lips, **cels 0 and 9** with flecks on the
+cheek. Two different fixes, and only one of them involved the GPU.
+
+**Cel 0 is the base face, untouched.** Her cel 0 is the resting closed smile, and the base
+face was generated *from* her cel 0 — so the face we already have **is** that mouth position.
+Running a pass over it could only add artefacts to the frame the player sees most, and that
+is precisely what happened. The pass that has nothing to change is the one most likely to
+break something, so it is not run at all.
+
+The other three were rerolled on a shifted seed. **A reroll is not a fix** — the rule
+elsewhere in this document stands — but these are eleven samples of one deliberately
+constrained operation, not an attempt to get a different design out of the model; the
+operation and its parameters are unchanged and only the noise differs.
+
+**And the despeckle did not do what I expected.** Smoothing chroma inside the box was aimed at
+the coloured flecks, and on the clean cels it helps. On cel 0 it barely moved them, because
+**those artefacts are luma, not chroma** — swirls in the structure rather than noise in the
+colour. The CPU post-process is kept because it costs nothing and does remove genuine chroma
+speckle, but it is not a substitute for a cel that came back wrong.
+
+#### The invariant caught housekeeping twice, and is now ENFORCED rather than checked
+
+The second catch was better than the first. `despeckle` smooths chroma inside the mouth box —
+16% of the portrait — and it converted **the whole image** to YCbCr and back to do it. That
+round trip is lossy: every pixel shifted slightly, including her flat blue field. Cels
+despeckled in one run then no longer matched cels generated in the next, and the installer
+refused with **415,882 px differing outside the mouth box — 77% of the portrait, for an
+operation that was supposed to touch 16%.**
+
+Both catches were **housekeeping, not generation**: first the field mask taken per-cel, now a
+colour-space round trip. The generation was never the thing that broke the guarantee.
+
+So the installer no longer only checks. **It rebuilds every cel as the base face with its own
+mouth box pasted in**, which makes "identical outside the box" true *by construction* at
+install time and immune to anything upstream — a despeckle, a partial reroll, a hand edit.
+The check that follows then confirms something real instead of being the only thing standing
+between a bug and the game.
+
+**Enforce, then verify.** A check is a last line, not a design.
+
+#### What it took to get eleven clean cels, honestly
+
+Eight came back clean on the first good run. **Cels 1, 2 and 9 did not, and two confident
+explanations were measured and discarded** before the fix was found:
+
+- *the dither in her upscaled art driving the conditioning* — the conditioning at both blurs
+  is the same picture;
+- *her head jitter misplacing the jaw* — the best alignment shift is **(0,0) for all eleven
+  cels**; her jitter is sub-pixel grain, not translation, and the residuals do not separate
+  the failing cels from the clean ones (cel 2 fails at 3.4, cel 6 is clean at 3.7).
+
+What actually worked was per-cel: **cel 9 needed the pass to commit** (strength up, control
+down), while **cel 2 was made worse by exactly that change** — it drifted in scale — and
+needed the original parameters with a different seed. There is no single setting that suits
+all eleven, which is itself the finding: at this size the pass sits near the edge of what it
+can do, and the per-cel reroll is the tool, not a failure of method.
+
+**A flag that looked like it was retuning the mouth pass was silently only rerolling it.**
+`--strength` and `--control` fed the base face only. Two of the attempts above proved nothing
+until that was wired through.
+
+#### Sizes, and what the set costs
+
+68x55 cel px, **816x660 at 12x = 538,560 px**, inside the measured 810k ceiling. 660 is not a
+multiple of 8, so the pipeline floors it to 656 and hands back an image four rows short; the
+input is **padded to 816x664 and the pad cropped off**, so nothing in the portrait is
+resampled to fix four rows.
+
+**Eleven views — 351 and 353..362 — eleven cels each, 121 cels, all the same 68x55.**
+
+**Views 310..322 are NOT portraits**, and an earlier report of mine called them that. They are
+the **turn-start notice cards** — `(notice view: (+ 310 register))`, `startTrn.sc:934` — 86x84,
+one cel each, carrying typeset user-visible text: *LESS TIME! DUE TO HUNGER*, *RENT IS DUE*,
+*LOAN PAYMENT IS DUE AND PAYABLE*. They are a **typesetting** job under CLAUDE.md rule 1, not
+a face job, and at 12x they are 1,040,256 px — over the ceiling.
+
+### A DETECTOR MUST BE VALIDATED AGAINST THE SET WHERE THE THING IS PRESENT
+
+The other entries here are about checks that cannot fail. This one is about a check that
+**failed in the wrong direction and still looked like it was working.**
+
+`find_name_art` asks "does Sierra's lettering still appear anywhere". For Villa Locke &
+Keyes I pointed it at her neon script with the `redish` predicate over a generous box. After
+the building was replaced it reported her script **STILL PRESENT, score 0.74**, on six
+surfaces. Every instinct says: the removal failed, go and fix the art.
+
+The art was fine. What settled it was running the same detector against **her own set, where
+her script certainly IS present** — and it scored **0.67–0.70 there**.
+
+    against the set where her script is PRESENT   0.67 - 0.70   (below threshold)
+    against the set where it had been REMOVED     0.74          (above threshold)
+
+**It scored higher after her art was gone than while it was there.** It was never matching
+her script at all. Her lettering is mostly PINK — `#E07080` carries 76 px of the band against
+`#E03838`'s 27 — and `redish` requires `g < 100`, so it rejected most of the glyphs and left a
+template **11.5% dense** that matched whatever red happened to be nearest on the board.
+
+The fix was a predicate keyed on red-*dominance by difference* rather than an absolute green
+ceiling: 186 px, a template **43.2% dense**, and then **0.80 on her set and 0.65 on ours** —
+discriminating, and in the right direction.
+
+**The rule: a detector run only against the set you have just cleaned cannot tell "it worked"
+from "it never looked".** Both produce a low score, and a high score can mean either a
+survival or a false positive. The control costs one command — point it at the dirty set and
+require it to fire. If it does not fire where the thing certainly is, nothing it says about
+the clean set means anything.
+
+This is a different failure from the four above it. Those checks could not fail. This one
+could fail, did fail, and failed *more* on the correct input than on the incorrect one.
+
+### A REJECTED THING MUST NOT BE REACHABLE BY THE NORMAL PATH
+
+`no_text_guard` found the model had written on a facade, refused, and printed *"the files are
+left for inspection; do not install them"*. It left the art at **`generated_WxH.png`** — the
+exact filename every downstream tool opens. I then chained the install after the generation
+with `;`, which in PowerShell runs the next command whatever the last one returned, and
+installed a facade the guard had just refused.
+
+**The guard worked. The handover did not.** An instruction printed to a human is not a
+control; it is a hope. `gen_building` now renames the refused art to
+`REFUSED_generated_WxH.png`, so the normal path finds nothing and stops.
+
+Same family as the art-set resolver falling through to the 1990 upscale and `SIGN_FONTS`
+falling back to five bold faces: in each case the wrong thing was **reachable under the name
+of the right thing**. Make it unreachable and the class of mistake disappears, rather than
+depending on whoever is driving to read the warning.
+
 ### A FALLBACK THAT CANNOT BE DISTINGUISHED FROM A HIT IS A DEFECT GENERATOR
 
 The same family as "a check must fail when it measured nothing", one step along: there the

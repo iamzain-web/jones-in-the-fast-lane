@@ -71,11 +71,16 @@ internal static class JonesRuntime
             // head needs the strings the game PRINTS.
             StartupLog.Try("SciText.Load", () => SciText.Load(root));
 
-            // NOT CALLED: RenderScale.UseAssetRoot. The 24MB of upscaled art is not in the
-            // APK (see the csproj), and RenderScale falls back to Factor 1 - the original's
-            // own pixels, scaled up by the Viewbox with interpolation None - when it cannot
-            // find a png{N}x directory. Calling it with a root that has no png4x in it would
-            // change nothing; leaving it out says so.
+            // THE ART. Not UseAssetRoot: there is no directory tree here to point at. The
+            // upscaled art rides in the APK and is read through the AssetManager, cel by
+            // cel, at the moment each is first drawn - see AssetArtStore for why it is not
+            // unpacked like the text and the sync tables are.
+            //
+            // Before anything draws, and before the log line below, because RenderScale
+            // settles its factor and its search path on first use and nothing invalidates
+            // them: installed late, this would be a store nobody ever asks.
+            StartupLog.Try("RenderScale.UseArtStore",
+                () => RenderScale.UseArtStore(new AssetArtStore(context.Assets!)));
 
             StartupLog.Try("LipSync.SetDirectory",
                 () => Audio.LipSync.SetDirectory(System.IO.Path.Combine(root, "audio", "sync")));
@@ -88,13 +93,23 @@ internal static class JonesRuntime
         // it once, through x:Static.
         TouchUi.Enabled = true;
 
-        // Reported rather than assumed: Factor 1 with no art directories is the INTENDED
-        // Android result (there is no png{N}x in the APK), and a log line is the only way to
-        // tell that apart from the resolver having quietly failed into the same answer.
-        StartupLog.Try("RenderScale.Resolve",
-            () => AndroidLog.Info(
+        // REPORTED RATHER THAN ASSUMED, and this is the line that would have caught the
+        // version of this head that shipped Sierra's 1990 art to the phone for three weeks.
+        // Art present and art missing look identical from inside the game - the cels simply
+        // come out at factor 1 - so the only way to tell "found png4x-cast0" from "found
+        // nothing and fell back" is to print which one happened.
+        //
+        // Factor 4 with 2 directories is the intended result. Factor 1 with 0 means the
+        // APK has no art in it: check the AndroidAsset globs in the csproj against
+        // AssetArtStore.AssetRoot.
+        StartupLog.Try("RenderScale.Resolve", () =>
+        {
+            var inventory = new AssetArtStore(context.Assets!).Inventory();
+            AndroidLog.Info(
                 $"RenderScale: factor {RenderScale.Factor}, " +
-                $"{RenderScale.ArtDirectories.Length} art director(ies)"));
+                $"{RenderScale.ArtDirectories.Length} art director(ies); " +
+                $"APK carries [{string.Join(", ", inventory)}]");
+        });
     }
 
     /// <summary>

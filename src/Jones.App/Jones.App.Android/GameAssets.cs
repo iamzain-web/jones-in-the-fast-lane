@@ -14,9 +14,10 @@ namespace Jones.App.Android;
 /// all do: <c>SciText.Load</c>, <c>LipSync.SetDirectory</c>, <c>Subtitles.Load</c> and
 /// and <c>Subtitles.Load</c> take a path and call <c>File.ReadAllBytes</c>.
 ///
-/// Only the small resources are unpacked (see the csproj for the split and why). The
-/// 21.5MB of speech stays in the APK and is read through the AssetManager by
-/// <see cref="AndroidAudioPlayer"/>, which is the only thing that reads it.
+/// Only the small resources are unpacked (see the csproj for the split and why). The two
+/// big sets stay in the APK and are read through the AssetManager by the only things that
+/// read them: the speech by <see cref="AndroidAudioPlayer"/>, the 57MB of upscaled art by
+/// <see cref="AssetArtStore"/>. Neither is ever copied out.
 /// </summary>
 internal static class GameAssets
 {

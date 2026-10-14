@@ -171,6 +171,13 @@ public sealed partial class MainViewModel
         if (_game is null || !DoorAnimates(id)) { thenOpen(); return; }
 
         var (loop, x, y) = DoorFor(id);
+
+        // THE ART SET MAY HAVE MOVED THIS DOORWAY. DoorFor is Sierra's table and stays
+        // Sierra's; a set that redrew a building somewhere other than she drew it says so
+        // here. Zero for her art, zero for every building we have not rebuilt - see
+        // CastDoors for why this is a property of the pictures rather than of the game.
+        (x, y) = CastDoors.Place(id, x, y);
+
         _doorLoop = loop;
         _doorX = x;
         _doorY = y;

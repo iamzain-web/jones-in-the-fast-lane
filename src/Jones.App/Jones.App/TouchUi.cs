@@ -1,4 +1,4 @@
-namespace Jones.App;
+﻿namespace Jones.App;
 
 /// <summary>
 /// Whether this head is driven by a finger rather than a mouse.
@@ -39,6 +39,17 @@ public static class TouchUi
     /// dropped-down row, which is above both Android's and Apple's minimum target.
     /// </summary>
     public static double BarHeight => Enabled ? 44 : 26;
+
+    /// <summary>
+    /// One sound switch, square.
+    ///
+    /// 44 IS A FINGER AND IT IS NOT A MOUSE. These used to float over the board, where
+    /// their size cost nothing; docked in the menu bar they SET ITS HEIGHT, and 44px of
+    /// chrome above a 26px bar is most of a title bar's worth of the window given to four
+    /// icons. 30 clears a cursor comfortably and leaves the desktop bar close to the 26 it
+    /// has always been, while a touch head keeps the full target.
+    /// </summary>
+    public static double SwitchSize => Enabled ? 44 : 30;
 
     /// <summary>One line of an open menu. See <see cref="BarHeight"/>.</summary>
     public static double ItemHeight => Enabled ? 48 : 28;

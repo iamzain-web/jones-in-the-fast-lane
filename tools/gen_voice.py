@@ -101,18 +101,44 @@ VOICES = [
          why="same voice as QT Clothing, slower and more level - an agency man reciting a "
              "line he has said all week"),
     dict(loc="BlacksMarket",    first=530, last=543, portrait=353, voice="am_fenrir",  speed=1.02,
+         extra=(545,),
          who="plain young man, grocer",
          why="same voice as the pawnbroker but at normal pace, which lifts it entirely; the "
              "puns ('unherd of', 'chew the fat') need clear consonants"),
     dict(loc="MonolithBurgers", first=610, last=629, portrait=360, voice="am_puck",    speed=1.12,
+         extra=(657,),
          who="teenager in a paper hat",
          why="fastest setting of the youngest voice - bored counter staff reading the script"),
 ]
 
+# `extra` IS NOT A WIDER BAND, AND THE DIFFERENCE MATTERS.
+#
+# `first`/`last` is the GREETING band - `SpeechBands.For()` in Audio/IAudioPlayer.cs, the
+# range a location draws from when you walk in. The shops also speak when you BUY, out of
+# `ShopSpeech.For()`, and those bands are much bigger: Black's Market purchases run
+# 545..576 and the burger shop's run 630..664. Generating all of them is 66 more clips and
+# nobody has asked for them, so the bands stay as they are.
+#
+# What `extra` holds is the handful of ids OUTSIDE the greeting band that the renaming of a
+# building forced us to touch, each one named individually:
+#
+#     545   market.sc's FIRST purchase line, and it is Bare Necessities' - Black's Market is
+#           what the board now calls Bare Necessities, so this clerk's "I usedta work at
+#           Monolith Burger" had to move with the burger shop's rename. Same shop, same
+#           talker (353), so it takes BlacksMarket's own voice and speed, not a new one.
+#     657   fastFood.sc's purchase line "if it's a 6-lb. Beefburger, it must be a Monolith" -
+#           the rename is the whole joke, so it could not be left alone either. The burger
+#           shop's own voice and speed.
+#
+# Both are NEW coverage: neither existed in speech-kokoro before, so until they do the
+# player hears Sierra saying the old name under a balloon showing the new one.
+EXTRA_WHY = {545: "BlacksMarket purchase line, renamed with the burger shop",
+             657: "MonolithBurgers purchase line, the rename is the joke"}
+
 
 def band_for(audio_id):
     for b in VOICES:
-        if b["first"] <= audio_id <= b["last"]:
+        if b["first"] <= audio_id <= b["last"] or audio_id in b.get("extra", ()):
             return b
     return None
 
@@ -121,7 +147,8 @@ def all_ids():
     ids = []
     for b in VOICES:
         ids.extend(range(b["first"], b["last"] + 1))
-    return ids
+        ids.extend(b.get("extra", ()))
+    return sorted(ids)
 
 
 # ------------------------------------------------------------------- text for the TTS
@@ -164,6 +191,38 @@ def tts_input(text):
         out = out.replace("...", ", ")
         notes.append("... -> pause")
 
+    # A YEAR IS NOT A NUMBER. espeak reads "1987" as "nineteen HUNDRED eighty seven" -
+    # eight syllables for a four-syllable word, and it is wrong English as well as long.
+    # Measured on clip 610, whose only number this is: the line came out at 5.70 s, the
+    # longest greeting in the burger shop by 0.68 s and 2.42 s past its own sync table.
+    # Spelling the year out costs nothing and the subtitle the player READS is untouched -
+    # this function has never changed a word, only how espeak is told to say it.
+    #
+    # 19xx AND 20xx ONLY, which is narrower than "a four-digit number" on purpose. The
+    # first version matched 1000..2099 and caught the Bank's "fixed-rate CDs spin at 1500
+    # RPM" (clip 305), turning "one thousand five hundred" into "fifteen hundred". That may
+    # even be better English, but 305 is a clip that was generated, listened to and
+    # installed, and a pronunciation rule written for one line is not a licence to redub
+    # another. 1500 is a rev count, not a year, and the rule now says so.
+    def _year(m):
+        v = int(m.group())
+        tens = ["", "", "twenty", "thirty", "forty", "fifty", "sixty", "seventy",
+                "eighty", "ninety"]
+        ones = ["", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine",
+                "ten", "eleven", "twelve", "thirteen", "fourteen", "fifteen", "sixteen",
+                "seventeen", "eighteen", "nineteen"]
+        def two(n):
+            if n == 0:
+                return "hundred"            # "nineteen hundred", which IS right for 1900
+            if n < 20:
+                return ("oh " + ones[n]) if n < 10 else ones[n]
+            return (tens[n // 10] + " " + ones[n % 10]).strip()
+        return "%s %s" % (ones[v // 100], two(v % 100))
+    spelled = re.sub(r"\b(19|20)\d\d\b", _year, out)
+    if spelled != out:
+        notes.append("a year spelled out")
+        out = spelled
+
     return " ".join(out.split()), notes
 
 
@@ -172,6 +231,14 @@ def tts_input(text):
 # whose board sign has been replaced. Its standing decision is that the spoken clips keep
 # the old name, because a subtitle disagreeing with its own audio is worse than a stale
 # name - this report exists so the cost of that decision is visible, not to overturn it.
+#
+# MONOLITH BURGERS IS THE ONE THAT WENT THE OTHER WAY, and it is not in this table because
+# there is nothing left to report: Zain asked for the burger shop to become Bun Believable
+# and the 22 lines that named it were REWRITTEN in subtitles.json, not renamed in place -
+# "Monny the Burger Clown" and "it must be a Monolith" are jokes built on the old name and
+# a find-and-replace would have left nonsense. Those 22 ids are then regenerated here so
+# the voice says what the balloon says, which is the condition this table's own decision
+# turns on. A rename only reaches this table while the AUDIO still disagrees with the text.
 #
 # The spoken forms differ from the board's names: the clips say "Hi-Tech U", never
 # "Hi-Tech University". Both spellings are matched.
@@ -349,6 +416,20 @@ def main():
         manifest.append(dict(id=i, location=b["loc"], portrait=b["portrait"], voice=b["voice"],
                              speed=b["speed"], text=line, spoken=spoken, notes=sorted(set(notes)),
                              seconds=round(dur, 2), format="11025 Hz 8-bit unsigned mono PCM"))
+
+    # --only MUST NOT TRUNCATE THE MANIFEST. It used to: the manifest was written from the
+    # clips this run happened to make, so regenerating two ids left a two-clip manifest
+    # describing a directory of 135 wavs, and the file that is supposed to say what every
+    # clip is would have been the least reliable thing in the folder. Entries for ids this
+    # run did not touch are carried over from the manifest already on disk.
+    mp = os.path.join(OUT, "MANIFEST.json")
+    if args.only and os.path.exists(mp):
+        prev = json.load(open(mp, encoding="utf-8")).get("clips", [])
+        fresh = {c["id"] for c in manifest}
+        kept = [c for c in prev if c["id"] not in fresh]
+        manifest = sorted(manifest + kept, key=lambda c: c["id"])
+        print("manifest: %d regenerated, %d carried over from the previous run"
+              % (len(fresh), len(kept)))
 
     json.dump(dict(engine="Kokoro-82M v1.0 ONNX fp32 (Apache-2.0)",
                    note="Generated from subtitles.json text only. No file in "

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Globalization;
 using Avalonia.Data.Converters;
@@ -101,7 +101,12 @@ public static class RenderScale
 
     private static int? _factor;
     private static string[]? _artDirectories;
-    private static string? _explicitAssetRoot;
+    /// <summary>
+    /// Where the art is read from. The filesystem unless a head installs its own — see
+    /// <see cref="UseArtStore"/>, which the Android head calls because its art rides in
+    /// the APK and there is no directory tree to walk.
+    /// </summary>
+    private static ArtStore _store = ArtStore.FileSystem;
 
     /// <summary>
     /// The scale asked for: <see cref="Requested"/>, or the <c>JONES_ART_SCALE</c>
@@ -424,44 +429,10 @@ public static class RenderScale
     }
 
     /// <summary>
-    /// Finds <c>assets/<paramref name="name"/></c> from the explicit root a head handed
-    /// over, else by walking up from the executable exactly as <c>Program.FindAssetRoot</c>
-    /// walks up looking for <c>assets\audio\speech</c>, so a build run from anywhere under
-    /// the repo finds it.
+    /// The art directory called <paramref name="name"/>, as a token only
+    /// <see cref="ArtStore"/> may interpret, or null when this head has no such directory.
     /// </summary>
-    /// <remarks>
-    /// EVERY STEP IS GUARDED, because on Android there is no directory tree to walk: an APK's
-    /// <c>AppContext.BaseDirectory</c> is not a repository checkout and may not be a usable
-    /// path at all, and <c>Directory.GetParent</c> throws on an empty one rather than
-    /// returning null. A head with no upscaled art must fall to <see cref="Factor"/> 1 and
-    /// draw Sierra's own pixels — which is the intended Android look — and it must get there
-    /// by finding nothing, never by throwing on the way.
-    /// </remarks>
-    private static string? Locate(string name)
-    {
-        try
-        {
-            if (_explicitAssetRoot is { Length: > 0 } root)
-            {
-                var direct = System.IO.Path.Combine(root, name);
-                if (System.IO.Directory.Exists(direct)) return direct;
-            }
-
-            var dir = AppContext.BaseDirectory;
-            for (var i = 0; i < 8 && !string.IsNullOrEmpty(dir); i++)
-            {
-                var candidate = System.IO.Path.Combine(dir, "assets", name);
-                if (System.IO.Directory.Exists(candidate)) return candidate;
-                dir = System.IO.Directory.GetParent(dir)?.FullName;
-            }
-        }
-        catch (Exception e)
-        {
-            StartupLog.Blame($"RenderScale.Locate({name}) (falling back to the 1x art)", e);
-        }
-
-        return null;
-    }
+    private static string? Locate(string name) => _store.Locate(name);
 
     /// <summary>
     /// Points the loader at an already-located asset root, for heads that have found it
@@ -471,8 +442,26 @@ public static class RenderScale
     public static void UseAssetRoot(string assetsRoot)
     {
         if (_artDirectories is not null) return;
-        _explicitAssetRoot = assetsRoot;
+        if (_store is FileSystemArtStore fs) fs.ExplicitRoot = assetsRoot;
     }
+
+    /// <summary>
+    /// Reads the art from somewhere that is not a filesystem — the Android head's APK.
+    /// Must be called before the first cel is drawn, for the same reason as
+    /// <see cref="UseAssetRoot"/>: the factor and the search path are settled once, on
+    /// first use, and nothing invalidates them.
+    /// </summary>
+    public static void UseArtStore(ArtStore store)
+    {
+        if (_artDirectories is not null) return;
+        _store = store;
+    }
+
+    /// <summary>
+    /// The live store, for the one caller that has to read a cel rather than merely decide
+    /// which one: <see cref="SciArt"/>.
+    /// </summary>
+    internal static ArtStore Store => _store;
 
     /// <summary>
     /// Multiplies a 320x200-space coordinate or size into the scaled canvas. Every

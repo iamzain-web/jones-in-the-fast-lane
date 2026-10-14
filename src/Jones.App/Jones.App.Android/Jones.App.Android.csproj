@@ -38,6 +38,14 @@
          carried to the phone by hand.
          ================================================================== -->
     <EmbedAssembliesIntoApk>true</EmbedAssembliesIntoApk>
+
+    <!-- STATED RATHER THAN RELIED ON. Both asset sets below are read straight out of the
+         package - a cel while the screen is being drawn, a clip while a line is being
+         spoken - and both are already-compressed formats that gain nothing from being
+         deflated and cost a full inflate per read if they are. aapt's default no-compress
+         list happens to cover them; saying so here means a change to that default cannot
+         quietly turn every cel load into an inflate. -->
+    <AndroidStoreUncompressedFileExtensions>.png;.wav</AndroidStoreUncompressedFileExtensions>
   </PropertyGroup>
 
   <ItemGroup>
@@ -65,27 +73,45 @@
        executable. An APK has no tree to walk, so the assets have to be carried inside
        it. They are carried two different ways, because they are two different problems.
 
-       1. SPEECH (533 WAVs, 21.5MB) ships as loose AndroidAssets under `speech/` and is
+       1. SPEECH (133 WAVs, 6.9MB) ships as loose AndroidAssets under `speech/` and is
           NEVER copied out. Nothing in the shared code reads a speech file - the head's
           own IAudioPlayer does - so this head reads them straight off the AssetManager.
           `.wav` is on aapt's no-compress list, so they sit in the APK uncompressed and
-          open instantly. Extracting them instead would cost a 21MB first-run copy and
-          43MB of the phone's storage for no gain.
+          open instantly. Extracting them would cost a first-run copy and a second copy of
+          the phone's storage for no gain.
 
-       2. EVERYTHING ELSE (raw/text, audio/sync, subtitles.json -
+          IT IS `speech-kokoro`, NOT `speech`. The 533 clips in assets/audio/speech are
+          Sierra's recordings and do not ship. The replacement set covers 133 of those
+          lines today; the rest play no audio and show their subtitle, which is what every
+          unvoiced line in this port already does. A phone that quietly carried 21.5MB of
+          the material this project exists to remove was the worse of the two.
+
+       2. THE UPSCALED ART (png4x and png4x-cast0, 1203 files, 57MB) ships as loose
+          AndroidAssets under `art/` and is NEVER copied out either - read cel by cel
+          through AssetArtStore at the moment each is first drawn. Unpacking it would cost
+          57MB of the phone's storage twice over and a visible wait on first run, to arrive
+          at bytes the AssetManager already holds. `.png` is likewise not compressed, so a
+          cel is a mapped read rather than an inflate.
+
+          WITHOUT THIS THE PHONE PLAYS SIERRA'S GAME. RenderScale falls back to Factor 1
+          when it finds no art directory, and factor 1 is the 1990 resource decode: her
+          buildings, her names, her walker, none of the new cast. That is what this head
+          shipped for three weeks, and it was invisible from inside the game - which is why
+          JonesRuntime now prints the inventory it actually found.
+
+          BOTH DIRECTORIES OR NEITHER. png4x-cast0 holds the 132 cels we have rebuilt;
+          png4x holds all 1071. A set is silent about what it does not replace and the
+          resolver falls through to the ported copy, so shipping the set alone would draw
+          132 cels at 4x beside 939 at 1x.
+
+       3. EVERYTHING ELSE (raw/text, audio/sync, subtitles.json -
           about 300KB across ~620 files) is zipped at build time and unpacked into the
           app's private files directory on first run. This set has to become real FILES
           because the code that reads it is shared and takes a filesystem path:
           SciText.Load, LipSync.SetDirectory and Subtitles.Load
           all call System.IO.File. Rewriting those to take
           streams would mean changing Jones.App and Jones.Audio; unpacking 300KB does not.
-
-       NOT SHIPPED: assets/png4x, the 24MB upscaled art. RenderScale falls back to Factor
-       1 when no `png{N}x` directory is found, which is the original's own pixels blown up
-       by the Viewbox with interpolation None - a legitimate look, and the one this first
-       cut ships. To include it later, add it to JonesDataFile below (and expect the APK
-       to roughly double); RenderScale.UseAssetRoot(GameAssets.Root(...)) in JonesRuntime
-       is the other half.
+          The art needed no such rewrite because SciArt already takes a stream.
        ================================================================== -->
 
   <PropertyGroup>
@@ -95,9 +121,20 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <!-- The speech clips, read through AssetManager by AndroidAudioPlayer. -->
-    <AndroidAsset Include="$(JonesAssetRoot)audio\speech\*.wav"
+    <!-- The speech clips, read through AssetManager by AndroidAudioPlayer. The head looks
+         them up by the game's own audio id, so the folder they CAME from is not part of
+         the contract - only the file name is, and both sets name their clips <id>.wav. -->
+    <AndroidAsset Include="$(JonesAssetRoot)audio\speech-kokoro\*.wav"
                   Link="Assets\speech\%(Filename)%(Extension)" />
+
+    <!-- The upscaled art, read through AssetManager by AssetArtStore. The link path's last
+         segment is the directory name RenderScale asks for (`png4x`, `png4x-cast0`), and
+         `art` is AssetArtStore.AssetRoot. Nothing checks at build time that those agree,
+         so JonesRuntime prints what it found. -->
+    <AndroidAsset Include="$(JonesAssetRoot)png4x\*.png"
+                  Link="Assets\art\png4x\%(Filename)%(Extension)" />
+    <AndroidAsset Include="$(JonesAssetRoot)png4x-cast0\*.png"
+                  Link="Assets\art\png4x-cast0\%(Filename)%(Extension)" />
 
     <!-- The zip built by PackJonesData below. Declared as a literal path so the item
          survives evaluation on a clean tree, where the file does not exist yet. -->

@@ -52,10 +52,13 @@
     </Style>
 
     <!-- The sound switches. 44x44 is a finger, not a mouse: this control is shared with
-         the Android head, where there is no F2 and no pointer to hover with. -->
+         the Android head, where there is no F2 and no pointer to hover with.
+
+         SIZED BY THE HEAD since they moved into the menu bar, because there they set the
+         BAR'S height rather than merely floating over the board. See TouchUi.SwitchSize. -->
     <Style Selector="ToggleButton.snd">
-      <Setter Property="Width" Value="44" />
-      <Setter Property="Height" Value="44" />
+      <Setter Property="Width" Value="{x:Static app:TouchUi.SwitchSize}" />
+      <Setter Property="Height" Value="{x:Static app:TouchUi.SwitchSize}" />
       <Setter Property="Background" Value="Transparent" />
       <Setter Property="BorderThickness" Value="0" />
       <Setter Property="Padding" Value="0" />
@@ -79,8 +82,8 @@
 
     <!-- The same look for the network switches, which open a box rather than toggling. -->
     <Style Selector="Button.snd">
-      <Setter Property="Width" Value="44" />
-      <Setter Property="Height" Value="44" />
+      <Setter Property="Width" Value="{x:Static app:TouchUi.SwitchSize}" />
+      <Setter Property="Height" Value="{x:Static app:TouchUi.SwitchSize}" />
       <Setter Property="Background" Value="Transparent" />
       <Setter Property="BorderThickness" Value="0" />
       <Setter Property="Padding" Value="0" />
@@ -141,6 +144,192 @@
        the game first and hands it here only if nothing else claimed it. -->
   <Border DockPanel.Dock="Top" Background="#E6101010"
           BorderBrush="#FF2E2E2E" BorderThickness="0,0,0,1">
+    <!-- LastChildFill puts the menus in whatever the switches leave. -->
+    <DockPanel>
+
+      <!-- THE SOUND SWITCHES. Not Sierra's, and deliberately not dressed as Sierra's.
+
+           The original's are keyboard-only — `Turn Music Off `#2` and `Turn Sound Effects Off
+           `#3` on the floppy's Options menu (`Menu.sc:128`), master volume on Ctrl-V — and
+           this port is heading for Android, where there is no keyboard. There is no speech
+           switch in the game at all; muting dialogue leaves the subtitle and the mouth
+           running, which is what the floppy build did anyway by printing every line.
+
+           Drawn OUTSIDE the Viewbox on purpose. Everything inside it is in the original's
+           320x200 space and scales as one unit; putting these in there would both scale them
+           down to six pixels on a phone and make them look like 1990 art to whoever reads
+           this next. Out here they are unmistakably modern chrome, and the game's own
+           coordinate space is untouched.
+
+           DOCKED IN THE BAR, NOT FLOATING OVER THE BOARD. They used to be pinned to the
+           top-right of the view, which is the board's top-right building - Z-Mart's corner,
+           (251,10)-(311,43) in Board.cs. Four icons sat on its sign. The bar has empty space
+           to the right of its four menus, it is already outside the Viewbox, and it is the
+           only off-playfield surface that survives the board being made to fill the screen:
+           the white margins these could otherwise retreat into are the thing being removed.
+
+           A slash means muted. No captions: every label here would be wording I made up. -->
+          <Border DockPanel.Dock="Right" VerticalAlignment="Center" Margin="0,0,6,0"
+                  Background="Transparent" Padding="0">
+        <StackPanel Orientation="Horizontal" Spacing="2">
+
+          <!-- NETWORK PLAY: JOIN. Not in the original, which has no network play at all; see
+               MainViewModel.Network.cs. A phone has no command line, so `- -join` cannot reach
+               the Android head, and this row is the only surface it has.
+
+               Shown only on the title screen of a copy that is neither hosting nor joined, so it
+               can never throw away a game in progress. The box holds the host's address, as
+               typed - "100.64.1.2" or "pc.tailnet.ts.net:7117" - and nothing else: no caption,
+               no placeholder, for the reason the sound switches carry none.
+
+               The glyph is a chain link; the arrow connects. -->
+          <Button x:Name="JoinButton" Classes="snd" IsVisible="{Binding CanJoinNetwork}"
+                  ToolTip.Tip="Join a network game">
+            <Panel Width="26" Height="26">
+              <Path Stroke="#F0F0F0" StrokeThickness="2" StrokeLineCap="Round"
+                    Data="M13.5,18.5 L11,21 A3.5,3.5 0 0 1 6,16 L9.5,12.5 A3.5,3.5 0 0 1 14.5,12.5
+                          M12.5,7.5 L15,5 A3.5,3.5 0 0 1 20,10 L16.5,13.5 A3.5,3.5 0 0 1 11.5,13.5" />
+            </Panel>
+            <Button.Flyout>
+              <Flyout Placement="BottomEdgeAlignedRight">
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                  <TextBox Width="230" Text="{Binding JoinAddressText, Mode=TwoWay}"
+                           AcceptsReturn="False">
+                    <TextBox.KeyBindings>
+                      <KeyBinding Gesture="Enter" Command="{Binding JoinCommand}" />
+                    </TextBox.KeyBindings>
+                  </TextBox>
+                  <Button Command="{Binding JoinCommand}" Width="44" Height="36" Padding="0"
+                          ToolTip.Tip="Join">
+                    <Path Stroke="#F0F0F0" StrokeThickness="2.2" StrokeLineCap="Round"
+                          StrokeJoin="Round" Data="M4,11 L18,11 M12,5 L18,11 L12,17" />
+                  </Button>
+                </StackPanel>
+              </Flyout>
+            </Button.Flyout>
+          </Button>
+
+          <!-- NETWORK PLAY: JOINED. The same link, green while seated at the host and grey while
+               the connection is down (it reconnects by itself). Opens a single button that leaves
+               and returns to a fresh game of this copy's own. -->
+          <Button x:Name="LeaveButton" Classes="snd" IsVisible="{Binding IsRemoteView}"
+                  ToolTip.Tip="Network game">
+            <Panel Width="26" Height="26">
+              <Path Stroke="#5BD75B" StrokeThickness="2" StrokeLineCap="Round"
+                    IsVisible="{Binding IsConnected}"
+                    Data="M13.5,18.5 L11,21 A3.5,3.5 0 0 1 6,16 L9.5,12.5 A3.5,3.5 0 0 1 14.5,12.5
+                          M12.5,7.5 L15,5 A3.5,3.5 0 0 1 20,10 L16.5,13.5 A3.5,3.5 0 0 1 11.5,13.5" />
+              <Path Stroke="#8A8A8A" StrokeThickness="2" StrokeLineCap="Round"
+                    IsVisible="{Binding !IsConnected}"
+                    Data="M13.5,18.5 L11,21 A3.5,3.5 0 0 1 6,16 L9.5,12.5 A3.5,3.5 0 0 1 14.5,12.5
+                          M12.5,7.5 L15,5 A3.5,3.5 0 0 1 20,10 L16.5,13.5 A3.5,3.5 0 0 1 11.5,13.5" />
+            </Panel>
+            <Button.Flyout>
+              <Flyout Placement="BottomEdgeAlignedRight">
+                <Button Command="{Binding LeaveCommand}" Width="44" Height="36" Padding="0"
+                        ToolTip.Tip="Leave">
+                  <Path Stroke="#FF4B4B" StrokeThickness="2.4" StrokeLineCap="Round"
+                        Data="M5,5 L17,17 M17,5 L5,17" />
+                </Button>
+              </Flyout>
+            </Button.Flyout>
+          </Button>
+
+          <!-- Sound effects: the button click, the stings, the chimes. F3. -->
+          <ToggleButton Classes="snd" IsChecked="{Binding EffectsOn, Mode=TwoWay}"
+                        ToolTip.Tip="Sound effects">
+            <Panel Width="26" Height="26">
+              <Path Fill="#F0F0F0" Data="M4,10 L8,10 L13,5 L13,21 L8,16 L4,16 Z" />
+              <Path Stroke="#F0F0F0" StrokeThickness="1.6" StrokeLineCap="Round"
+                    Data="M16,9 A5.5,5.5 0 0 1 16,17" />
+              <Path Stroke="#F0F0F0" StrokeThickness="1.6" StrokeLineCap="Round"
+                    Data="M19,6 A9.5,9.5 0 0 1 19,20" />
+              <Path Stroke="#FF4B4B" StrokeThickness="2.6" StrokeLineCap="Round"
+                    Data="M4,22 L22,4" IsVisible="{Binding !EffectsOn}" />
+            </Panel>
+          </ToggleButton>
+
+          <!-- Music: the location beds and the board theme. F2. -->
+          <ToggleButton Classes="snd" IsChecked="{Binding MusicOn, Mode=TwoWay}"
+                        ToolTip.Tip="Music">
+            <Panel Width="26" Height="26">
+              <Path Stroke="#F0F0F0" StrokeThickness="1.8" StrokeLineCap="Round"
+                    Data="M11,19 L11,5 L20,3 L20,16" />
+              <Ellipse Fill="#F0F0F0" Width="7" Height="5.5"
+                       HorizontalAlignment="Left" VerticalAlignment="Top" Margin="4.5,16.5,0,0" />
+              <Ellipse Fill="#F0F0F0" Width="7" Height="5.5"
+                       HorizontalAlignment="Left" VerticalAlignment="Top" Margin="13.5,13.5,0,0" />
+              <Path Stroke="#FF4B4B" StrokeThickness="2.6" StrokeLineCap="Round"
+                    Data="M4,22 L22,4" IsVisible="{Binding !MusicOn}" />
+            </Panel>
+          </ToggleButton>
+
+          <!-- Speech: the shopkeepers' recorded lines. No key in the original. -->
+          <ToggleButton Classes="snd" IsChecked="{Binding SpeechOn, Mode=TwoWay}"
+                        ToolTip.Tip="Speech">
+            <Panel Width="26" Height="26">
+              <Path Fill="#F0F0F0"
+                    Data="M4,5 L22,5 L22,17 L12,17 L7,22 L7,17 L4,17 Z" />
+              <Path Stroke="#FF4B4B" StrokeThickness="2.6" StrokeLineCap="Round"
+                    Data="M4,22 L22,4" IsVisible="{Binding !SpeechOn}" />
+            </Panel>
+          </ToggleButton>
+
+          <!-- THE INTERFACE FACE. Off - the default - is the game's own font 10, and the port
+               draws exactly what it always drew. On swaps the interface text (font 10 only; the
+               balloon, the newspaper, the goals screens and the calculator keep their own faces)
+               for Quicksand, with every price and wage column re-measured onto the stop font 10
+               gives it.
+
+               IT IS HERE, NOT ON A KEY, AND THAT WAS CHECKED. Text 997[6] and 997[7] are the
+               game's own list of what it binds - F1 and F4-F10, Ctrl-Q/S/T/V/Y/Z, Esc and the two
+               mouse modifiers - this port has taken F2 and F3 for the floppy's music and effects
+               items, and every list in the game binds the digits as accelerators. Only F11 and
+               F12 are free, and the game never mentions them; making one up is what working rule
+               1 exists to stop. The sound switches beside it are the port's own chrome for
+               exactly the same reason, and this is the only surface a phone can reach.
+
+               The glyph is a lower-case "a" twice: blocky on the left, round on the right. -->
+          <ToggleButton Classes="snd" IsChecked="{Binding QuicksandFont, Mode=TwoWay}"
+                        IsVisible="{x:Static vm:MainViewModel.QuicksandFontAvailable}"
+                        ToolTip.Tip="Interface font: the game's own, or Quicksand">
+            <Panel Width="26" Height="26">
+              <TextBlock Text="a" FontFamily="Consolas,Courier New,monospace"
+                         FontSize="15" FontWeight="Bold" Foreground="#F0F0F0"
+                         HorizontalAlignment="Left" VerticalAlignment="Center" Margin="3,0,0,0" />
+              <TextBlock Text="a" FontFamily="avares://Jones.App/Assets/fonts#Quicksand"
+                         FontSize="17" FontWeight="Medium" Foreground="#F0F0F0"
+                         HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,3,0" />
+              <Path Stroke="#FF4B4B" StrokeThickness="2.6" StrokeLineCap="Round"
+                    Data="M4,22 L22,4" IsVisible="{Binding !QuicksandFont}" />
+            </Panel>
+          </ToggleButton>
+
+          <!-- THE IN-LOCATION PANEL SIZE. On - the default - draws a building's interior at
+               three quarters, which is the largest it can be while leaving all thirteen of the
+               town's buildings uncovered; off restores Sierra's own full-size interior, which
+               fills the board's centre and puts the calculator on top of Socket City. See
+               app:PanelScale for the arithmetic and MainViewModel.SmallLocationView for why it
+               is here rather than on a key - the same argument as the font switch beside it.
+
+               A DELIBERATE DEVIATION, asked for by Zain, and the switch exists so the original
+               is one click away on the same shop.
+
+               The glyph is a small rectangle inside a larger one: the panel inside the board. -->
+          <ToggleButton Classes="snd" IsChecked="{Binding SmallLocationView, Mode=TwoWay}"
+                        IsVisible="{x:Static vm:MainViewModel.SmallLocationViewAvailable}"
+                        ToolTip.Tip="Shop interiors: fitted inside the board, or Sierra's full size">
+            <Panel Width="26" Height="26">
+              <Path Stroke="#F0F0F0" StrokeThickness="1.6" Data="M3,4 L23,4 L23,22 L3,22 Z" />
+              <Path Fill="#F0F0F0" Data="M8,9 L18,9 L18,17 L8,17 Z" />
+              <Path Stroke="#FF4B4B" StrokeThickness="2.6" StrokeLineCap="Round"
+                    Data="M4,22 L22,4" IsVisible="{Binding !SmallLocationView}" />
+            </Panel>
+          </ToggleButton>
+
+        </StackPanel>
+      </Border>
+
     <Menu x:Name="GameMenu" Background="Transparent" Padding="2,0"
           MinHeight="{x:Static app:TouchUi.BarHeight}">
 
@@ -248,6 +437,7 @@
       </MenuItem>
 
     </Menu>
+    </DockPanel>
   </Border>
 
   <Panel>
@@ -652,182 +842,6 @@
          view is gone, so this is the one place to watch. -->
     </Canvas>
   </Viewbox>
-
-  <!-- THE SOUND SWITCHES. Not Sierra's, and deliberately not dressed as Sierra's.
-
-       The original's are keyboard-only — `Turn Music Off `#2` and `Turn Sound Effects Off
-       `#3` on the floppy's Options menu (`Menu.sc:128`), master volume on Ctrl-V — and
-       this port is heading for Android, where there is no keyboard. There is no speech
-       switch in the game at all; muting dialogue leaves the subtitle and the mouth
-       running, which is what the floppy build did anyway by printing every line.
-
-       Drawn OUTSIDE the Viewbox on purpose. Everything inside it is in the original's
-       320x200 space and scales as one unit; putting these in there would both scale them
-       down to six pixels on a phone and make them look like 1990 art to whoever reads
-       this next. Out here they are unmistakably modern chrome, and the game's own
-       coordinate space is untouched.
-
-       A slash means muted. No captions: every label here would be wording I made up. -->
-  <Border HorizontalAlignment="Right" VerticalAlignment="Top" Margin="10"
-          Background="#99000000" CornerRadius="8" Padding="3">
-    <StackPanel Orientation="Horizontal" Spacing="2">
-
-      <!-- NETWORK PLAY: JOIN. Not in the original, which has no network play at all; see
-           MainViewModel.Network.cs. A phone has no command line, so `- -join` cannot reach
-           the Android head, and this row is the only surface it has.
-
-           Shown only on the title screen of a copy that is neither hosting nor joined, so it
-           can never throw away a game in progress. The box holds the host's address, as
-           typed - "100.64.1.2" or "pc.tailnet.ts.net:7117" - and nothing else: no caption,
-           no placeholder, for the reason the sound switches carry none.
-
-           The glyph is a chain link; the arrow connects. -->
-      <Button x:Name="JoinButton" Classes="snd" IsVisible="{Binding CanJoinNetwork}"
-              ToolTip.Tip="Join a network game">
-        <Panel Width="26" Height="26">
-          <Path Stroke="#F0F0F0" StrokeThickness="2" StrokeLineCap="Round"
-                Data="M13.5,18.5 L11,21 A3.5,3.5 0 0 1 6,16 L9.5,12.5 A3.5,3.5 0 0 1 14.5,12.5
-                      M12.5,7.5 L15,5 A3.5,3.5 0 0 1 20,10 L16.5,13.5 A3.5,3.5 0 0 1 11.5,13.5" />
-        </Panel>
-        <Button.Flyout>
-          <Flyout Placement="BottomEdgeAlignedRight">
-            <StackPanel Orientation="Horizontal" Spacing="6">
-              <TextBox Width="230" Text="{Binding JoinAddressText, Mode=TwoWay}"
-                       AcceptsReturn="False">
-                <TextBox.KeyBindings>
-                  <KeyBinding Gesture="Enter" Command="{Binding JoinCommand}" />
-                </TextBox.KeyBindings>
-              </TextBox>
-              <Button Command="{Binding JoinCommand}" Width="44" Height="36" Padding="0"
-                      ToolTip.Tip="Join">
-                <Path Stroke="#F0F0F0" StrokeThickness="2.2" StrokeLineCap="Round"
-                      StrokeJoin="Round" Data="M4,11 L18,11 M12,5 L18,11 L12,17" />
-              </Button>
-            </StackPanel>
-          </Flyout>
-        </Button.Flyout>
-      </Button>
-
-      <!-- NETWORK PLAY: JOINED. The same link, green while seated at the host and grey while
-           the connection is down (it reconnects by itself). Opens a single button that leaves
-           and returns to a fresh game of this copy's own. -->
-      <Button x:Name="LeaveButton" Classes="snd" IsVisible="{Binding IsRemoteView}"
-              ToolTip.Tip="Network game">
-        <Panel Width="26" Height="26">
-          <Path Stroke="#5BD75B" StrokeThickness="2" StrokeLineCap="Round"
-                IsVisible="{Binding IsConnected}"
-                Data="M13.5,18.5 L11,21 A3.5,3.5 0 0 1 6,16 L9.5,12.5 A3.5,3.5 0 0 1 14.5,12.5
-                      M12.5,7.5 L15,5 A3.5,3.5 0 0 1 20,10 L16.5,13.5 A3.5,3.5 0 0 1 11.5,13.5" />
-          <Path Stroke="#8A8A8A" StrokeThickness="2" StrokeLineCap="Round"
-                IsVisible="{Binding !IsConnected}"
-                Data="M13.5,18.5 L11,21 A3.5,3.5 0 0 1 6,16 L9.5,12.5 A3.5,3.5 0 0 1 14.5,12.5
-                      M12.5,7.5 L15,5 A3.5,3.5 0 0 1 20,10 L16.5,13.5 A3.5,3.5 0 0 1 11.5,13.5" />
-        </Panel>
-        <Button.Flyout>
-          <Flyout Placement="BottomEdgeAlignedRight">
-            <Button Command="{Binding LeaveCommand}" Width="44" Height="36" Padding="0"
-                    ToolTip.Tip="Leave">
-              <Path Stroke="#FF4B4B" StrokeThickness="2.4" StrokeLineCap="Round"
-                    Data="M5,5 L17,17 M17,5 L5,17" />
-            </Button>
-          </Flyout>
-        </Button.Flyout>
-      </Button>
-
-      <!-- Sound effects: the button click, the stings, the chimes. F3. -->
-      <ToggleButton Classes="snd" IsChecked="{Binding EffectsOn, Mode=TwoWay}"
-                    ToolTip.Tip="Sound effects">
-        <Panel Width="26" Height="26">
-          <Path Fill="#F0F0F0" Data="M4,10 L8,10 L13,5 L13,21 L8,16 L4,16 Z" />
-          <Path Stroke="#F0F0F0" StrokeThickness="1.6" StrokeLineCap="Round"
-                Data="M16,9 A5.5,5.5 0 0 1 16,17" />
-          <Path Stroke="#F0F0F0" StrokeThickness="1.6" StrokeLineCap="Round"
-                Data="M19,6 A9.5,9.5 0 0 1 19,20" />
-          <Path Stroke="#FF4B4B" StrokeThickness="2.6" StrokeLineCap="Round"
-                Data="M4,22 L22,4" IsVisible="{Binding !EffectsOn}" />
-        </Panel>
-      </ToggleButton>
-
-      <!-- Music: the location beds and the board theme. F2. -->
-      <ToggleButton Classes="snd" IsChecked="{Binding MusicOn, Mode=TwoWay}"
-                    ToolTip.Tip="Music">
-        <Panel Width="26" Height="26">
-          <Path Stroke="#F0F0F0" StrokeThickness="1.8" StrokeLineCap="Round"
-                Data="M11,19 L11,5 L20,3 L20,16" />
-          <Ellipse Fill="#F0F0F0" Width="7" Height="5.5"
-                   HorizontalAlignment="Left" VerticalAlignment="Top" Margin="4.5,16.5,0,0" />
-          <Ellipse Fill="#F0F0F0" Width="7" Height="5.5"
-                   HorizontalAlignment="Left" VerticalAlignment="Top" Margin="13.5,13.5,0,0" />
-          <Path Stroke="#FF4B4B" StrokeThickness="2.6" StrokeLineCap="Round"
-                Data="M4,22 L22,4" IsVisible="{Binding !MusicOn}" />
-        </Panel>
-      </ToggleButton>
-
-      <!-- Speech: the shopkeepers' recorded lines. No key in the original. -->
-      <ToggleButton Classes="snd" IsChecked="{Binding SpeechOn, Mode=TwoWay}"
-                    ToolTip.Tip="Speech">
-        <Panel Width="26" Height="26">
-          <Path Fill="#F0F0F0"
-                Data="M4,5 L22,5 L22,17 L12,17 L7,22 L7,17 L4,17 Z" />
-          <Path Stroke="#FF4B4B" StrokeThickness="2.6" StrokeLineCap="Round"
-                Data="M4,22 L22,4" IsVisible="{Binding !SpeechOn}" />
-        </Panel>
-      </ToggleButton>
-
-      <!-- THE INTERFACE FACE. Off - the default - is the game's own font 10, and the port
-           draws exactly what it always drew. On swaps the interface text (font 10 only; the
-           balloon, the newspaper, the goals screens and the calculator keep their own faces)
-           for Quicksand, with every price and wage column re-measured onto the stop font 10
-           gives it.
-
-           IT IS HERE, NOT ON A KEY, AND THAT WAS CHECKED. Text 997[6] and 997[7] are the
-           game's own list of what it binds - F1 and F4-F10, Ctrl-Q/S/T/V/Y/Z, Esc and the two
-           mouse modifiers - this port has taken F2 and F3 for the floppy's music and effects
-           items, and every list in the game binds the digits as accelerators. Only F11 and
-           F12 are free, and the game never mentions them; making one up is what working rule
-           1 exists to stop. The sound switches beside it are the port's own chrome for
-           exactly the same reason, and this is the only surface a phone can reach.
-
-           The glyph is a lower-case "a" twice: blocky on the left, round on the right. -->
-      <ToggleButton Classes="snd" IsChecked="{Binding QuicksandFont, Mode=TwoWay}"
-                    IsVisible="{x:Static vm:MainViewModel.QuicksandFontAvailable}"
-                    ToolTip.Tip="Interface font: the game's own, or Quicksand">
-        <Panel Width="26" Height="26">
-          <TextBlock Text="a" FontFamily="Consolas,Courier New,monospace"
-                     FontSize="15" FontWeight="Bold" Foreground="#F0F0F0"
-                     HorizontalAlignment="Left" VerticalAlignment="Center" Margin="3,0,0,0" />
-          <TextBlock Text="a" FontFamily="avares://Jones.App/Assets/fonts#Quicksand"
-                     FontSize="17" FontWeight="Medium" Foreground="#F0F0F0"
-                     HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,3,0" />
-          <Path Stroke="#FF4B4B" StrokeThickness="2.6" StrokeLineCap="Round"
-                Data="M4,22 L22,4" IsVisible="{Binding !QuicksandFont}" />
-        </Panel>
-      </ToggleButton>
-
-      <!-- THE IN-LOCATION PANEL SIZE. On - the default - draws a building's interior at
-           three quarters, which is the largest it can be while leaving all thirteen of the
-           town's buildings uncovered; off restores Sierra's own full-size interior, which
-           fills the board's centre and puts the calculator on top of Socket City. See
-           app:PanelScale for the arithmetic and MainViewModel.SmallLocationView for why it
-           is here rather than on a key - the same argument as the font switch beside it.
-
-           A DELIBERATE DEVIATION, asked for by Zain, and the switch exists so the original
-           is one click away on the same shop.
-
-           The glyph is a small rectangle inside a larger one: the panel inside the board. -->
-      <ToggleButton Classes="snd" IsChecked="{Binding SmallLocationView, Mode=TwoWay}"
-                    IsVisible="{x:Static vm:MainViewModel.SmallLocationViewAvailable}"
-                    ToolTip.Tip="Shop interiors: fitted inside the board, or Sierra's full size">
-        <Panel Width="26" Height="26">
-          <Path Stroke="#F0F0F0" StrokeThickness="1.6" Data="M3,4 L23,4 L23,22 L3,22 Z" />
-          <Path Fill="#F0F0F0" Data="M8,9 L18,9 L18,17 L8,17 Z" />
-          <Path Stroke="#FF4B4B" StrokeThickness="2.6" StrokeLineCap="Round"
-                Data="M4,22 L22,4" IsVisible="{Binding !SmallLocationView}" />
-        </Panel>
-      </ToggleButton>
-
-    </StackPanel>
-  </Border>
 
   <!-- GOALS AND STATS USED TO BE HERE, as two bespoke buttons drawn only on a touch head.
 

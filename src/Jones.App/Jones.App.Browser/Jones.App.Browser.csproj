@@ -4,6 +4,31 @@
     <OutputType>Exe</OutputType>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <Nullable>enable</Nullable>
+
+    <!-- ==================================================================
+         WITHOUT THIS THE PAGE LOADS AND THE GAME NEVER APPEARS.
+
+         Avalonia draws through Skia, and in WebAssembly Skia is not a library that can be
+         loaded at run time - there is no dynamic linker to load it with. libSkiaSharp.a
+         has to be RELINKED INTO THE WASM BINARY at build time, and that only happens when
+         this is true.
+
+         With it false the build SUCCEEDS, emits a warning nobody reads -
+
+             @(NativeFileReference) is not empty, but the native references won't be
+             linked in, because neither $(WasmBuildNative), nor $(RunAOTCompilation)
+             are 'true'
+
+         - and produces a page that shows the Avalonia splash, then dies in the browser
+         console with `System.DllNotFoundException: libSkiaSharp` at SKImageInfo's static
+         constructor. Nothing on the page says so. That is how this head sat "built" and
+         unrunnable: the only signal was a warning in a build that reported 0 errors.
+
+         THE COST IS A WORKLOAD. Relinking needs Emscripten, which arrives with
+         `dotnet workload install wasm-tools`; without it the build falls back to the
+         warning above rather than failing. See BROWSER.md.
+         ================================================================== -->
+    <WasmBuildNative>true</WasmBuildNative>
   </PropertyGroup>
 
   <ItemGroup>

@@ -83,13 +83,14 @@ public static class SciArt
 
         Bitmap? bmp = null;
         {
-            var tween = Resolve($"view_{view}_l{loop}_c{cel}_s{sub}.png");
+            var tweenFile = $"view_{view}_l{loop}_c{cel}_s{sub}.png";
+            var tween = Resolve(tweenFile);
             if (tween is not null)
             {
                 // Deliberately NOT the shared instance from Cel(): that one already owns the
                 // base frame's twin, and the table holds one factory per bitmap reference.
                 bmp = Load($"{Root}view_{view}_l{loop}_c{cel}.png");
-                if (bmp is not null) RegisterHighRes(bmp, () => LoadFile(tween));
+                if (bmp is not null) RegisterHighRes(bmp, () => LoadCel(tween, tweenFile));
                 Net.ArtRecipes.Note(bmp, Jones.Net.ArtRef.SubCel(view, loop, cel, sub));
             }
         }
@@ -199,30 +200,31 @@ public static class SciArt
         // all: a screen that is never visited must not cost a directory probe per cel.
         RegisterHighRes(oneX, () =>
         {
-            var p = Resolve(file);
-            Trace($"  resolve({file}) -> {p ?? "<NOT FOUND>"}");
-            return p is { } q ? LoadFile(q) : null;
+            var dir = Resolve(file);
+            Trace($"  resolve({file}) -> {dir ?? "<NOT FOUND>"}");
+            return dir is { } d ? LoadCel(d, file) : null;
         });
     }
 
     /// <summary>
-    /// The first of <see cref="RenderScale.ArtDirectories"/> that holds
-    /// <paramref name="file"/>, or null. With an art set selected that is the set's copy
+    /// The first of <see cref="RenderScale.ArtDirectories"/> that HOLDS
+    /// <paramref name="file"/> — the DIRECTORY, not the file, because only the store knows
+    /// how to turn the pair into bytes — or null. With an art set selected that is the set's copy
     /// if it has one and the ported copy otherwise, which is what lets a set replace
     /// twenty views and stay silent about the other eight hundred.
     /// </summary>
     private static string? Resolve(string file)
     {
         var dirs = RenderScale.ArtDirectories;
+        var store = RenderScale.Store;
         for (var i = 0; i < dirs.Length; i++)
         {
-            var path = System.IO.Path.Combine(dirs[i], file);
-            if (!System.IO.File.Exists(path)) continue;
+            if (!store.Exists(dirs[i], file)) continue;
 
             // i > 0 means the art set was asked first and did not have it, so this cel is
             // SIERRA'S while the rest of the screen is not. See NoteFallback.
             if (i > 0) NoteFallback(file);
-            return path;
+            return dirs[i];
         }
         return null;
     }
@@ -274,11 +276,18 @@ public static class SciArt
         }
     }
 
-    private static Bitmap? LoadFile(string path)
+    /// <summary>
+    /// Decodes one cel out of whichever store the head installed. Whether the bytes came
+    /// off a disk or out of an APK is the store's business, including whether it had to
+    /// buffer them to be seekable. A cel that will not open is omitted from the screen,
+    /// exactly as a missing one is.
+    /// </summary>
+    private static Bitmap? LoadCel(string directory, string file)
     {
         try
         {
-            return System.IO.File.Exists(path) ? new Bitmap(path) : null;
+            using var stream = RenderScale.Store.Open(directory, file);
+            return stream is null ? null : new Bitmap(stream);
         }
         catch
         {
