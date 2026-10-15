@@ -184,6 +184,18 @@ def main():
             slab = slab & ~np.kron(patch, np.ones((F, F), bool))
             print("   %-14s %d cel px of the margin are a DECLARED landscape patch"
                   % (key, int((patch & marg).sum())))
+        # AND A DECLARED `clear_keep` IS A NEIGHBOUR'S ART, ON PURPOSE. Where two regions
+        # overlap the building in front installs last and leaves the band it does not cover
+        # to the one behind; those pixels ARE ours, they ARE in this building's margin, and
+        # they are exactly what should be there. Hyper Save keeps 216 cel px for Bare
+        # Necessities and the clause charged it 7783 px at 12x until this was added.
+        keep = np.zeros((h, w), bool)
+        for (kx0, ky0, kx1, ky1) in (getattr(b, "clear_keep", None) or []):
+            keep[max(0, ky0 - y):max(0, ky1 - y + 1), max(0, kx0 - x):max(0, kx1 - x + 1)] = True
+        if keep.any():
+            slab = slab & ~np.kron(keep, np.ones((F, F), bool))
+            print("   %-14s %d cel px of the margin are a DECLARED neighbour's band"
+                  % (key, int((keep & marg).sum())))
         slab_px = int(slab.sum())
         rows.append((key, hers_in, pasted, hers_margin, w * h, stranded,
                      ours_margin, margin_px,

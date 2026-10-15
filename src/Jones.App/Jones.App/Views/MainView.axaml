@@ -469,7 +469,12 @@
 
       <!-- The town board. Drawn straight from SciArt rather than from a view model, so
            the high-resolution swap happens there rather than through a converter. -->
-      <Image Source="{x:Static app:SciArt.Board}"
+      <!-- BOUND, NOT STATIC. `{x:Static app:SciArt.Board}` is evaluated once when the view
+         loads, which is correct on a head whose art is on disk before the first draw and
+         wrong on one whose art arrives over the network: the board that landed a second
+         later was never read, and the page showed Sierra's town while ours sat decoded in
+         the cache. See MainViewModel.BoardImage. -->
+    <Image Source="{Binding BoardImage}"
              Canvas.Left="0" Canvas.Top="0"
              Width="{x:Static app:RenderScale.CanvasWidth}"
              Height="{x:Static app:RenderScale.CanvasHeight}"

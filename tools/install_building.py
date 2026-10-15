@@ -437,9 +437,37 @@ def main():
             # does, stop rather than paste a mismatched patch.
             src = pick_clear_source(ported, F, board, b.clear)
             patch = src.crop((cx0 * F, cy0 * F, (cx1 + 1) * F, (cy1 + 1) * F))
-            board.paste(patch, (cx0 * F, cy0 * F))
-            print("  cleared x %d..%d y %d..%d back to Sierra's own art"
-                  % (cx0, cx1, cy0, cy1))
+            # `clear_keep` - BANDS INSIDE THE ERASER THAT A NEIGHBOUR OWNS.
+            #
+            # Two regions can overlap: Hyper Save's is x 7..48 y 97..153 and Bare
+            # Necessities' is x 25..67 y 69..105, so they contest 216 cel px. Each eraser
+            # is a rectangle covering its own region, so the Bank's erased nine rows of its
+            # neighbour and then repainted only the part under its own roofline, leaving 99
+            # cel px of Sierra's art as a wedge along the join - right across Bare
+            # Necessities' door, which is how it was caught (that door's shut cel stopped
+            # matching its facade). Installing the other way round instead cut the Bank's
+            # pediment off at its apex.
+            #
+            # Neither order is wrong; the ERASER is. A building must erase everything it
+            # writes and nothing a neighbour writes, and where those overlap the one in
+            # FRONT installs last and simply paints over. `clear_keep` says which bands to
+            # leave alone, so the building behind keeps its own art and the one in front
+            # still covers it where its silhouette is opaque.
+            keep = getattr(b, "clear_keep", None) or []
+            if keep:
+                mask = Image.new("L", patch.size, 255)
+                md = ImageDraw.Draw(mask)
+                for (kx0, ky0, kx1, ky1) in keep:
+                    md.rectangle([(kx0 - cx0) * F, (ky0 - cy0) * F,
+                                  (kx1 - cx0 + 1) * F - 1, (ky1 - cy0 + 1) * F - 1], fill=0)
+                board.paste(patch, (cx0 * F, cy0 * F), mask)
+                print("  cleared x %d..%d y %d..%d back to Sierra's own art, KEEPING %s "
+                      "for the neighbour that owns them"
+                      % (cx0, cx1, cy0, cy1, ", ".join(str(k) for k in keep)))
+            else:
+                board.paste(patch, (cx0 * F, cy0 * F))
+                print("  cleared x %d..%d y %d..%d back to Sierra's own art"
+                      % (cx0, cx1, cy0, cy1))
 
             # AND THEN PATCH OUT WHAT HER ORIGINAL ITSELF CONTAINS. Restoring cel 0 brought
             # the Factory's BLANK GOLD BOARD straight back, because she painted the panel

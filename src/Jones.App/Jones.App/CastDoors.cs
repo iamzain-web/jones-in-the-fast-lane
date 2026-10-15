@@ -190,6 +190,42 @@ public static class CastDoors
             // not a mistake in the placement.
             LocationId.SocketCity => (0, 1),
 
+            // HYPER SAVE, +7 ACROSS, AND IT IS THE LARGEST HORIZONTAL OFFSET IN THE TABLE.
+            // It is also the one entry here that makes the door land CLOSER to the marble
+            // than Sierra's own number does, which is why it is the right answer and not a
+            // retreat from the doorway-first rule.
+            //
+            // THE CONFLICT. Placing his door's centre on her x 20 put his building at
+            // x −0.5..41, and the playfield does not start at x 0: the board's frame is
+            // x 0..6 — measured on `png12x-new` as a black column at x 0, a cream mount at
+            // x 1..3 and a grey edge at x 4..6, standard deviation 2.0 at x 2 against 27 at
+            // x 7 — which is exactly where `Board.All` puts the Bank's hotspot. His left
+            // steps and planter were under the frame, and Zain saw it.
+            //
+            // His door sits 49.4% across his building, so with the building's left edge
+            // pinned to x 7 its centre lands on x 27.5. Three ways out were costed:
+            //
+            //   crop his left        cuts the outer column and half the left planter off a
+            //                        four-column portico. It would read as clipped, which
+            //                        is the complaint, moved rather than fixed.
+            //   shrink the building  the left of the door is then 13 columns, so his whole
+            //                        building is 26 — against her own cel 12's 43x54 - and
+            //                        his door drops to 6.2 x 6.35 against her 9 x 10 leaf.
+            //   MOVE THE DOOR        and this is the one, because of what the path says.
+            //
+            // THE MARBLE NEVER STANDS ON THE DOOR'S CENTRE, IN SIERRA'S OWN GAME. Step 120
+            // of `MarblePath` — the Bank's `PathIndex` — is (30,150), and her door is drawn
+            // at x 20. That is TEN pixels. Measured across all thirteen the gap runs from
+            // −9 at Black's Market to +10 here, mean magnitude 6: the marble walks a fixed
+            // perimeter and the door is drawn where the doorway is PAINTED. So Sierra's
+            // door x is a statement about her art, exactly like her door y, and an art set
+            // that paints the doorway elsewhere says so here.
+            //
+            // At +7 the door's centre is x 27 against the marble's x 30 — a gap of 3 where
+            // Sierra's own is 10. The relationship the offset exists to protect is better
+            // after the move than before it.
+            LocationId.Bank => (7, 0),
+
             // NOT HERE, AND THAT IS ALSO A MEASUREMENT. Open Door University, Needful Things
             // and Common Threads were each measured off the board at 12x and each came back
             // zero — her body rows ARE the painted doorway's rows in all three. They are

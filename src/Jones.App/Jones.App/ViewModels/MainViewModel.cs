@@ -6222,7 +6222,43 @@ public sealed partial class MainViewModel : ViewModelBase
     /// finished it on, and every binding this touches is owned by the UI thread.
     /// </para>
     /// </summary>
-    private void OnArtArrived() => Avalonia.Threading.Dispatcher.UIThread.Post(RefreshAll);
+    private bool _artRefreshQueued;
+
+    private void OnArtArrived()
+    {
+        // COALESCED. A screen asks for a handful of cels in the same frame and they land
+        // within milliseconds of each other; one rebuild picks up whatever has arrived by
+        // the time it runs, and without this each arrival would queue its own.
+        if (_artRefreshQueued) return;
+        _artRefreshQueued = true;
+
+        Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+        {
+            _artRefreshQueued = false;
+
+            // THE BOARD IS NOT IN RefreshAll AND THAT IS WHY THE FIRST DEPLOYMENT STILL
+            // SHOWED SIERRA'S TOWN. MainView binds the backdrop with `{x:Static
+            // app:SciArt.Board}` - evaluated ONCE when the view loads - so a board that
+            // arrives a second later is never read. The art was fetched, decoded and
+            // cached; the picture on screen was from before it existed.
+            OnPropertyChanged(nameof(BoardImage));
+
+            // And the sprites are rebuilt rather than merely re-raised: each one resolves
+            // its own cel through SciArt, which will now find the art it could not find.
+            BuildScreen();
+        });
+    }
+
+    /// <summary>
+    /// The town backdrop, as a BINDABLE property rather than a static one.
+    ///
+    /// <para>
+    /// It is <see cref="SciArt.Board"/> and nothing else. The only thing this adds is the
+    /// ability to say "look again" - which a head whose art arrives over the network needs
+    /// and the other two do not, because on them the art is there before the first draw.
+    /// </para>
+    /// </summary>
+    public Avalonia.Media.Imaging.Bitmap? BoardImage => SciArt.Board;
 
     private void RefreshAll()
     {

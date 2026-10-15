@@ -2825,6 +2825,147 @@ board. The 21 spoken lines in text 210 **were** rewritten and re-recorded — se
 but the three resource strings above are still Sierra's bytes and are the coordinator's to
 decide on.
 
+## 54. A MARGIN IS ONLY HERS TO KEEP IF WHAT IS IN IT IS SCENERY
+
+Zain: *"There are still remnants of the old buildings behind the new buildings and the Bank
+is partially off the screen!!!"* Both were real and both come from the same place.
+
+### THE RULE THE AUDITS CANNOT ENFORCE
+
+All three clauses treat the margin — inside the region, outside the new silhouette — as
+**hers, and to be left alone**. That is right when the margin is her lawn, her sky or her
+pavement. It is exactly backwards when the margin contains **her building**. The audits
+compare colours; they cannot tell her hillside from her bank, and they reported *"0 px of
+her art inside the silhouette"* on a building standing next to hers.
+
+The survey in §42 asked *"is the region bigger than her cel?"*, which was the right question
+while every new building FILLED its cel. Bun Believable, the General Dealer and Hyper Save
+are fitted to HEIGHT and occupy roughly half their columns, so the question stopped being
+the right one and nobody noticed.
+
+### THE SWEEP: ONE BUILDING, NOT THREE OR TEN
+
+For each of the ten whose source is one of her cels, how much of **her own cel box** the
+installed board still shows unchanged, and what it actually is — looked at, not inferred:
+
+| building | her cel box | still showing | what it is |
+|---|---|---|---|
+| **Bank** | 43x54 at (11,92) | **364 px, 15.7%** → **her Bank's annexe, brown roof and grey wall, at x 42..53** | **HER BUILDING** |
+| Common Threads | 40x36 at (257,80) | 378 px | her path above, her grass below |
+| Bun Believable | 42x43 at (264,32) | 349 px | her plaza and verge; her pole sign is fully replaced by his |
+| Watt a Bargain | 44x52 at (255,132) | 353 px | her foliage in the corners, her pavement |
+| Bare Necessities | 43x37 at (25,69) | 241 px | her verge and kerb |
+| General Dealer | 49x30 at (258,2) | 237 px | her margin and a neighbour's wall |
+| Villa Locke & Keyes | 43x43 at (7,1) | 77 px | her sky |
+| Rentflix | 41x22 at (85,3) | 70 px | her kerb |
+| Needful Things | 39x28 at (201,5) | 61 px | her grass |
+| Open Door University | 59x41 at (191,141) | **1950 px, 80.6%** | **see below — the reference is wrong, not the building** |
+
+**One building, and it is the one Zain pointed at.** Everything else in those margins is
+scenery, which is what the rule is for.
+
+### AND THE REFERENCE THE AUDITS CALL "HERS" IS NOT ALWAYS HERS
+
+Open Door University's 80.6% is not a remnant. `png12x-new` — the board every audit compares
+against to decide whose pixels are whose — **already contains our Open Door University**,
+LED sign and all. Rendered side by side:
+
+```
+png12x        her 1990 art, upscaled:  HI-TECH U
+png12x-new    the audits' "hers":      OPEN DOOR UNIVERSITY   <- ours
+png12x-cast0  the live set:            OPEN DOOR UNIVERSITY
+```
+
+Measured as the mean difference between `png12x` and `png12x-new` over each region, the
+whole board averages 13.8 and every building is 9–25 — except the University at **49.18**,
+3.5× the board. `png12x-new` is `png12x-uni` byte for byte.
+
+So for twelve of thirteen the audits' notion of "hers" is sound, and at the University it is
+our own work. Clause 1 can never report anything there, and never has.
+
+### HYPER SAVE WAS UNDER THE BOARD'S FRAME
+
+Measured on `png12x-new`: a black column at x 0, a cream mount at x 1..3, a grey edge at
+x 4..6 — standard deviation 2.0 at x 2 against 27.9 at x 7. **The playfield starts at x 7**,
+which is exactly where `Board.All` puts the Bank's hotspot. §53 put its region at x 0 to
+satisfy `DoorFor`'s x 20, and the left steps, planter and outer column were under the frame.
+
+This is the doorway-first rule's first genuine conflict: his door's position fixes the scale,
+and at that scale his building is wider than the space left of the door. Three ways out:
+
+| | cost |
+|---|---|
+| crop his left | cuts the outer column and half the left planter off a four-column portico — clipped, not fixed |
+| shrink the building | 13 columns left of the door makes the whole building 26 wide, against her own cel's 43x54, and his door 6.2 x 6.35 against her 9 x 10 leaf |
+| **move the door** | **chosen** |
+
+**Because the marble never stands on the door's centre in Sierra's own game.** Step 120 of
+`MarblePath` — the Bank's own `PathIndex` — is (30,150) and her door is drawn at x 20. That
+is ten pixels. Measured across all thirteen the gap runs from **−9** at Black's Market to
+**+10** here, mean magnitude 6: the marble walks a fixed perimeter and the door is drawn
+where the doorway is *painted*. Sierra's door x is a statement about her art, exactly like
+her door y, and an art set that paints the doorway elsewhere says so in `CastDoors`.
+
+`LocationId.Bank => (7, 0)`, region **(7, 97, 42, 57)**, crop `(300, 96, 1161, 1264)`. At +7
+the door's centre is x 27 against the marble's x 30 — **a gap of 3 where Sierra's own is 10.
+The relationship the offset exists to protect is better after the move than before it.**
+
+Every door's gap to its marble, after this art set's offsets, worst first:
+
+```
+Bare Necessities −9   Needful Things     +7   Casa El Cheapo +7   Watt a Bargain −7
+The Industrial Revolution −7   Villa Locke & Keyes +6   Hire Ground −6
+Rentflix +4   Common Threads +4   Open Door University −4
+HYPER SAVE +3   General Dealer −2   Bun Believable −1      mean |gap| 5.2
+```
+
+Hyper Save was the **worst** of the thirteen at +10 and is now the fourth best.
+
+And moving right to x 48 covered her Bank's annexe, which is why the sweep's one real case
+and the frame complaint have the same fix.
+
+### `clear_keep` — AN ERASER MUST NOT ERASE A NEIGHBOUR
+
+The move exposed the last structural gap. Hyper Save's region is x 7..48 y 97..153 and Bare
+Necessities' is x 25..67 y 69..105: they contest **216 cel px**. Each eraser is a rectangle
+covering its own region, and `check_clear_covers_region` refuses anything smaller — so:
+
+- **Bank last**: its clear erased nine rows of Bare Necessities and then repainted only the
+  part under its own roofline, leaving **99 cel px** of Sierra's art as a wedge along the
+  join — straight across Bare Necessities' door, which is how it was caught. That door's
+  shut cel stopped matching its façade (max 230.0).
+- **Bare Necessities last**: its clear cut Hyper Save's pediment off at the apex.
+
+Neither order is wrong; the eraser is. A building must erase everything it writes and
+nothing a neighbour writes, and where those overlap the one in FRONT installs last and
+simply paints over. `clear_keep` is a list of bands inside the eraser that a neighbour owns:
+the building behind keeps its art, the one in front still covers it where its silhouette is
+opaque. Hyper Save keeps two — Bare Necessities' `(25,97,48,105)` and The Industrial
+Revolution's `(9,149,48,154)` — and the wedge went **99 → 14 cel px**, the residue being the
+one-pixel join rim the matte always has.
+
+`sierra_audit` learned about it too, for the same reason it learned about `board_fill`: a
+declared band is ours on purpose, and it charged the Bank 7783 px at 12x until told.
+
+**Install `blacksmarket` before `bank`.** Recorded in the Bank's own notes.
+
+### THE AUDITS AFTERWARDS
+
+| | bank |
+|---|---|
+| 1 — her art inside the silhouette | **0 px, 0.0%** |
+| 2 — ours stranded outside the region | 11 px |
+| 3 — SLAB | **0** — a join rim, a declared landscape patch (80 cel px) and a declared neighbour's band (193) |
+| margin still hers | 359 of 2394, 15.0% |
+
+Twelve of thirteen doors verify shut at max 0.000 / mean 0.000; the thirteenth is Villa
+Locke & Keyes, still carrying the synthetic leaf it had before `from_facade` existed.
+
+One SLAB is left on the board and it is the one §53 records: the Bank's planters stand three
+rows into The Industrial Revolution's upper margin, 3036 px at 12x. `clear_keep` stops the
+Bank *erasing* that band but it is painting there on purpose, and there is no vocabulary yet
+for "a neighbour may paint in my margin".
+
 ## 53. HYPER SAVE — THE THIRTEENTH, AND THE FIRST WHOSE DOOR NEEDED NO OFFSET
 
 **The board is finished: thirteen of thirteen, every one with a working door.**

@@ -179,6 +179,11 @@ class Building:
     # the only one: its shape IS her blank panel, flood-filled, and no arrangement of
     # init rectangles would reproduce it honestly. See tools/town_centre_mask.py.
     matte_file: str = None
+    # BANDS INSIDE `clear` THAT A NEIGHBOUR OWNS and this building must not erase. See
+    # install_building for why: two regions can overlap, each eraser is a rectangle, and a
+    # building that erases its neighbour then repaints only its own silhouette leaves a
+    # wedge of Sierra's art along the join.
+    clear_keep: tuple = ()
     # AN AUTHORED ROOFLINE, in cel units, as samples (col, top) interpolated between.
     #
     # `init` boxes are the silhouette for most buildings and they are exact IN CEL TERMS
@@ -3092,7 +3097,7 @@ BUILDINGS["bank"] = Building(
     # anchor and the board's left edge put his building. `cel:12` would assert the two
     # match and they do not; `background` crops cel 0, which is what "Sierra's pixels for
     # this rectangle" actually means here.
-    source="background", region=(0, 97, 42, 57), hotspot=(7, 119, 67, 154),
+    source="background", region=(7, 97, 42, 57), hotspot=(7, 119, 67, 154),
     palette={"GROUND": (0xC8, 0x90, 0x70)},
     init=[(0, 0, 41, 56, "GROUND")],
     prompt="(supplied art - no generation; see source_image)",
@@ -3107,14 +3112,34 @@ BUILDINGS["bank"] = Building(
     # its facade (max 183.0, mean 18.5). The fix belongs in the check, not here - a
     # declared `board_fill` is our work and `pick_clear_source` now excludes it the same
     # way it already excludes every region and every clear rect.
-    clear=(0, 97, 41, 154),
+    # THE ERASER REACHES BACK TO x 0, WHICH IS THE BOARD'S FRAME, and that is deliberate.
+    # The region is x 7..48 and the eraser only has to cover that - but this building was
+    # first installed at x 0..41 and then moved right, and the seven columns it vacated kept
+    # the old paint: `pick_clear_source` found them in its control frame and refused (24.71
+    # against 0.00). Restoring x 0..6 from her board every time costs nothing - they are the
+    # frame, and her frame is what belongs there - and it makes the move idempotent instead
+    # of leaving a one-off repair for somebody to discover.
+    clear=(0, 97, 48, 154),
+    # BARE NECESSITIES OWNS x 25..48 y 97..105, so the Bank does not erase it. The two
+    # regions contest 216 cel px - Hyper Save's x 7..48 y 97..153 against Bare Necessities'
+    # x 25..67 y 69..105 - and the Bank is NEARER the viewer, so it installs last and
+    # paints over its neighbour wherever its own roofline is opaque. What it must not do is
+    # erase the rest: before `clear_keep` existed that left 99 cel px of Sierra's art as a
+    # wedge along the join, across Bare Necessities' door.
+    #
+    # INSTALL `blacksmarket` BEFORE `bank`.
+    # The second band is THE INDUSTRIAL REVOLUTION's, whose region starts at y 149 while
+    # the Bank's base lands at y 151. Same rule: the Bank paints its planters over its
+    # neighbour's upper margin because it stands in front, and it does not erase what it
+    # does not paint.
+    clear_keep=((25, 97, 48, 105), (9, 149, 48, 154)),
     name_lines=[], name_rect=(0, 0, 0, 0), name_ink=(0, 0, 0),
     source_image={
         "path": r"C:\AI-Accelerator\jones\tools\samples\hypersave.png",
         # Derived, not chosen: x so his door's centre (source x 720) lands on game x 20,
         # y so his door's top (source y 895) lands on game y 136, and the size so the
         # aspect matches the region's 42/57 = 0.7368 (861/1168 = 0.7372).
-        "crop": (310, 96, 1171, 1264),
+        "crop": (300, 96, 1161, 1264),
         "baseline": 153,
         # HIS OUTLINE, one rect per cel column, MEASURED off the fitted image at 20 px per
         # cel px and written down. Columns 3..41 are his roofline read directly; columns
@@ -3147,16 +3172,16 @@ BUILDINGS["bank"] = Building(
         #   corner. His eave is at source (300, 470) = cel (-0.49, 18.2), so the true
         #   left slope is steeper than the one the colour test returned - it was reading
         #   the pink fascia behind the roof, not the roof. 12.2, 11.4, 10.3, 9.3.
-        (0, 17.3, 0, 54), (1, 15.5, 1, 54), (2, 13.7, 2, 54), (3, 8.85, 3, 54), (4, 8.25, 4, 54),
-        (5, 7.65, 5, 54), (6, 7.05, 6, 54), (7, 6.5, 7, 54), (8, 6.3, 8, 54), (9, 5.4, 9, 54),
-        (10, 5.1, 10, 54), (11, 4.75, 11, 54), (12, 4.1, 12, 54), (13, 3.7, 13, 54),
-        (14, 3.1, 14, 54), (15, 2.55, 15, 54), (16, 1.95, 16, 54), (17, 1.4, 17, 54),
-        (18, 0.95, 18, 54), (19, 0.75, 19, 54), (20, 0.15, 20, 54), (21, 0.35, 21, 54),
-        (22, 0.8, 22, 54), (23, 1.4, 23, 54), (24, 1.95, 24, 54), (25, 2.25, 25, 54),
-        (26, 3, 26, 54), (27, 3.2, 27, 54), (28, 3.8, 28, 54), (29, 4.4, 29, 54),
-        (30, 4.85, 30, 54), (31, 5.35, 31, 54), (32, 5.8, 32, 54), (33, 6.45, 33, 54),
-        (34, 7.05, 34, 54), (35, 7.6, 35, 54), (36, 7.75, 36, 54), (37, 8.35, 37, 54),
-        (38, 8.95, 38, 54), (39, 13, 39, 54),
+        (0, 10.2, 0, 54), (1, 9.7, 1, 54), (2, 9.2, 2, 54), (3, 8.73, 3, 54), (4, 8.25, 4, 54),
+        (5, 7.75, 5, 54), (6, 7.6, 6, 54), (7, 7, 7, 54), (8, 6.4, 8, 54), (9, 5.85, 9, 54),
+        (10, 5.3, 10, 54), (11, 4.8, 11, 54), (12, 4.25, 12, 54), (13, 3.75, 13, 54),
+        (14, 3.2, 14, 54), (15, 2.7, 15, 54), (16, 2.05, 16, 54), (17, 1.95, 17, 54),
+        (18, 1.35, 18, 54), (19, 0.75, 19, 54), (20, 0.25, 20, 54), (21, 0.15, 21, 54),
+        (22, 0.8, 22, 54), (23, 1.15, 23, 54), (24, 1.5, 24, 54), (25, 2.05, 25, 54),
+        (26, 2.55, 26, 54), (27, 3.1, 27, 54), (28, 3.7, 28, 54), (29, 4.1, 29, 54),
+        (30, 4.55, 30, 54), (31, 5, 31, 54), (32, 5.7, 32, 54), (33, 6.05, 33, 54),
+        (34, 6.5, 34, 54), (35, 7.05, 35, 54), (36, 7.7, 36, 54), (37, 8.3, 37, 54),
+        (38, 8.95, 38, 54), (39, 8.95, 39, 54), (40, 18.9, 40, 54),
         ],
     },
     matte_file="matte_840x1140.png",

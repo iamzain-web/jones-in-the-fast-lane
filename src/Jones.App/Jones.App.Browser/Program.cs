@@ -36,32 +36,57 @@ internal sealed partial class Program
         // It is the store's base address, and without it every art request is a relative URI
         // that WebAssembly's HttpClient refuses before it reaches the network.
         var pageUri = args.Length > 0 && Uri.TryCreate(args[0], UriKind.Absolute, out var u) ? u : null;
-        var art = await HttpArtStore.LoadAsync(pageUri);
-        if (art is not null)
-        {
-            RenderScale.UseArtStore(art);
 
-            // Reported rather than assumed. Art present and art missing look identical from
-            // inside the game - the cels simply come out at factor 1 - so the only way to
-            // tell "found png4x-cast0" from "found nothing and fell back" is to say which.
-            System.Console.WriteLine(
-                $"Jones: art factor {RenderScale.Factor}, " +
-                $"{RenderScale.ArtDirectories.Length} director(ies) of " +
-                $"[{string.Join(", ", art.Inventory())}]");
-        }
-        else
-        {
-            System.Console.WriteLine(
-                $"Jones: no art beside the page - drawing Sierra's 1990 pixels. " +
-                $"Base {pageUri?.ToString() ?? "<unknown>"}; " +
-                $"reason: {HttpArtStore.LastFailure ?? "<none given>"}");
-        }
+        // NOTHING IS AWAITED HERE, AND THAT IS THE POINT. The first version downloaded a
+        // manifest before handing control to Avalonia, and on the deployed site that await
+        // never returned: splash on screen, renderer frozen, the tab too wedged for devtools
+        // to evaluate an expression in it. One thread, and the browser's event loop is on it.
+        // The store is usable the moment it is constructed and learns what it has in the
+        // background - a hang is worse than a failure, because a failure has an error to read.
+        var art = new HttpArtStore(pageUri);
+        RenderScale.UseArtStore(art);
+
+        // Reported rather than assumed. Art present and art missing look identical from
+        // inside the game - the cels simply come out at factor 1 - so the only way to tell
+        // "found png4x-cast0" from "found nothing and fell back" is to say which.
+        System.Console.WriteLine(
+            $"Jones: art factor {RenderScale.Factor}, " +
+            $"{RenderScale.ArtDirectories.Length} director(ies) of " +
+            $"[{string.Join(", ", art.Inventory())}], base {pageUri?.ToString() ?? "<unknown>"}");
 
         // A phone has no keyboard and no right mouse button, exactly as Android does not -
         // and this page is opened on one far more often than on a desktop. The switches and
         // the menu bar size themselves from this; see TouchUi.
         TouchUi.Enabled = true;
 
+        // SMOOTH MOTION OFF HERE, AND IT IS A PERFORMANCE DECISION WITH A MEASURED CAUSE.
+        //
+        // `BuildScreen` clears nine collections and rebuilds every sprite, control, hotspot
+        // and text on screen. While the marble is walking it is called from TWO timers:
+        // WalkTick at 40Hz and SmoothTick at ~60Hz. That is about a hundred full screen
+        // teardowns a second, each destroying and recreating every visual.
+        //
+        // The desktop absorbs it. This head does not: it has one thread, the browser's event
+        // loop is on it, and when those ticks slip the WALK ITSELF SLOWS DOWN - the marble
+        // advances one path step per WalkTick, so a tick that arrives late is a journey that
+        // takes longer. Zain: "the mans walk is very slow, and it takes a very long time for
+        // him to get to where he is going." That is the mechanism, not a frame rate.
+        //
+        // Turning this off removes roughly 60 of those 100 rebuilds immediately. The cost is
+        // the original's own stepping between path nodes rather than tweened movement - which
+        // is exactly what Sierra's game does, and what `Jones Original` runs with.
+        //
+        // THE REAL FIX IS THAT BuildScreen SHOULD NOT CLEAR. Reconciling the collections
+        // instead of tearing them down would help every head, and it is a change to shared
+        // code that deserves its own run at it rather than being smuggled in here.
+        Jones.App.ViewModels.MainViewModel.SmoothMotion = false;
+
+        // NO RenderingMode OVERRIDE HERE, AND THAT WAS CHECKED RATHER THAN ASSUMED. The
+        // obvious first move on a slow browser build is "turn the GPU on" - but Avalonia
+        // 12's BrowserRenderingMode has no software member at all (WebGL2 and WebGL1
+        // compile; Software and Canvas2D do not exist), so this head is ALREADY on WebGL
+        // and setting it would be a no-op dressed as an optimisation. Whatever is slow
+        // here, it is not the rasteriser being on the CPU.
         await BuildAvaloniaApp()
             .WithInterFont()
             .StartBrowserAppAsync("out");
