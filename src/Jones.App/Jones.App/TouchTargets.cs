@@ -252,8 +252,12 @@ public sealed class TouchLayout(double panelScale)
                 var overlapY = Math.Min(a.B, b.B) - Math.Max(a.T, b.T);
                 if (overlapX <= 0 || overlapY <= 0) continue;
 
-                var ga = grown[_entries[i].Owner];
-                var gb = grown[_entries[j].Owner];
+                // TryGetValue, NOT the indexer, for the same reason as BoxOf above - and
+                // these two are the ones that still threw after BoxOf was made total, which
+                // is why TouchLayoutRobustnessTests exists: a fix to one direct read is not a
+                // fix to the others, and only a test that reproduces the crash finds the rest.
+                if (!grown.TryGetValue(_entries[i].Owner, out var ga)) ga = HitGrowth.None;
+                if (!grown.TryGetValue(_entries[j].Owner, out var gb)) gb = HitGrowth.None;
 
                 if (overlapY <= overlapX)
                 {

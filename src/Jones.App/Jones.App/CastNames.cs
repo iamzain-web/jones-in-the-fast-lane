@@ -54,27 +54,28 @@ public static class CastNames
     /// artwork for it, which is the order these two things have to happen in.
     /// </para>
     /// </summary>
-    private static string? In(string set, LocationId id) => set switch
-    {
-        "cast0" => id switch
-        {
-            LocationId.RentOffice         => "Rentflix",
-            LocationId.LowCostHousing     => "Casa El Cheapo",
-            LocationId.SecurityApartments => "Villa Locke & Keyes",
-            LocationId.BlacksMarket       => "Bare Necessities",
-            LocationId.Factory            => "The Industrial Revolution",
-            LocationId.EmploymentOffice   => "Hire Ground",
-            LocationId.HiTechU            => "Open Door University",
-            LocationId.SocketCity         => "Watt a Bargain",
-            LocationId.QtClothing         => "Common Threads",
-            LocationId.MonolithBurgers    => "Bun Believable",
-            LocationId.ZMart              => "General Dealer",
-            LocationId.PawnShop           => "Needful Things",
-            LocationId.Bank               => "Hyper Save",
-            _                             => null,
-        },
-        _ => null,
-    };
+    /// <summary>
+    /// MOVED TO <see cref="CastNameTable"/>, in Jones.Core. WHAT a building is called is pure
+    /// data over LocationId; WHICH set is loaded is a question about the running app, and only
+    /// the second needs the toolkit. While the two lived together here the table was
+    /// unreachable from the tests - which is why nothing compared the Employment Office's nine
+    /// employer labels against the names the rest of the game prints, and why that menu shipped
+    /// listing Sierra's nine while every sign outside said something else.
+    /// </summary>
+    private static string? In(string set, LocationId id) => CastNameTable.NameIn(set, id);
+    /// <summary>
+    /// What <paramref name="set"/> calls <paramref name="id"/>, or null if it does not rename
+    /// it — the table above, without consulting what is actually loaded.
+    ///
+    /// <para>
+    /// EXPOSED FOR THE ONE PLACE A NAME IS NOT PRINTED THROUGH THIS CLASS: the Employment
+    /// Office's nine employer lines, which carry a hand-measured <c>nsLeft</c> per label and
+    /// so cannot simply call <see cref="For"/>. <c>EmployerListTests</c> compares them against
+    /// this, because the renamed board shipped with that menu still listing Sierra's nine
+    /// while every sign outside said something else.
+    /// </para>
+    /// </summary>
+    public static string? NameIn(string set, LocationId id) => In(set, id);
 
     /// <summary>
     /// The name to print for <paramref name="id"/>: ours if this art set renamed it, and

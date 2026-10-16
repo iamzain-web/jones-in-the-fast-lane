@@ -151,6 +151,73 @@ instead of proceeding quietly. And note the shape of the fix, because it is its 
 machine without `nvidia-smi`. That is the same trap, one layer down, as a helper returning
 `@('REFUSED: …', $false)` — a non-empty array — and being read as success.
 
+### A CHECK OF CONSISTENCY IS NOT A CHECK OF CORRECTNESS
+
+16 Oct 2026, the university's talker, and it is the costliest instance in this file.
+
+Eleven cels were built with one invariant: *0 px differ outside the mouth box.* It was true
+on every single build. It was true while the box was authored 15.8 cel px tall, reaching
+from above his nose tip to below his chin, so that **every cel repainted his nose with soft
+upscaled video**. Zain's words were "It's a moving mouth on his nose!".
+
+**Eleven cels can be flawlessly consistent with each other and all eleven wrong in the same
+way.** The invariant is a statement about agreement between frames; it is perfectly true of a
+box that is in the wrong place, the wrong size, or both. It cannot fail on the defect it sat
+next to, because the defect is *inside* the thing it was told to ignore.
+
+The same shape has now appeared four times in this programme:
+
+- `sierra_audit` reporting **0.0% of her art inside the silhouette** for a building standing
+  immediately beside hers, because "inside the silhouette" was the only question asked.
+- `CashFigureTests` asserting the cash plate **collides with no control**, while the plate sat
+  entirely outside the box that contains every control — so it could never collide.
+- `no_text_guard` **passing** on a façade carrying 25 characters of legible type, because the
+  surrounding texture defeated the row test.
+- This one.
+
+**The instrument that found all four was the same: dump the thing and look at it, at the size
+the game draws it.** Four diagnoses were measured and discarded on the portrait before the
+right one, and every one of them was judged on a reduced contact sheet where the defect is
+invisible. It is plain at native resolution. *The resolution you inspect at decides what
+exists* — already in this file, and still not obeyed.
+
+### A MEASUREMENT DOES NOT SURVIVE A CHANGE TO THE GEOMETRY IT WAS TAKEN AGAINST
+
+The mouth box was derived against `crop_h 760` and never re-derived when the crop became 870
+to recover the headroom Zain asked for. Every feature moved up the frame and the box stayed
+where it was. Nothing in the pipeline tied the two together, so there was nothing to notice.
+
+**A derived constant needs either a live derivation or an assertion against the geometry it
+came from.** A comment stating what it was measured against is not enough; this one had one.
+
+### A REGISTRATION IS TWO FIXED LANDMARKS, NOT ONE FEATURE'S WIDTH
+
+The scale that pasted his mouth was taken by matching MOUTH WIDTHS between his headshot and
+his video frames: 8.06 device px per tile px. Read off the **eye line and the nose tip** —
+two things that do not move — it is **6.0**. Thirty-four percent too large.
+
+The lip line cannot be used to register a mouth, because the lip line is the thing that moves.
+Matching one feature's extent conflates "how wide is this feature in each picture" with "how
+do these two pictures relate", and they are only the same when the feature is rigid.
+
+Zain supplied 48 frames of the same man talking. **They already contained the answer** — eyes,
+nose, mouth and chin with the true distances between them — and were used for a single scale
+factor instead. *When a reference is supplied, register to it; do not sample it.*
+
+### WHAT THE MODEL NEEDS MUST NOT DECIDE WHERE A MAN'S NOSE IS
+
+The box was enlarged because 324x192 was below SD1.5's working range. A tool constraint was
+allowed to set anatomy. **If the region that must change is too small for the instrument, the
+instrument is wrong for it** — enlarge the canvas the model SEES while writing back only the
+registered region, or drop the generative pass.
+
+Here the pass was dropped, and the measurement says why it had to be: a 228x120 box fed by
+38x20 = 760 px of video is a **6.0x linear upscale**, with almost no real signal to hold, so
+the model fills the gap by inventing — one cel came back with a **second mouth, lips and
+teeth, on his cheek**. Strength 0.50 smears, 0.65 degrades, lower does nothing.
+
+**Softness is a defect of resolution that better source fixes. Invention is a defect of method
+that nothing fixes.** Prefer the soft one.
 ### A CHECK THAT AVOIDS THE SUSPECT REGION IS A RUBBER STAMP. VERIFY IT CAN FAIL.
 
 The sibling of the rule above, and the harder one to catch, because the check does measure

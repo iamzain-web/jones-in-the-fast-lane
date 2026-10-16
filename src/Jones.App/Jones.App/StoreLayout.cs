@@ -283,10 +283,19 @@ public static class StoreLayout
     /// The employer menu for whatever art is actually in force. See
     /// <see cref="EmploymentCast0"/> for why the two differ by more than their strings.
     /// </summary>
-    public static (string Label, Workplace Place, int Left, int Top, int Key)[] EmploymentFor() =>
-        RenderScale.MissingArtSet is null && RenderScale.ArtSet == "cast0"
-            ? EmploymentCast0
-            : Employment;
+    /// <param name="artSet">
+    /// The art set actually in force, or null for Sierra's own.
+    ///
+    /// <para>
+    /// PASSED IN RATHER THAN READ, because <c>Jones.Tests</c> LINKS THIS FILE rather than
+    /// referencing the assembly — it is layout data, and the tests measure it without
+    /// starting a game. Reaching for <c>RenderScale</c> from here compiled in the app and
+    /// broke the test project, which is the file telling me what it is: coordinates and
+    /// labels, with no opinion about which art is loaded.
+    /// </para>
+    /// </param>
+    public static (string Label, Workplace Place, int Left, int Top, int Key)[] EmploymentFor(
+        string? artSet) => artSet == "cast0" ? EmploymentCast0 : Employment;
 
     /// <summary>
     /// Hi-Tech U stacks available courses UPWARD from the bottom: nsLeft 76, and

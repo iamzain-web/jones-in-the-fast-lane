@@ -4727,7 +4727,11 @@ public sealed partial class MainViewModel : ViewModelBase
             // EmploymentFor(), not Employment: the renamed labels carry their own measured
             // nsLeft, because each one exists to centre ITS text in the column. See
             // StoreLayout.EmploymentCast0.
-            foreach (var (label, place, left, top, key) in StoreLayout.EmploymentFor())
+            // The art set decides which nine labels and which nine measured nsLefts; a set
+            // asked for and NOT FOUND gets Sierra's, for the same reason CastNames returns
+            // her words then - the player is looking at her buildings.
+            var employerSet = RenderScale.MissingArtSet is null ? RenderScale.ArtSet : null;
+            foreach (var (label, place, left, top, key) in StoreLayout.EmploymentFor(employerSet))
             {
                 var employer = place;
                 MenuLines.Add(new MenuLineVm(label, DialogX + left, DialogY + top,
