@@ -168,18 +168,55 @@ FACES = {
             paste_init=True,
             # Mouth landmarks, read off a grid rather than detected - an automatic reading
             # latched onto the jaw shadow in the headshot and the nose shadow in the video.
-            head_mouth=(75, 220, 95),    # left x, right x, lip line y, in BOX device px
-            vid_mouth=(5, 23, 11),       # the same three, in TILE px
+            # Landmarks read off matched grids - his whole tile at 9x, the base at 2x with
+            # rows labelled in cel px. The eye line and the nose tip register; the lip line
+            # is recorded for the record but deliberately NOT used, because it moves.
+            register=dict(
+                vid_eye_y=31.5, vid_nose_y=48.5, vid_cx=59.0,     # TILE px
+                head_eye_y=25.5, head_nose_y=34.0, head_cx=31.5,  # CEL px
+            )
         ),
-        # His mouth lands at cel (26..37, 35..41) in the composed crop. The box is drawn so
-        # all four edges sit in flat cheek, chin and neck and clear of the collar, which a
-        # 29x21 box like view 355's does not - it crosses the suit at bottom right.
-        mouth=(19, 30, 45, 45),
+        # THE BOX REPAINTED HIS NOSE. Zain: "that looks nothing like a human being speaking!,
+        # It's a moving mouth on his nose!".
+        #
+        # Measured on his installed cel 0, down the box's own columns:
+        #     nose tip (luminance peak)      cel y 32.5
+        #     lip line (local trough)        cel y 38
+        #     collar shadow begins           cel y ~47
+        # and the region that actually changed between cels was cel y 30.1 .. 45.9. The box
+        # began ABOVE HIS NOSE TIP, so all eleven cels repainted the nose with soft upscaled
+        # video - a nose that changes shape eleven times, which is what he saw.
+        #
+        # It was NOT the 8 cel px context expansion leaking into the output: the changed
+        # region is 15.8 cel px, which is the authored box (16.0), not the box plus expansion
+        # (32.0). The ring is context-only and always was. The fault was the authored extent.
+        #
+        # AND THE REAL CAUSE IS THAT I NEVER RE-DERIVED THE BOX AFTER THE RECROP. It was
+        # placed by eye against the crop_h=760 composition; changing to 870 moved every
+        # feature up the frame and the box was carried over unchanged. A measurement taken
+        # against one geometry does not survive a change to that geometry.
+        #
+        # Now: top at 35 clears the nostrils, bottom at 44 clears the collar by 3 px, centre
+        # 39.5 sits just below the closed lip line at 38 - correct, because a mouth opens
+        # downward.
+        # x ENDS WHERE HIS FACE ENDS IN THE TILE. With the registration solved, his face
+        # spans tile x 30..78, which maps to absolute device x = 24 + 30*6 = 204 and
+        # 24 + 78*6 = 492 - cel x 17.0 to 41.0. A box reaching to cel 43 therefore pulled his
+        # VIDEO BACKGROUND in at the right edge, which showed at 12x as a white smear on his
+        # jaw. 40 stops inside his face with a margin, and keeps the box centred on his mouth
+        # (centre 31 against his mouth centre 31.5).
+        mouth=(22, 35, 40, 44),
+        # The ramp is 4 cel px by default, which on a 10-row box would reach full strength
+        # only at the centre row and dilute the mouth away. 2 keeps rows 37..42 at full.
+        seat_ramp=2,
         mouth_prompt=("a close photograph of a mouth and chin, lips and teeth, soft even "
                       "lighting, sharp focus, fine detail, photorealistic"),
         negative=("illustration, drawing, painting, cartoon, 3d render, cgi, plastic skin, "
                   "waxy, deformed, distorted, blurry, low resolution, text, watermark"),
         context=8,
+        # See the note at the no_pass branch: at a 6x upscale the model has too little signal
+        # in the box and invents rather than resolves.
+        no_pass=True,
         mouth_strength=0.35, mouth_control=0.60, mouth_steps=28,
         cfg=7.5, steps=0, strength=0.0, control=0.0, seed=7,
     ),
@@ -770,42 +807,63 @@ def main():
             # and the pass runs at a LOW strength whose only job is to resolve the softness of
             # a 9x upscale. The structure is his, the sharpening is ours, and nothing is
             # imagined - the same division as a constructed sign, lit rather than drawn.
-            # UNIFORM SCALE ON MEASURED LANDMARKS, because `resize(box)` stretches him.
+            # REGISTERED ON HIS OWN FACE. Zain: "I actually GAVE you reference frames which
+            # tells you exactly where it should be and you just messed it all up."
             #
-            # The box is 324x192, aspect 1.69. His video crop is 35x27, aspect 1.30. Resizing
-            # one to the other squashes his face 30% horizontally, and that - not the scale -
-            # is what made the first paste look melted across the jaw.
+            # He is right, and the earlier versions of this were both wrong. The frames are
+            # not mouth texture, they are a REGISTRATION REFERENCE: every one shows the same
+            # man's eyes, nose, mouth and chin with the true distances between them, which
+            # fixes the geometry completely and leaves nothing to choose.
             #
-            # So the landmarks are read off a grid and written down, like the Factory's clip:
-            # his mouth spans x 75..220 with the lip line at y 95 in the headshot box, and
-            # x 5..23 with the mouth at y 11 in a video tile. That fixes a single uniform
-            # factor, (220-75)/(23-5) = 8.06, and the offset that puts one mouth centre on the
-            # other. Everything his frame does not cover keeps the base.
-            lmh = sm["head_mouth"]      # (left, right, line) in box device px
-            lmv = sm["vid_mouth"]       # (left, right, line) in tile px
-            k = (lmh[1] - lmh[0]) / float(lmv[1] - lmv[0])
-            nw, nh = int(round(her_mouth.width * k)), int(round(her_mouth.height * k))
-            grown = her_mouth.resize((nw, nh), Image.LANCZOS)
-            ox = int(round(lmh[0] - lmv[0] * k))
-            oy = int(round(lmh[2] - lmv[2] * k))
+            # The registration uses the EYE LINE and the NOSE TIP, because those are present
+            # in both pictures and do not move. The lip line cannot be used - it moves by
+            # definition, which is the whole point of the sequence.
+            #
+            #                       his tile      the headshot
+            #     eye line            31.5          25.5 cel
+            #     nose tip            48.5          34.0 cel
+            #     lip line            55.5          38.0 cel   (not used to register)
+            #     chin                70.5          45.5 cel
+            #
+            # so k = (34.0 - 25.5) * 12 / (48.5 - 31.5) = 6.0 device px per tile px.
+            #
+            # THE PREVIOUS SCALE WAS 8.06, TAKEN FROM MATCHING MOUTH WIDTHS - 34% too large,
+            # which is why his mouth sat oversized and spilling however the box was drawn.
+            # Matching one feature's width is not a registration; matching two fixed
+            # landmarks is.
+            #
+            # And mapping his mouth through this registration lands it at cel y 35.3..43.4,
+            # which is independent confirmation of the box measured off the installed cel's
+            # own luminance - two methods, same answer.
+            reg = sm["register"]
+            k = ((reg["head_nose_y"] - reg["head_eye_y"]) * S
+                 / float(reg["vid_nose_y"] - reg["vid_eye_y"]))
+            # The WHOLE tile is scaled and registered, not a hand-cut mouth crop, so his
+            # anatomy decides what lands where.
+            nw = int(round(tile.width * k))
+            nh = int(round(tile.height * k))
+            grown = tile.resize((nw, nh), Image.LANCZOS)
+            ox = int(round(reg["head_cx"] * S - reg["vid_cx"] * k)) - bx
+            oy = int(round(reg["head_nose_y"] * S - reg["vid_nose_y"] * k)) - by
             mb = Image.new("RGB", (bw, bh))
             mb.paste(base.crop((bx, by, bx + bw, by + bh)), (0, 0))
             mb.paste(grown, (ox, oy))
-            print("      his frame scaled x%.2f uniformly on measured landmarks, offset"
-                  " (%+d,%+d)" % (k, ox, oy))
-            a_src = np.asarray(src).astype(np.float32)
+            print("      REGISTERED on eyes+nose: scale x%.2f device px per tile px,"
+                  " offset (%+d,%+d)" % (k, ox, oy))
+            # Level-matched to his own skin on a ring just inside the box, so his video's
+            # exposure does not step against the headshot's.
             a_m = np.asarray(mb).astype(np.float32)
-            inner = a_src[by - gy:by - gy + bh, bx - gx:bx - gx + bw]
+            inner = np.asarray(base.crop((bx, by, bx + bw, by + bh))).astype(np.float32)
             r = max(1, 2 * S)
-            ring = np.zeros((bh, bw), bool)
-            ring[:r, :] = ring[-r:, :] = True
-            ring[:, :r] = ring[:, -r:] = True
-            a_m = a_m + (inner[ring].mean(0) - a_m[ring].mean(0))
+            rg = np.zeros((bh, bw), bool)
+            rg[:r, :] = rg[-r:, :] = True
+            rg[:, :r] = rg[:, -r:] = True
+            a_m = a_m + (inner[rg].mean(0) - a_m[rg].mean(0))
             glued = src.copy()
             glued.paste(Image.fromarray(np.clip(a_m, 0, 255).astype(np.uint8), "RGB"),
                         (bx - gx, by - gy))
             src = glued
-            print("      HIS frame pasted as the init, level-matched to his own skin")
+            print("      registered frame seated as the init, level-matched to his own skin")
         if ctx:
             # The ring's conditioning is the BASE's own edges - "this already exists, leave
             # it" - and only inside the box does the model see his mouth structure. A black
@@ -816,6 +874,31 @@ def main():
             cnd = ring
             print("      pass covers %dx%d px of context; only the %dx%d box is seated"
                   % (gw, gh, bw, bh))
+        if spec.get("no_pass"):
+            # NO GENERATIVE PASS AT ALL FOR THIS VIEW. Construct rather than generate - the
+            # answer every other time something had to be a specific thing at this scale.
+            #
+            # With the registration correct and his own mouth seated as the init, a low
+            # strength pass STILL invented: cel 2 came back with a second mouth, complete with
+            # lips and teeth, on his right cheek, inside the box. The reason is in the numbers
+            # - the box is 228x120 device px and is fed by 38x20 = 760 pixels of his video, a
+            # 6.0x linear upscale, so there is almost no real signal in there for the model to
+            # hold on to and it fills the gap with invention. Raising strength makes it worse
+            # (0.50 smears, 0.65 degrades) and lowering it does nothing.
+            #
+            # So the mouth is HIS PIXELS, registered and level-matched, and nothing else. It
+            # is soft, because a 6x upscale of video is soft. It is not invented, and it is
+            # him. Softness is a defect of resolution that better source fixes; invention is a
+            # defect of method that nothing fixes.
+            got_box = src.crop((bx - gx, by - gy, bx - gx + bw, by - gy + bh))
+            out = seat_patch(base, got_box, spec["mouth"], S,
+                             ramp=spec.get("seat_ramp", 4))
+            out = restore_mask(out, src_mask) if src_mask is not None \
+                else restore(out, cels[0], S)
+            out.save(os.path.join(a.out, "cel_%02d.png" % c))
+            print("    cel %2d written - HIS PIXELS, no generative pass" % c)
+            continue
+
         # --strength/--control steer THIS pass when --mouths is in play. They used to feed
         # only the base face, so a command that looked like it was retuning the mouth pass
         # was silently just rerolling it - a flag that appears to do something and does not.
@@ -826,7 +909,8 @@ def main():
                      (a.seed or spec["seed"]) + c + a.seed_shift * 101,
                      spec["negative"])
         out = seat_patch(base, got.crop((bx - gx, by - gy,
-                                         bx - gx + bw, by - gy + bh)), spec["mouth"], S)
+                                         bx - gx + bw, by - gy + bh)), spec["mouth"], S,
+                         ramp=spec.get("seat_ramp", 4))
         # THE FIELD MASK COMES FROM CEL 0, NOT FROM CEL c, AND THAT IS THE WHOLE POINT.
         # Restoring each cel against its OWN original put her jitter straight back in: her
         # blue field has a slightly different silhouette in every frame because her head
