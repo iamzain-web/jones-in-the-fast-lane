@@ -224,12 +224,69 @@ public static class StoreLayout
         ("Monolith Burgers",       Workplace.MonolithBurgers, 22, 45,  10),
         ("QT Clothing",            Workplace.QtClothing,      35, 53,  12),
         ("Socket City Appliance",  Workplace.SocketCity,      12, 61,   8),
-        ("Open Door University",   Workplace.HiTechU,         12, 69,   7),
+        ("Hi-Tech University",     Workplace.HiTechU,         20, 69,   7),
         ("Factory",                Workplace.Factory,         41, 77,   5),
         ("Bank",                   Workplace.Bank,            48, 85,   4),
         ("Black's Market",         Workplace.BlacksMarket,    26, 93,   3),
         ("Rent Office",            Workplace.RentOffice,      35, 101,  1),
     ];
+
+    /// <summary>
+    /// THE SAME NINE, UNDER THE ART SET THAT RENAMED THEM.
+    ///
+    /// <para>
+    /// This list is the one place in the game where a building's name is drawn as a LINE OF
+    /// TEXT at a hand-measured position, so it cannot simply read <see cref="CastNames"/>:
+    /// each <c>nsLeft</c> exists to put its own label on the column's single optical centre,
+    /// which the remarks above establish as 58.5±0.5. A longer name needs a different left.
+    /// </para>
+    ///
+    /// <para>
+    /// EVERY LEFT HERE IS MEASURED, NOT CHOSEN. Widths in font 10, from
+    /// <c>assets/raw/font/10.font</c>: 62, 61, 71, 70, 92, 111, 50, 70 and 30 px, and
+    /// <c>left + width/2</c> comes out 59.0, 58.5, 58.5, 59.0, 58.0, 58.5, 59.0, 59.0 and
+    /// 59.0 — the same centre the original holds, to within the same half pixel.
+    /// </para>
+    ///
+    /// <para>
+    /// ONE LABEL CANNOT HAVE BOTH ITS CENTRE AND THE ORIGINAL'S LEFT MARGIN. "The Industrial
+    /// Revolution" is 111px against the longest line Sierra ever drew here at 92, so centring
+    /// it needs <c>nsLeft 3</c> — three pixels from the dialog's own edge, where her minimum
+    /// was 12. It is centred and it fits (3+111 = 114, and the panel behind the column ends at
+    /// 180), but it sits closer to the frame than anything the original drew. The alternative
+    /// is dropping the article for this list alone, which is a decision about his name rather
+    /// than about layout, so it is not taken here.
+    /// </para>
+    ///
+    /// <para>
+    /// WHY THIS IS A SECOND TABLE RATHER THAN AN EDIT. With no art set in force the player is
+    /// looking at Sierra's buildings, and this menu is how they pick where to work: calling
+    /// her Z-Mart "General Dealer" would be the same defect <see cref="CastNames"/> was written
+    /// to remove, pointing the other way. The previous version of this table carried "Open Door
+    /// University" unconditionally and did exactly that.
+    /// </para>
+    /// </summary>
+    public static readonly (string Label, Workplace Place, int Left, int Top, int Key)[] EmploymentCast0 =
+    [
+        ("General Dealer",             Workplace.ZMart,           28, 37,  11),
+        ("Bun Believable",             Workplace.MonolithBurgers, 28, 45,  10),
+        ("Common Threads",             Workplace.QtClothing,      23, 53,  12),
+        ("Watt a Bargain",             Workplace.SocketCity,      24, 61,   8),
+        ("Open Door University",       Workplace.HiTechU,         12, 69,   7),
+        ("The Industrial Revolution",  Workplace.Factory,          3, 77,   5),
+        ("Hyper Save",                 Workplace.Bank,            34, 85,   4),
+        ("Bare Necessities",           Workplace.BlacksMarket,    24, 93,   3),
+        ("Rentflix",                   Workplace.RentOffice,      44, 101,  1),
+    ];
+
+    /// <summary>
+    /// The employer menu for whatever art is actually in force. See
+    /// <see cref="EmploymentCast0"/> for why the two differ by more than their strings.
+    /// </summary>
+    public static (string Label, Workplace Place, int Left, int Top, int Key)[] EmploymentFor() =>
+        RenderScale.MissingArtSet is null && RenderScale.ArtSet == "cast0"
+            ? EmploymentCast0
+            : Employment;
 
     /// <summary>
     /// Hi-Tech U stacks available courses UPWARD from the bottom: nsLeft 76, and

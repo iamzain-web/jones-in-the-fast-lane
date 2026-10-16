@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Windows.Input;
 using Avalonia.Media.Imaging;
 using CommunityToolkit.Mvvm.Input;
@@ -65,6 +66,69 @@ public sealed class SpriteVm
     public ICommand? Command { get; }
 
     public bool IsClickable => Command is not null;
+
+    /// <summary>
+    /// Whether two sprites are INTERCHANGEABLE ON SCREEN, so <see cref="BuildList{T}"/> can
+    /// leave the one already there alone instead of replacing it.
+    ///
+    /// <para>
+    /// A COMPARER AND NOT AN <c>Equals</c> OVERRIDE, AND THAT DISTINCTION COST AN AFTERNOON.
+    /// This began as <c>Equals</c> on the type itself, which made a clickable sprite UNEQUAL
+    /// TO ITSELF — the rule below requires both commands to be null, and a clickable sprite's
+    /// is not. <see cref="TouchTargets"/> keys a dictionary by the sprite, so a key that does
+    /// not equal itself can never be found again: every clickable control in every interior
+    /// threw <c>KeyNotFoundException</c> while its position was being read, Avalonia never
+    /// placed the container, and the University came up with no ENROLL, no DONE and no course
+    /// icons. The art drew; nothing a player could press did.
+    ///
+    /// Identity belongs to the object. "Close enough to skip redrawing" is a question only
+    /// the rebuild asks, so only the rebuild gets to ask it.
+    /// </para>
+    /// </summary>
+    public static readonly IEqualityComparer<SpriteVm> Interchangeable = new SameOnScreen();
+
+    private sealed class SameOnScreen : IEqualityComparer<SpriteVm>
+    {
+        public bool Equals(SpriteVm? a, SpriteVm? b)
+        {
+            if (ReferenceEquals(a, b)) return true;
+            if (a is null || b is null) return false;
+            return a.SameOnScreenAs(b);
+        }
+
+        // Deliberately coarse: a hash that ignores everything the equality test cares about
+        // would still be CORRECT, and BuildList only ever compares pairs at the same index.
+        public int GetHashCode(SpriteVm s) => HashCode.Combine(s.View, s.Loop, s.Cel);
+    }
+
+    /// <summary>
+    /// The test itself. See <see cref="Interchangeable"/> for why it is not <c>Equals</c>.
+    ///
+    /// <para>
+    /// THE BITMAP IS COMPARED BY REFERENCE, which is exact rather than approximate:
+    /// <see cref="SciArt"/> caches every cel it decodes, so the same view, loop, cel and sub
+    /// always yield the SAME <see cref="Bitmap"/> instance, and two different cels never do.
+    /// Comparing the numbers instead would also have to know which of them <c>SubCel</c>
+    /// folds together.
+    /// </para>
+    ///
+    /// <para>
+    /// A CLICKABLE SPRITE IS NEVER EQUAL TO ANYTHING, INCLUDING AN IDENTICAL ONE. Its
+    /// <see cref="Command"/> is freshly wrapped on every build, and its constructor
+    /// REGISTERS IT as a touch target — so keeping the previous instance would leave the
+    /// screen displaying a control that the current touch layout has never heard of, and
+    /// taps would land on nothing. Non-clickable sprites take neither of those paths
+    /// (<c>Register</c> returns null when <c>Command</c> is null), which is exactly why they
+    /// are safe to keep, and they are the overwhelming majority: the board, the buildings,
+    /// the walker, the marble.
+    /// </para>
+    /// </summary>
+    private bool SameOnScreenAs(SpriteVm other) =>
+        Command is null && other.Command is null
+        && ReferenceEquals(Image, other.Image)
+        && X == other.X && Y == other.Y
+        && Tooltip == other.Tooltip
+        && T.Equals(other.T);
 
     public double W => Image?.PixelSize.Width ?? 0;
     public double H => Image?.PixelSize.Height ?? 0;

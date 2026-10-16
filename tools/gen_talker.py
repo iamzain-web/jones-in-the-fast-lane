@@ -90,6 +90,99 @@ FACES = {
                       "soft even lighting, sharp focus, fine detail, photorealistic"),
         mouth_strength=0.35, mouth_control=0.60, mouth_steps=28,
     ),
+    357: dict(
+        who="the university's shopkeeper",
+        # ZAIN SUPPLIED THE MAN. "replace the university man with this", and when told a
+        # reconstruction would drift: "Of course the likeness is important!" So the headshot
+        # is the subject and the likeness is the REQUIREMENT - this cel is a DOWNSCALE of a
+        # 1254x1254 photograph into 816x660, never an upscale and never a re-imagining. No
+        # pass is run over the resting cel at all.
+        #
+        # NO MORTARBOARD. Her man wears academic dress; this one does not. Zain was asked,
+        # said "add the mortarboard", then "no forget the mortar board!!!" - so nothing was
+        # ever added, and nothing in this cel is outside his photograph.
+        source_face=dict(
+            path="universityman_face.png",
+            # Head-and-shoulders at the portrait's own 68:55. A 760-tall crop puts his head
+            # at 53% of the width, which is about where hers sits; taller crops drop it to
+            # 40% and he stops filling the frame.
+            # 870, SOLVED RATHER THAN CHOSEN. A square source and a landscape cel fight each
+            # other: filling the width overshoots the height, so headroom and shoulders
+            # compete. Zain: "fix the crop at the top".
+            #
+            #   crop_h  headroom  head   shoulders   (all cel px, of 55)
+            #      760     6.0    43.8      5.2      head clears, but he is a floating head
+            #      870     6.0    38.2     10.8      <- both
+            #     1014     5.2    32.8     17.0      shoulders win, headroom falls short
+            #
+            # 870 is the tallest crop that still reaches a full 6 cel px with top at 0, and it
+            # hands back 10.8 cel px of collar and shoulder. 1076x870 into 816x660 is a 0.76
+            # DOWNSCALE, which the likeness requires; past 1014 the width exceeds the source
+            # and it would become an upscale.
+            crop_h=870,
+            # Her head clears the frame by 6 cel px and his must too.
+            head_clear=6,
+            # HIS BACKGROUND IS GREY AND HERS IS A FLAT BLUE FIELD, and HER mask cannot be
+            # reused - it is the silhouette of HER man, who is bearded, capped and a
+            # different shape. So the field is keyed from HIS OWN image: a flood from the top
+            # edge only, so skin that happens to match a grey cannot be keyed out from the
+            # inside. Measured: tol 30 leaves an unkeyed grey island down the left where the
+            # gradient darkens, tol 60 eats into his hair and temple, tol 45 is clean at
+            # 56.2% keyed with the suit and collar intact.
+            tol=45,
+        ),
+        source_mouths=dict(
+            path="universityman_mouths.jpg",
+            # THE GRID IS MEASURED, NOT TAKEN FROM THE BRIEF. It was described as 64 frames
+            # of 115x64 in a 4x16 grid; the strongest horizontal changes in the sheet fall at
+            # y = 0, 85, 170, 256, 341, 427, 512, 597, 683, 768, 854, 939, a spacing of 85.3.
+            # So it is 4 x 12 = 48 frames of 115x85. The printed labels are unreliable too
+            # (34 appears twice), so frames are indexed by GRID POSITION, never by label.
+            cols=4, rows=12, tile_w=115, tile_h=85,
+            # His mouth within a tile. Found by variance across the 48 frames AFTER masking
+            # the top-left corner: the printed LABEL changes between frames and is the single
+            # most-varying thing in the picture, so unmasked it keys the number, not the man.
+            mbox=(44, 46, 78, 72),
+            # HER ORDERING CARRIES THE LIP-SYNC, so his frames are chosen to follow it rather
+            # than taken in sequence. Hers runs closed, closed, parted, open-dark, closed,
+            # widest, open-dark, closed, open-teeth, open-teeth, closed.
+            #   cel 0 is the headshot itself - closed, a slight smile, no pass
+            picks=[None, 45, 17, 4, 21, 28, 12, 22, 10, 31, 47],
+            # KEEP ONLY THE STRONGEST 12% OF THE EDGE MAP, and this is what makes a supplied
+            # VIDEO frame usable at all.
+            #
+            # His tiles are 35x27 px of JPEG-compressed, soft, dark-room video. Scaled into a
+            # 324x192 box that is a 9x upscale, and every soft gradient becomes a ring of
+            # contours: 70% of the map reads above 64 against 50% for her pixel art, and the
+            # amplitude is far higher. The first run followed that noise faithfully and
+            # returned ten cels of grotesque abstract texture - the model was not failing, it
+            # was doing exactly what a full-field edge map told it to.
+            #
+            # Thresholding to the top 12% leaves the lip line, the mouth opening and the chin
+            # arc and drops the ringing. At 25% clutter survives; at 6% the mouth itself
+            # starts to go.
+            cond_keep=12.0,
+            # His frame supplies the PIXELS of the mouth, not just its edges. See the note at
+            # the paste site: conditioning alone left every cel closed, and the strength that
+            # opened the mouth destroyed the likeness.
+            paste_init=True,
+            # Mouth landmarks, read off a grid rather than detected - an automatic reading
+            # latched onto the jaw shadow in the headshot and the nose shadow in the video.
+            head_mouth=(75, 220, 95),    # left x, right x, lip line y, in BOX device px
+            vid_mouth=(5, 23, 11),       # the same three, in TILE px
+        ),
+        # His mouth lands at cel (26..37, 35..41) in the composed crop. The box is drawn so
+        # all four edges sit in flat cheek, chin and neck and clear of the collar, which a
+        # 29x21 box like view 355's does not - it crosses the suit at bottom right.
+        mouth=(19, 30, 45, 45),
+        mouth_prompt=("a close photograph of a mouth and chin, lips and teeth, soft even "
+                      "lighting, sharp focus, fine detail, photorealistic"),
+        negative=("illustration, drawing, painting, cartoon, 3d render, cgi, plastic skin, "
+                  "waxy, deformed, distorted, blurry, low resolution, text, watermark"),
+        context=8,
+        mouth_strength=0.35, mouth_control=0.60, mouth_steps=28,
+        cfg=7.5, steps=0, strength=0.0, control=0.0, seed=7,
+    ),
 }
 SCALE = 12                    # 68x55 -> 816x660 = 538,560 px, inside the measured 810k
 
@@ -143,9 +236,116 @@ def pad8(im):
     return Image.fromarray(a, "RGB")
 
 
+def restore_mask(img, mask):
+    """Lay her field and frame back using a PRECOMPUTED mask.
+
+    `restore` derives the mask from her own cel, which is right when the subject is hers. For
+    a supplied headshot it is wrong: her mask is the silhouette of HER man - bearded, capped,
+    a different shape - so using it would paint blue across his face where her background was
+    and leave his grey where her man stood. A supplied-face view keys its own field once and
+    reuses that one mask for all eleven cels, which is also what keeps the field identical
+    frame to frame.
+    """
+    a = np.asarray(img).astype(np.uint8).copy()
+    a[mask] = FIELD
+    h, w = mask.shape
+    S = max(1, w // 68)
+    fr = np.zeros((h, w), bool)
+    fr[:S, :] = fr[-S:, :] = True
+    fr[:, :S] = fr[:, -S:] = True
+    a[fr] = FRAME
+    return Image.fromarray(a, "RGB")
+
+
 def init_from(cel, S, blur):
     big = cel.resize((cel.width * S, cel.height * S), Image.LANCZOS)
     return pad8(big.filter(ImageFilter.GaussianBlur(blur)))
+
+
+def key_field(img, tol):
+    """His background, keyed from HIS OWN image by a flood from the top edge.
+
+    A flood rather than a colour test: a colour test anywhere in the frame will key skin or
+    shirt that happens to sit near a grey, and there is no way to tell that from background
+    once it has. Seeded only from the top edge, an interior patch that matches is never
+    reached, because it is not connected to the outside.
+    """
+    a = np.asarray(img).astype(int)
+    h, w, _ = a.shape
+    ref = np.concatenate([a[0:40, 0:40].reshape(-1, 3),
+                          a[0:40, -40:].reshape(-1, 3)]).mean(0)
+    near = np.abs(a - ref).max(2) <= tol
+    from collections import deque
+    seen = np.zeros((h, w), bool)
+    q = deque()
+    for x in range(w):
+        if near[0, x]:
+            seen[0, x] = True
+            q.append((0, x))
+    while q:
+        y, x = q.popleft()
+        for dy, dx in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+            yy, xx = y + dy, x + dx
+            if 0 <= yy < h and 0 <= xx < w and near[yy, xx] and not seen[yy, xx]:
+                seen[yy, xx] = True
+                q.append((yy, xx))
+    return seen
+
+
+def base_from_source(spec, w, h, S, samples):
+    """The base cel from a SUPPLIED headshot. No model, no prompt, no pass.
+
+    Crop to the portrait's own aspect on his face, downscale, key his background to her flat
+    field, and lay her 1px frame on top. Everything in the result is his photograph except
+    the field and the frame, which are hers and are restored rather than generated.
+    """
+    src = spec["source_face"]
+    f = Image.open(os.path.join(samples, src["path"])).convert("RGB")
+    a = np.asarray(f).astype(int)
+    r, g, b = a[..., 0], a[..., 1], a[..., 2]
+    skin = (r > 95) & (g > 50) & (b > 40) & ((r - g) > 12) & (r > b)
+    col = skin[:int(f.height * 0.56)].sum(0)
+    on = np.flatnonzero(col > 30)
+    cx = (int(on.min()) + int(on.max())) // 2
+    hgt = src["crop_h"]
+
+    # THE TOP OF HIS HEAD IS HAIR, NOT SKIN, and measuring it as skin is what cropped him
+    # into the frame. Zain: "fix the crop at the top".
+    #
+    # The first version set the crop from the first SKIN row less a fixed 70 px. His hair
+    # sits about 60 px above his forehead, so that put the skull hard against the border:
+    # keyed on the field, his figure began at device row 0 where hers begins at 72 - six cel
+    # pixels down. The headroom has to be measured from the FIGURE, which means keying the
+    # background on the source and taking the first row that is not background.
+    figure = ~key_field(f, src["tol"])
+    rows = np.flatnonzero(figure.sum(1) > 0.02 * f.width)
+    head_top = int(rows[0]) if len(rows) else 0
+    clear = src.get("head_clear", 6)
+    # 1 cel px of the finished cel is hgt/h source px, so N cel px of headroom is N*hgt/h.
+    pad = int(round(clear * hgt / float(h)))
+    top = max(0, head_top - pad)
+    print("  his figure starts at source row %d; %d cel px of headroom needs %d source px"
+          % (head_top, clear, pad))
+    wid = int(round(hgt * (w / float(h))))
+    x0 = max(0, min(f.width - wid, cx - wid // 2))
+    y0 = max(0, min(f.height - hgt, top))
+    if y0 > top:
+        print("  WARNING: wanted top %d but the crop would run off the bottom; using %d"
+              % (top, y0))
+    print("  his face spans x %d..%d; crop %dx%d at (%d,%d) -> %dx%d"
+          % (on.min(), on.max(), wid, hgt, x0, y0, w * S, h * S))
+    crop = f.crop((x0, y0, x0 + wid, y0 + hgt)).resize((w * S, h * S), Image.LANCZOS)
+
+    field = key_field(crop, src["tol"])
+    out = np.asarray(crop).astype(np.uint8).copy()
+    out[field] = FIELD
+    frame = np.zeros(field.shape, bool)
+    frame[:S, :] = frame[-S:, :] = True
+    frame[:, :S] = frame[:, -S:] = True
+    out[frame] = FRAME
+    print("  her field keyed from HIS background at tol %d: %.1f%% of the portrait"
+          % (src["tol"], 100.0 * field.mean()))
+    return Image.fromarray(out, "RGB"), (field | frame)
 
 
 def align_to(her_c, her_0, box, search=5):
@@ -344,7 +544,11 @@ def install(a):
         for c in range(CELS):
             out = bse.copy()
             out.paste(gen[c].crop((bx, by, bx + bw, by + bh)), (bx, by))
-            out = restore(out, cels_her[0], S)
+            mp = os.path.join(a.out, "field_mask.npy")
+            if os.path.exists(mp):
+                out = restore_mask(out, np.load(mp))
+            else:
+                out = restore(out, cels_her[0], S)
             out.save(os.path.join(a.out, "cel_%02d.png" % c))
             gen[c] = out
         print("  reseated every cel onto the base face: identical outside the box BY"
@@ -411,11 +615,32 @@ def main():
     print("  %d cels, each %dx%d cel px; generating at %dx%d = %d px"
           % (CELS, w, h, w * S, h * S, w * S * h * S))
 
+    SAMPLES = os.path.join(ROOT, "tools", "samples")
+    src_mask = None
+    if spec.get("source_face"):
+        base_img, src_mask = base_from_source(spec, w, h, S, SAMPLES)
+        np.save(os.path.join(a.out, "field_mask.npy"), src_mask)
+        if not a.mouths and not a.install:
+            base_img.save(os.path.join(a.out, "base_%dx%d.png" % (w * S, h * S)))
+            print("  wrote base_%dx%d.png from HIS PHOTOGRAPH - no model, no pass."
+                  % (w * S, h * S))
+            print("  LOOK AT IT before running --mouths")
+            return
+
     blur = max(1.0, S * 0.11)
     init = init_from(cels[0], S, blur)
     cond = gb.soft_edges(init_from(cels[0], S, blur * 0.5))
-    init.save(os.path.join(a.out, "init_%dx%d.png" % (w * S, h * S)))
-    cond.save(os.path.join(a.out, "cond_softedge.png"))
+    # DO NOT WRITE PASS SCAFFOLDING FOR A VIEW THAT HAS NO BASE PASS. These two are the init
+    # and conditioning built from HER cel 0, and for a supplied-headshot view nothing ever
+    # consumes them - the base is a downscale of his photograph and cel 0 is that file saved
+    # verbatim. Writing them anyway put `init_816x660.png` and `cond_softedge.png` on disk
+    # next to a cel that was never generated, which reads from outside as evidence that a
+    # pass ran over the resting frame. It had not, and that was provable - cel_00 is
+    # bit-identical to a freshly recomputed crop - but a file that implies work nobody did is
+    # a bad thing to leave lying next to the work.
+    if not spec.get("source_face"):
+        init.save(os.path.join(a.out, "init_%dx%d.png" % (w * S, h * S)))
+        cond.save(os.path.join(a.out, "cond_softedge.png"))
     m, _ = field_mask(cels[0])
     print("  init blur %.1f px; her field is %.1f%% of the portrait and is RESTORED, not"
           " generated" % (blur, 100.0 * m.mean()))
@@ -466,12 +691,36 @@ def main():
             continue
         out = base.copy()
         # The structure is HER mouth in THIS cel; the rendering is ours.
-        dx, dy, _ = align_to(cels[c], cels[0], spec["mouth"])
-        shifted = ImageChops.offset(cels[c], dx, dy)
-        if dx or dy:
-            print("      her head moved (%+d,%+d) here; shifted back onto cel 0"
-                  % (-dx, -dy))
-        her_mouth = shifted.crop((x0, y0, x1 + 1, y1 + 1))
+        sm = spec.get("source_mouths")
+        if sm:
+            # HIS OWN FRAME SUPPLIES THE MOUTH STRUCTURE. The sheet is indexed by grid
+            # position, never by its printed label, and the chosen frame's mouth box is
+            # scaled up into our box. It is a coarse upscale - a 35x27 px crop into 324x192 -
+            # which is why it is used as CONDITIONING and never as pixels.
+            sheet = Image.open(os.path.join(SAMPLES, sm["path"])).convert("RGB")
+            thf = sheet.height / float(sm["rows"])
+            f = sm["picks"][c]
+            rr, cc = divmod(f, sm["cols"])
+            ty = int(round(rr * thf))
+            tile = sheet.crop((cc * sm["tile_w"], ty,
+                               (cc + 1) * sm["tile_w"], ty + sm["tile_h"]))
+            mx0, my0, mx1, my1 = sm["mbox"]
+            her_mouth = tile.crop((mx0, my0, mx1 + 1, my1 + 1))
+            print("      mouth structure from HIS frame %d (grid r%d c%d)" % (f, rr, cc))
+            keep = sm.get("cond_keep")
+        else:
+            her_mouth, keep = None, None
+        # HER cels are only consulted when the structure comes from her. For a supplied-mouth
+        # view the alignment is meaningless - and printing "her head moved" while conditioning
+        # on HIS video would describe something that is not happening.
+        if her_mouth is None:
+            dx, dy, _ = align_to(cels[c], cels[0], spec["mouth"])
+            shifted = ImageChops.offset(cels[c], dx, dy)
+            if dx or dy:
+                print("      her head moved (%+d,%+d) here; shifted back onto cel 0"
+                      % (-dx, -dy))
+        if her_mouth is None:
+            her_mouth = shifted.crop((x0, y0, x1 + 1, y1 + 1))
         hb = her_mouth.resize((bw, bh), Image.LANCZOS)
         # HER MOUTH IS DITHERED 16-COLOUR ART, so its soft edges at 12x are the DITHER, not
         # the lips. At a 0.7 px blur the conditioning map was texture noise and the pass
@@ -479,7 +728,94 @@ def main():
         # the dither and leave only the gross shape - the lip line, the teeth block, the
         # opening - which is the only thing we actually want to copy from her.
         cnd = gb.soft_edges(hb.filter(ImageFilter.GaussianBlur(max(2.0, S * 0.40))))
-        src = base.crop((bx, by, bx + bw, by + bh))
+        if keep:
+            e = np.asarray(cnd.convert("L")).astype(float)
+            thr = np.percentile(e, 100.0 - keep)
+            e = np.where(e >= thr, e, 0.0)
+            cnd = Image.fromarray(np.clip(e, 0, 255).astype(np.uint8), "L").convert("RGB")
+            print("      conditioning sparsified to its strongest %.0f%%" % keep)
+        # THE MODEL IS GIVEN A BIGGER CANVAS THAN THE BOX IT MAY CHANGE.
+        #
+        # This view's box is 27x16 cel px = 324x192 px, and SD1.5 falls apart below about
+        # 256 px a side - it returns hallucinated texture, which is exactly what ten cels of
+        # this portrait came back as from a clean init and a clean conditioning map.
+        # Narrowing the conditioning first, to its strongest 12%, was the obvious fix and
+        # changed nothing; that is what pointed at the SIZE rather than the content.
+        #
+        # So the pass runs over the box expanded by `context` cel pixels - 43x32 cel px, or
+        # 516x384 - and only the box itself is seated back. The ring is real face, so the
+        # model has something coherent to work from, and nothing outside the box can reach
+        # the output however it renders the ring.
+        ctx = spec.get("context", 0)
+        cx0, cy0 = max(0, x0 - ctx), max(0, y0 - ctx)
+        cx1, cy1 = min(w - 1, x1 + ctx), min(h - 1, y1 + ctx)
+        gx, gy = cx0 * S, cy0 * S
+        gw, gh = (cx1 - cx0 + 1) * S, (cy1 - cy0 + 1) * S
+        src = base.crop((gx, gy, gx + gw, gy + gh))
+        if sm and sm.get("paste_init"):
+            # HIS OWN MOUTH IS THE INIT, NOT A HINT. This is the construct-then-light shape
+            # that settled the signs, with his video frame as the construction.
+            #
+            # Conditioning alone could not do it and the measurements say why. His base is a
+            # SHARP photograph of a specific man with a confidently closed mouth, so at
+            # strength 0.35 the pass reproduced the init and every cel came back closed - the
+            # lip-sync did not move at all. Raising it until the mouth opened (0.55, then
+            # 0.70, control 0.75/0.85) opened it and destroyed him: orange and pink smears,
+            # invented teeth, a cartoon. There is no strength that does one without the other,
+            # because the model is being asked to INVENT an open mouth for a face it has
+            # never seen open.
+            #
+            # It does not have to invent one. His 48 frames ARE that face with the mouth open.
+            # So his mouth is scaled into the box and level-matched to the surrounding skin,
+            # and the pass runs at a LOW strength whose only job is to resolve the softness of
+            # a 9x upscale. The structure is his, the sharpening is ours, and nothing is
+            # imagined - the same division as a constructed sign, lit rather than drawn.
+            # UNIFORM SCALE ON MEASURED LANDMARKS, because `resize(box)` stretches him.
+            #
+            # The box is 324x192, aspect 1.69. His video crop is 35x27, aspect 1.30. Resizing
+            # one to the other squashes his face 30% horizontally, and that - not the scale -
+            # is what made the first paste look melted across the jaw.
+            #
+            # So the landmarks are read off a grid and written down, like the Factory's clip:
+            # his mouth spans x 75..220 with the lip line at y 95 in the headshot box, and
+            # x 5..23 with the mouth at y 11 in a video tile. That fixes a single uniform
+            # factor, (220-75)/(23-5) = 8.06, and the offset that puts one mouth centre on the
+            # other. Everything his frame does not cover keeps the base.
+            lmh = sm["head_mouth"]      # (left, right, line) in box device px
+            lmv = sm["vid_mouth"]       # (left, right, line) in tile px
+            k = (lmh[1] - lmh[0]) / float(lmv[1] - lmv[0])
+            nw, nh = int(round(her_mouth.width * k)), int(round(her_mouth.height * k))
+            grown = her_mouth.resize((nw, nh), Image.LANCZOS)
+            ox = int(round(lmh[0] - lmv[0] * k))
+            oy = int(round(lmh[2] - lmv[2] * k))
+            mb = Image.new("RGB", (bw, bh))
+            mb.paste(base.crop((bx, by, bx + bw, by + bh)), (0, 0))
+            mb.paste(grown, (ox, oy))
+            print("      his frame scaled x%.2f uniformly on measured landmarks, offset"
+                  " (%+d,%+d)" % (k, ox, oy))
+            a_src = np.asarray(src).astype(np.float32)
+            a_m = np.asarray(mb).astype(np.float32)
+            inner = a_src[by - gy:by - gy + bh, bx - gx:bx - gx + bw]
+            r = max(1, 2 * S)
+            ring = np.zeros((bh, bw), bool)
+            ring[:r, :] = ring[-r:, :] = True
+            ring[:, :r] = ring[:, -r:] = True
+            a_m = a_m + (inner[ring].mean(0) - a_m[ring].mean(0))
+            glued = src.copy()
+            glued.paste(Image.fromarray(np.clip(a_m, 0, 255).astype(np.uint8), "RGB"),
+                        (bx - gx, by - gy))
+            src = glued
+            print("      HIS frame pasted as the init, level-matched to his own skin")
+        if ctx:
+            # The ring's conditioning is the BASE's own edges - "this already exists, leave
+            # it" - and only inside the box does the model see his mouth structure. A black
+            # ring would read as "nothing here" and invite exactly the invention we are
+            # trying to stop.
+            ring = gb.soft_edges(src)
+            ring.paste(cnd, (bx - gx, by - gy))
+            cnd = ring
+            print("      pass covers %dx%d px of context; only the %dx%d box is seated"
+                  % (gw, gh, bw, bh))
         # --strength/--control steer THIS pass when --mouths is in play. They used to feed
         # only the base face, so a command that looked like it was retuning the mouth pass
         # was silently just rerolling it - a flag that appears to do something and does not.
@@ -489,7 +825,8 @@ def main():
                      a.control or spec["mouth_control"],
                      (a.seed or spec["seed"]) + c + a.seed_shift * 101,
                      spec["negative"])
-        out = seat_patch(base, got.crop((0, 0, bw, bh)), spec["mouth"], S)
+        out = seat_patch(base, got.crop((bx - gx, by - gy,
+                                         bx - gx + bw, by - gy + bh)), spec["mouth"], S)
         # THE FIELD MASK COMES FROM CEL 0, NOT FROM CEL c, AND THAT IS THE WHOLE POINT.
         # Restoring each cel against its OWN original put her jitter straight back in: her
         # blue field has a slightly different silhouette in every frame because her head
@@ -497,7 +834,8 @@ def main():
         # OUTSIDE the mouth box - the invariant this stage exists to guarantee, broken by the
         # one line that was supposed to be housekeeping. One mask, from one cel, for all
         # eleven.
-        out = restore(out, cels[0], S)
+        out = restore_mask(out, src_mask) if src_mask is not None \
+            else restore(out, cels[0], S)
         out.save(os.path.join(a.out, "cel_%02d.png" % c))
         print("    cel %2d written" % c)
     print("  eleven cels written")

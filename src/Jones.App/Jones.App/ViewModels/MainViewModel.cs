@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
@@ -163,12 +163,12 @@ public sealed partial class MainViewModel : ViewModelBase
         BuildScreen();
     }
 
-    public ObservableCollection<SpriteVm> Sprites { get; } = [];
-    public ObservableCollection<HotspotVm> Hotspots { get; } = [];
-    public ObservableCollection<TextVm> Texts { get; } = [];
-    public ObservableCollection<GoalTrackVm> GoalTracks { get; } = [];
-    public ObservableCollection<MenuLineVm> MenuLines { get; } = [];
-    public ObservableCollection<ActionVm> Actions { get; } = [];
+    public BuildList<SpriteVm> Sprites { get; } = [];
+    public BuildList<HotspotVm> Hotspots { get; } = [];
+    public BuildList<TextVm> Texts { get; } = [];
+    public BuildList<GoalTrackVm> GoalTracks { get; } = [];
+    public BuildList<MenuLineVm> MenuLines { get; } = [];
+    public BuildList<ActionVm> Actions { get; } = [];
 
     // THERE IS NO NOTICE LIST. The `Notices` collection that used to live here carried a
     // running commentary Ã¢â‚¬â€ "Wild Willy took 2 item(s)", "Rent paid.", "Hired as Clerk!" Ã¢â‚¬â€
@@ -181,13 +181,13 @@ public sealed partial class MainViewModel : ViewModelBase
     /// The speech balloon, in painter's order Ã¢â‚¬â€ see <see cref="BubbleWindow"/>. Empty
     /// whenever nobody is talking.
     /// </summary>
-    public ObservableCollection<BalloonPartVm> Balloon { get; } = [];
+    public BuildList<BalloonPartVm> Balloon { get; } = [];
 
     /// <summary>
     /// Hit rectangles over the balloon's buttons, when the balloon is a question. Empty
     /// otherwise. See <see cref="Ask"/>.
     /// </summary>
-    public ObservableCollection<BalloonButtonVm> BalloonButtons { get; } = [];
+    public BuildList<BalloonButtonVm> BalloonButtons { get; } = [];
 
     /// <summary>
     /// The town board stays on screen behind the between-turn dialogs.
@@ -228,14 +228,20 @@ public sealed partial class MainViewModel : ViewModelBase
         _clockSpriteIndex = -1;
         _itemsSpriteIndex = -1;
 
-        Sprites.Clear();
-        Hotspots.Clear();
-        Texts.Clear();
-        Actions.Clear();
-        GoalTracks.Clear();
-        MenuLines.Clear();
-        Balloon.Clear();
-        BalloonButtons.Clear();
+        // BEGIN, NOT CLEAR. `Clear()` raises a Reset and an ItemsControl answers a Reset by
+        // destroying every container it owns and building them all again - sixty controls,
+        // with their templates, bindings and images, every time anything on screen moved.
+        // While the marble walks this ran about a hundred times a second from two timers.
+        // See BuildList: what the build produces is now compared against what is already
+        // there, and only the difference is raised.
+        Sprites.BeginBuild();
+        Hotspots.BeginBuild();
+        Texts.BeginBuild();
+        Actions.BeginBuild();
+        GoalTracks.BeginBuild();
+        MenuLines.BeginBuild();
+        Balloon.BeginBuild();
+        BalloonButtons.BeginBuild();
         _keyBindings.Clear();
 
         switch (_screen)
@@ -262,11 +268,31 @@ public sealed partial class MainViewModel : ViewModelBase
         // too, since `Item::handleEvent` is only reached for controls in the open dialog's
         // own list. Disabled lines are skipped: bit 0 of `state` gates the KEY as much as
         // the mouse (`Interface.sc:410-416`).
+        // COMMITTED HERE, BEFORE ANYTHING READS THEM. A staged collection is empty until it
+        // is committed, so the accelerator loop below - which walks MenuLines - has to come
+        // after its EndBuild, and so does anything else that reads what the build produced.
+        // Only the sprites get a comparer: they are the bulk of the screen and most of them
+        // are identical frame to frame. Everything else falls back to reference equality and
+        // is simply replaced, which still costs one Replace instead of a Reset.
+        Sprites.EndBuild(SpriteVm.Interchangeable);
+        Hotspots.EndBuild();
+        Texts.EndBuild();
+        Actions.EndBuild();
+        GoalTracks.EndBuild();
+        MenuLines.EndBuild();
+
         foreach (var line in MenuLines)
             if (line.Key != 0 && line.Enabled)
                 Accelerator(line.Key, () => line.Command.Execute(null));
 
         BuildBalloon();
+
+        // The balloon is built after the switch, so it commits after it. Anything BuildBalloon
+        // adds to the collections above lands in them directly, which is what it did before.
+        Balloon.EndBuild();
+        BalloonButtons.EndBuild();
+
+        DumpSprites();
         RefreshAll();
     }
 
@@ -4698,7 +4724,10 @@ public sealed partial class MainViewModel : ViewModelBase
         {
             var office = StoreLayout.ColoursFor(LocationId.EmploymentOffice);
 
-            foreach (var (label, place, left, top, key) in StoreLayout.Employment)
+            // EmploymentFor(), not Employment: the renamed labels carry their own measured
+            // nsLeft, because each one exists to centre ITS text in the column. See
+            // StoreLayout.EmploymentCast0.
+            foreach (var (label, place, left, top, key) in StoreLayout.EmploymentFor())
             {
                 var employer = place;
                 MenuLines.Add(new MenuLineVm(label, DialogX + left, DialogY + top,
@@ -6222,6 +6251,77 @@ public sealed partial class MainViewModel : ViewModelBase
     /// finished it on, and every binding this touches is owned by the UI thread.
     /// </para>
     /// </summary>
+    /// <summary>
+    /// Writes what the screen ACTUALLY contains to a file, when <c>JONES_DUMP_SPRITES</c>
+    /// names one.
+    ///
+    /// <para>
+    /// WHY THIS EXISTS, AND WHY IT IS NOT A THROWAWAY. The University panel came up with no
+    /// ENROLL and no DONE, and reading the code could not settle it: both are added
+    /// unconditionally, both resolve their art, both pass the size guard, and all 683 tests
+    /// pass — because NO TEST BUILDS A LOCATION PANEL THROUGH THE VIEW MODEL. Nothing in
+    /// this project can currently answer "what is on screen right now", which is why four
+    /// hypotheses in a row were argued from source instead of measured.
+    /// </para>
+    ///
+    /// <para>
+    /// Every sprite with its view, loop, cel, position, whether it takes clicks, and whether
+    /// its bitmap resolved at all — which is the one fact that separates "never added" from
+    /// "added and invisible".
+    /// </para>
+    /// </summary>
+    private void DumpSprites()
+    {
+        if (Environment.GetEnvironmentVariable("JONES_DUMP_SPRITES") is not { Length: > 0 } path)
+            return;
+
+        try
+        {
+            var lines = new System.Text.StringBuilder();
+            lines.AppendLine($"screen={_screen} build={BuildCount} sprites={Sprites.Count} " +
+                             $"texts={Texts.Count} actions={Actions.Count} menu={MenuLines.Count} " +
+                             $"factor={RenderScale.Factor} set={RenderScale.ArtSet ?? "<none>"}");
+
+            for (var i = 0; i < Sprites.Count; i++)
+            {
+                var s = Sprites[i];
+                // THE HIT RECTANGLE IS THE POINT OF THIS LINE. MainView positions each
+                // sprite's container by HitLeft/HitTop - NOT by the drawn coordinate - and
+                // puts the art back inside it with ArtDx/ArtDy. Non-clickable sprites take
+                // the drawn position; clickable ones get theirs from the TouchTargets layout.
+                // At the University every CLICK sprite is invisible and every plain one draws,
+                // so the hit rectangle is the one number that can tell them apart.
+                lines.AppendLine(
+                    $"  [{i,3}] view {s.View,4} loop {s.Loop,2} cel {s.Cel,2}  " +
+                    $"draw ({s.X,6:0.#},{s.Y,6:0.#}) {s.W,5:0.#}x{s.H,-5:0.#} " +
+                    $"hit ({s.HitLeft,7:0.#},{s.HitTop,7:0.#}) {s.HitW,6:0.#}x{s.HitH,-6:0.#} " +
+                    $"art ({s.ArtDx,5:0.#},{s.ArtDy,5:0.#}) " +
+                    $"{(s.IsClickable ? "CLICK" : "     ")} " +
+                    $"{(s.Image is null ? "NO IMAGE" : "img")} " +
+                    $"T={s.T.Scale:0.###}/{s.T.Dx:0.#}/{s.T.Dy:0.#}");
+            }
+
+            foreach (var t in Texts) lines.AppendLine($"  text ({t.X,6:0.#},{t.Y,6:0.#}) {t.Text}");
+
+            System.IO.File.AppendAllText(path, lines.ToString() + "\n");
+        }
+        catch (Exception e)
+        {
+            // THE REASON IS WRITTEN DOWN. The first version of this swallowed the exception,
+            // and the consequence was that the University panel - the one screen this was
+            // built to diagnose - produced NO LINES AT ALL, which looked like the panel never
+            // being built rather than like the dump failing on it. That is the third time
+            // today a silent catch has sent the search to the wrong place.
+            try
+            {
+                System.IO.File.AppendAllText(path,
+                    $"DUMP FAILED on screen={_screen}: {e.GetType().Name}: {e.Message}\n" +
+                    $"{e.StackTrace}\n\n");
+            }
+            catch (Exception) { /* nothing left to try */ }
+        }
+    }
+
     private bool _artRefreshQueued;
 
     private void OnArtArrived()

@@ -136,7 +136,15 @@ public sealed class TouchLayout(double panelScale)
     /// </summary>
     public void Add(object owner, double x, double y, double w, double h)
     {
-        if (_grown is not null || w <= 0 || h <= 0) return;
+        if (w <= 0 || h <= 0) return;
+
+        // A LATE REGISTRATION INVALIDATES THE LAYOUT RATHER THAN BEING DROPPED. The growth is
+        // worked out on the first call to For, which is a BINDING being evaluated - and
+        // Avalonia can evaluate one while the screen is still being built, before every
+        // control has registered. Dropping the stragglers left them absent from the dictionary
+        // that Separate indexes directly, and `_grown is not null` made that state permanent
+        // for the life of the layout. Recomputing costs one pass over a handful of rectangles.
+        _grown = null;
         _entries.Add((owner, x, y, w, h));
     }
 
@@ -218,10 +226,19 @@ public sealed class TouchLayout(double panelScale)
     /// </summary>
     private void Separate(Dictionary<object, HitGrowth> grown)
     {
+        // EVERY ENTRY HAS A ROW BEFORE ANYTHING INDEXES ONE. Compute fills a row per entry, so
+        // in principle this is redundant - and in practice a sprite whose Equals did not hold
+        // for itself made `grown[owner]` throw KeyNotFoundException from inside a binding,
+        // which Avalonia swallows by leaving the control unplaced. The control then does not
+        // appear at all, with nothing logged. A dictionary read on a key supplied by a caller
+        // is worth making total.
+        foreach (var e in _entries)
+            if (!grown.ContainsKey(e.Owner)) grown[e.Owner] = HitGrowth.None;
+
         (double L, double T, double R, double B) BoxOf(
             (object Owner, double X, double Y, double W, double H) e)
         {
-            var g = grown[e.Owner];
+            var g = grown.TryGetValue(e.Owner, out var found) ? found : HitGrowth.None;
             return (e.X - g.Left, e.Y - g.Top, e.X + e.W + g.Right, e.Y + e.H + g.Bottom);
         }
 
