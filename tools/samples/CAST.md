@@ -446,6 +446,39 @@ falling back to five bold faces: in each case the wrong thing was **reachable un
 of the right thing**. Make it unreachable and the class of mistake disappears, rather than
 depending on whoever is driving to read the warning.
 
+### ERODING AFTER YOU PICK THE COMPONENT CAN ORPHAN WHAT THE PICK WAS MEANT TO DROP
+
+A narrow one, and it put a **numeral into a shipped cel**.
+
+Zain's thirty-frame sheet carries its index burned into each tile's corner. The key takes the
+largest connected component, which drops the digits — except on frame 25, where the index was
+bridged to the figure by the backdrop's floor-to-wall line and came along. Two pixels of erode
+then **cut that bridge**, and because the component had already been chosen the severed digit
+stayed in the mask as a free-standing island, floating beside his shoe.
+
+> **Any morphological step after a connectivity decision can invalidate that decision.** Erode,
+> open and close all sever thin links, and whatever hung off the link is now a separate object
+> that your earlier "keep the largest component" no longer excludes. **Re-select after the
+> morphology**, not before.
+
+Also note how it was caught, twice. A pixel count over the number corner flagged **23 of 30**
+frames — the trailing foot legitimately sits there — and would have blocked the whole sheet
+while saying nothing about the real fault. Cropping the corners and looking found the one
+frame that mattered, both times.
+
+### THE BACKGROUND MODEL MUST NOT BE BUILT FROM THE FRAME IT IS JUDGING
+
+Same sheet. Each tile's backdrop was estimated per row from that tile's own outer columns —
+which works until the figure spans the tile. On frames 24, 29 and 30 the arm reaches the
+border, the edge columns contain skin, the row median is dragged towards it, and the true
+backdrop then reads as "different from the background" and is admitted: **a grey slab welded
+to the arm down the full height of frame 24**.
+
+The six tiles in a grid row share one studio backdrop at the same height, so the estimate now
+comes from **all six**, and the contaminated one is outvoted. The general form: **an estimator
+built from the sample it is testing fails hardest on the samples that deviate most** — which
+are exactly the ones it exists to judge.
+
 ### A FALLBACK THAT CANNOT BE DISTINGUISHED FROM A HIT IS A DEFECT GENERATOR
 
 The same family as "a check must fail when it measured nothing", one step along: there the
