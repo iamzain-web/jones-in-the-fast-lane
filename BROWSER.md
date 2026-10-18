@@ -74,3 +74,54 @@ decision, not a technical one.
 browser implementation would plug into: `Locate`, `Exists`, `Open`. Its `Open` is
 synchronous, so a browser store has to have the bytes already — which makes the choice
 above *the* question for this head, not an implementation detail.
+
+---
+
+## It is built, and it is public
+
+`https://iamzain-web.github.io/jones-in-the-fast-lane/` — anonymous, no sign-in. The
+question above was answered with the third option: **fetched lazily, screen redrawn when
+the bytes land.** `HttpArtStore` fetches each cel the first time it is drawn, records a
+404 so it is never asked for twice, and raises `ArtStore.Arrived`; `MainViewModel`
+coalesces those to one rebuild per frame.
+
+### Deploying
+
+The site is an orphan `gh-pages` branch holding a publish of `wwwroot`, nothing else:
+
+```
+dotnet publish src/Jones.App/Jones.App.Browser/Jones.App.Browser.csproj -c Release -o <out>
+```
+
+- **Publish into an EMPTY directory.** `dotnet publish` does not clean, so hashed
+  assemblies accumulate: one run left eight `dotnet.native.*.wasm` of ~30 MB each, 417 MB
+  of runtime for a build that needs 38.
+- **Drop the `.gz`/`.br` sidecars.** A static host serves neither and the loader never asks
+  for them. They were 380 MB of the 475.
+- **`.nojekyll` must be at the root** or Pages silently skips every directory beginning with
+  an underscore — which is the entire runtime.
+- **Push as `iamzain-web`.** The remote URL carries the user for a reason; the bare URL
+  resolves to a different stored credential and GitHub answers 403.
+
+### Two faults that no check in this repo could see
+
+**The page never ran.** `async Task Main` makes the compiler synthesise an entry point
+whose body is `<Main>(args).GetAwaiter().GetResult()` — a blocking wait, which the Mono
+interpreter answers with `NIY encountered in method Program:Main` and `exit(1)`, before a
+line of ours. Build clean, publish clean, 200 for all 1,318 files, game dead. **Return the
+Task; never `await` in this entry point.**
+
+**Then it ran Sierra's town.** `SpriteVm.Interchangeable` keeps a container when a sprite
+is unchanged — but a sprite resolves its cel through the `RenderScale.HighRes` *converter*
+on its binding, so a container that is not recreated never looks again, and art that
+arrives after the screen was built is decoded, cached and never drawn. The arrival rebuild
+drops the comparer for that one pass.
+
+Both were found by looking at the rendered page. Neither was visible from an exit code, a
+network log, or 693 passing tests.
+
+### Known, and not fixed here
+
+Art URLs are unversioned, so a changed cel keeps its URL and a returning tester can be
+served the old one out of the browser cache until Pages' `max-age` expires. The runtime is
+content-hashed and immune; the art is not.
