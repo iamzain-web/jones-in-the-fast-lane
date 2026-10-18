@@ -274,7 +274,28 @@ public sealed partial class MainViewModel : ViewModelBase
         // Only the sprites get a comparer: they are the bulk of the screen and most of them
         // are identical frame to frame. Everything else falls back to reference equality and
         // is simply replaced, which still costs one Replace instead of a Reset.
-        Sprites.EndBuild(SpriteVm.Interchangeable);
+        // ...EXCEPT ON THE REBUILD THAT ART ARRIVING ASKED FOR, AND THAT EXCEPTION IS THE
+        // WHOLE REASON THE WEB BUILD SHOWED SIERRA'S TOWN AFTER THIS COMPARER LANDED.
+        //
+        // A sprite resolves its cel through the `RenderScale.HighRes` CONVERTER on its
+        // `Image` binding, not in the view model - so the only thing that can make it look
+        // again is the binding being evaluated again, and the only thing that evaluates it
+        // again is the container being recreated. `Interchangeable` exists precisely to stop
+        // containers being recreated. On the two heads whose art is on disk that is pure
+        // profit; on this one it means the cel that arrived a second after the screen was
+        // built is decoded, cached, and never asked for.
+        //
+        // It cost the title screen: `board.png` came through because `BoardImage` is
+        // re-raised by hand below, and `pic_11.png` - the same picture, drawn as a sprite -
+        // did not. The trace is unambiguous: `load(pic_11.png) -> NULL` once, and no second
+        // attempt for the life of the page.
+        //
+        // So the arrival rebuild drops the comparer and replaces everything, which is what
+        // this method did unconditionally before. One full rebuild per batch of arriving
+        // cels, coalesced to a frame by OnArtArrived, against a stale screen for the life of
+        // the process.
+        Sprites.EndBuild(_artJustArrived ? null : SpriteVm.Interchangeable);
+        _artJustArrived = false;
         Hotspots.EndBuild();
         Texts.EndBuild();
         Actions.EndBuild();
@@ -6328,6 +6349,12 @@ public sealed partial class MainViewModel : ViewModelBase
 
     private bool _artRefreshQueued;
 
+    /// <summary>
+    /// Set for exactly one <see cref="BuildScreen"/>, by the art-arrival handler, to turn
+    /// the sprite reconciliation OFF for that pass. See the note where it is read.
+    /// </summary>
+    private bool _artJustArrived;
+
     private void OnArtArrived()
     {
         // COALESCED. A screen asks for a handful of cels in the same frame and they land
@@ -6339,6 +6366,11 @@ public sealed partial class MainViewModel : ViewModelBase
         Avalonia.Threading.Dispatcher.UIThread.Post(() =>
         {
             _artRefreshQueued = false;
+
+            // Read by BuildScreen, which must REPLACE every sprite on this pass rather than
+            // reconcile: a reconciled container keeps its binding, and a binding that is not
+            // re-evaluated never sees the art that just landed. See the note at EndBuild.
+            _artJustArrived = true;
 
             // THE BOARD IS NOT IN RefreshAll AND THAT IS WHY THE FIRST DEPLOYMENT STILL
             // SHOWED SIERRA'S TOWN. MainView binds the backdrop with `{x:Static

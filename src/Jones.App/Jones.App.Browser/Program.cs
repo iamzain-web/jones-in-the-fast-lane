@@ -27,7 +27,37 @@ internal sealed partial class Program
     /// Sierra's own pixels rather than leaving it blank.
     /// </para>
     /// </summary>
-    private static async Task Main(string[] args)
+    /// <summary>
+    /// NOT <c>async</c>, AND THAT IS NOT A STYLE CHOICE - IT IS THE DIFFERENCE BETWEEN A
+    /// PAGE THAT RUNS AND A PAGE THAT DIES BEFORE ITS FIRST LINE.
+    ///
+    /// <para>
+    /// With <c>async Task Main</c> the compiler keeps the body as a state machine and
+    /// SYNTHESISES an entry point of its own - a real <c>Main(string[])</c> whose whole
+    /// body is <c>&lt;Main&gt;(args).GetAwaiter().GetResult()</c>. That is a BLOCKING WAIT,
+    /// and the Mono interpreter this head runs on has no implementation for it:
+    /// </para>
+    /// <code>
+    /// MONO interpreter: NIY encountered in method Program:Main (string[])
+    /// [MONO] * Assertion: should not be reached at interp.c:4135
+    /// Uncaught {name: ExitStatus, message: Program terminated with exit(1), status: 1}
+    /// </code>
+    /// <para>
+    /// Not one statement below ran. The page showed the Avalonia splash and stopped, with
+    /// everything it needed already downloaded - and the only account of it was in the
+    /// browser console, which is why this sat deployed and broken: the build is clean, the
+    /// publish is clean, the server returns 200 for all 1,318 files, and the game is dead.
+    /// </para>
+    ///
+    /// <para>
+    /// Returning the Task instead hands it to the runtime, which is what the Avalonia
+    /// browser template does and what <c>runMain</c> is built to receive. Nothing here ever
+    /// needed to await: every step before the last is synchronous by design (see the note
+    /// about the manifest below), so there was nothing for the state machine to do but
+    /// break the entry point.
+    /// </para>
+    /// </summary>
+    private static Task Main(string[] args)
     {
         // BEFORE the first cel is drawn, because RenderScale settles its factor and search
         // path on first use and nothing invalidates them. Installed late, this would be a
@@ -87,7 +117,7 @@ internal sealed partial class Program
         // compile; Software and Canvas2D do not exist), so this head is ALREADY on WebGL
         // and setting it would be a no-op dressed as an optimisation. Whatever is slow
         // here, it is not the rasteriser being on the CPU.
-        await BuildAvaloniaApp()
+        return BuildAvaloniaApp()
             .WithInterFont()
             .StartBrowserAppAsync("out");
     }
