@@ -1,0 +1,3 @@
+# A published site. Every file is a build output, served byte for byte.
+# Nothing here may have its line endings rewritten; the runtime checks hashes.
+* -text
