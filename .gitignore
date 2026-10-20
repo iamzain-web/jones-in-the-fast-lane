@@ -53,3 +53,7 @@ __pycache__/
 
 # Build output: PublishJonesArt copies these out of assets/, which is itself ignored.
 /src/Jones.App/Jones.App.Browser/wwwroot/art/
+
+# The gh-pages worktree tools\deploy-web.ps1 stages the published site in. It is a
+# checkout of the deployed branch, not source.
+/.deploy/

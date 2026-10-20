@@ -87,7 +87,17 @@ coalesces those to one rebuild per frame.
 
 ### Deploying
 
-The site is an orphan `gh-pages` branch holding a publish of `wwwroot`, nothing else:
+```powershell
+.	ools\deploy-web.ps1
+```
+
+That is the whole thing: publish, check, stage, push, and then **fetch the live site and
+confirm it is serving this build** before it says LIVE. `-Test` runs the suite first
+(about three and a half minutes, and it cannot see art changes, which is why it is off by
+default); `-NoPush` stops after staging.
+
+The site is an orphan `gh-pages` branch holding a publish of `wwwroot`, nothing else. By
+hand that is:
 
 ```
 dotnet publish src/Jones.App/Jones.App.Browser/Jones.App.Browser.csproj -c Release -o <out>
@@ -102,6 +112,15 @@ dotnet publish src/Jones.App/Jones.App.Browser/Jones.App.Browser.csproj -c Relea
   an underscore — which is the entire runtime.
 - **Push as `iamzain-web`.** The remote URL carries the user for a reason; the bare URL
   resolves to a different stored credential and GitHub answers 403.
+- **Nothing in the deployed tree is text.** This repository runs `core.autocrlf=true`, and
+  a rewritten line ending in the runtime's own `dotnet.js` is not cosmetic: .NET records a
+  content hash for its assets, so the page refuses to start. The branch carries a
+  `.gitattributes` of `* -text`.
+
+**The art is not in the repository.** `assets/` is gitignored, so a clone builds a game
+that silently falls back to the 838 1x cels compiled into `Jones.App` - a working,
+shippable site showing Sierra's 1990 town under your name. The script refuses to deploy
+without the art; by hand, there is nothing to warn you.
 
 ### Two faults that no check in this repo could see
 
