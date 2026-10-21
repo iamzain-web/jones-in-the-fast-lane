@@ -141,11 +141,20 @@ internal sealed partial class BrowserAudioPlayer : IAudioPlayer
                 if (Push(_bytes) >= TargetBuffer) return;
             }
         }
-        catch (Exception)
+        catch (Exception e)
         {
-            // A context the browser has closed under us must not take the game with it.
+            // A context the browser has closed under us must not take the game with it -
+            // but SAID ONCE, because a pump that is failing every 60ms in silence is how
+            // this head shipped mute in the first place.
+            if (!_reported)
+            {
+                _reported = true;
+                Console.WriteLine($"Jones: audio pump failed: {e.GetType().Name}: {e.Message}");
+            }
         }
     }
+
+    private bool _reported;
 
     // ------------------------------------------------------------------
     // Speech - the browser's own player, by its resource id
