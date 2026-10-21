@@ -73,8 +73,29 @@ internal sealed partial class Program
         // to evaluate an expression in it. One thread, and the browser's event loop is on it.
         // The store is usable the moment it is constructed and learns what it has in the
         // background - a hang is worse than a failure, because a failure has an error to read.
+        // SAVED GAMES AND SETTINGS, MADE DURABLE. Must run before anything asks whether a
+        // save exists: localStorage is synchronous, so by the time this returns the save is
+        // back on the in-memory "disk" and SaveStore.Exists() is already telling the truth.
+        DurableSaves.Install();
+
+        // SOUND. Without this the head falls through to SilentAudioPlayer, which is what
+        // it has always done: no music, no effects, no speech, and nothing saying why.
+        Jones.App.ViewModels.MainViewModel.Sound = new BrowserAudioPlayer();
+
         var art = new HttpArtStore(pageUri);
         RenderScale.UseArtStore(art);
+
+        // THE OTHER HALF OF THE HEAD, and it was missing entirely until now. The desktop
+        // and Android heads both call SciText.Load, Subtitles.Load and LipSync.SetDirectory
+        // before the first frame; this one called none of them, because each takes a path
+        // and a browser has no disk. GameData fetches the files into the in-memory
+        // filesystem WebAssembly does have and then calls the ordinary loaders.
+        //
+        // NOT AWAITED, for the same reason the manifest is not: one thread, and the
+        // browser's event loop is on it. The game opens without its words and fills them in,
+        // which is the bargain the art already makes.
+        _ = GameData.LoadAsync(new System.Net.Http.HttpClient { BaseAddress = pageUri },
+                               art.NotifyRebuildNeeded);
 
         // Reported rather than assumed. Art present and art missing look identical from
         // inside the game - the cels simply come out at factor 1 - so the only way to tell
@@ -117,6 +138,11 @@ internal sealed partial class Program
         // compile; Software and Canvas2D do not exist), so this head is ALREADY on WebGL
         // and setting it would be a no-op dressed as an optimisation. Whatever is slow
         // here, it is not the rasteriser being on the CPU.
+        // THE LOADING SCREEN COMES DOWN WHEN THE BOARD DOES, not when the renderer is ready.
+        // Started here and not awaited: it outlives this method by design, watching the art
+        // store while the game is already running behind the screen.
+        _ = LoadingScreen.HoldUntilBoardArrives(art);
+
         return BuildAvaloniaApp()
             .WithInterFont()
             .StartBrowserAppAsync("out");

@@ -51,6 +51,33 @@ public static class SaveStore
     /// <summary>Set by a head that must put saves somewhere else. Null uses the default.</summary>
     public static string? DirectoryOverride { get; set; }
 
+    /// <summary>
+    /// Raised after the slot is written or removed, so a head whose filesystem is NOT DURABLE
+    /// can copy it somewhere that is.
+    ///
+    /// <para>
+    /// THIS EXISTS FOR THE BROWSER AND ONLY FOR THE BROWSER. WebAssembly has a filesystem -
+    /// Emscripten's, held in memory - and every line of this class works against it perfectly:
+    /// the write succeeds, <see cref="Exists"/> says yes, a restore in the same session reads
+    /// the game back. Then the tab closes and all of it is gone, because the "disk" was RAM.
+    /// The symptom is the cruellest kind: saving appears to work and the save is simply not
+    /// there next time, with nothing to report because nothing failed.
+    /// </para>
+    ///
+    /// <para>
+    /// The alternative was an abstraction over storage that all three heads would pay for, to
+    /// serve one of them. This is one event and an empty invocation list everywhere else.
+    /// </para>
+    /// </summary>
+    public static event Action? Written;
+
+    /// <summary>Raises <see cref="Written"/>. Never throws into the caller's write path.</summary>
+    private static void Announce()
+    {
+        try { Written?.Invoke(); }
+        catch (Exception) { /* a failed mirror must not fail the save */ }
+    }
+
     /// <summary>The folder saves live in. Created on demand by <see cref="Write"/>.</summary>
     public static string Directory =>
         DirectoryOverride
@@ -97,6 +124,7 @@ public static class SaveStore
             System.IO.Directory.CreateDirectory(Directory);
             File.WriteAllText(temp, JsonSerializer.Serialize(file, SaveFormat.Options));
             File.Move(temp, SlotPath, overwrite: true);
+            Announce();
             return true;
         }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException
@@ -167,5 +195,6 @@ public static class SaveStore
     {
         try { if (File.Exists(SlotPath)) File.Delete(SlotPath); }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException) { /* leave it */ }
+        Announce();
     }
 }

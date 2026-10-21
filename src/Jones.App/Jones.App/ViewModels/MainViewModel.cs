@@ -3448,11 +3448,14 @@ public sealed partial class MainViewModel : ViewModelBase
         SpeechOff = s.SpeechOff;
         Sound.Enabled = s.SoundEnabled;
 
-        // The interface face, by the same argument the sound switches are persisted by: a
-        // player who chose one and quit should not find it reset. `LoadSetting` defers to
-        // `JONES_UI_FONT` if that is set, and to the bitmap face if Quicksand will not parse.
-        UiFont.LoadSetting(file.Interface.QuicksandInterfaceFont);
-
+        // THE INTERFACE FACE IS NO LONGER READ FROM HERE. It was a setting because it was a
+        // switch, and the switch is gone: Quicksand is simply what this game is set in now,
+        // by Zain's decision, the same way the buildings are his. Honouring a stored `false`
+        // would mean anyone who had ever tried the comparison toggle came back to the bitmap
+        // face and no way to leave it.
+        //
+        // `UiFont.Default` is Quicksand and `JONES_UI_FONT=bitmap` still forces font 10 for a
+        // side-by-side, which is the only reason that escape hatch survives.
     }
 
     /// <summary>

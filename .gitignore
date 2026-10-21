@@ -57,3 +57,5 @@ __pycache__/
 # The gh-pages worktree tools\deploy-web.ps1 stages the published site in. It is a
 # checkout of the deployed branch, not source.
 /.deploy/
+# Build output: PublishJonesData copies these out of assets/, which is itself ignored.
+/src/Jones.App/Jones.App.Browser/wwwroot/res/

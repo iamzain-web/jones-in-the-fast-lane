@@ -112,6 +112,20 @@ internal sealed class HttpArtStore : ArtStore
     /// <summary>The art directories this head offers, for the startup log.</summary>
     public string[] Inventory() => [.. Published];
 
+    /// <summary>
+    /// Says a redraw is needed although no cel arrived.
+    ///
+    /// <para>
+    /// THE GAME'S TEXT LANDS THE SAME WAY ITS ART DOES - over the network, after the screen
+    /// that needed it was already built - and it leaves the screen in exactly the same
+    /// state: drawn from resources that were not there yet. <c>ArtStore.Arrived</c> is the
+    /// one signal the view model already answers by rebuilding, so <see cref="GameData"/>
+    /// borrows it rather than growing a second event that would do the same thing to the
+    /// same screen.
+    /// </para>
+    /// </summary>
+    public void NotifyRebuildNeeded() => NotifyArrived();
+
     public override string? Locate(string name)
         => Array.IndexOf(Published, name) >= 0 ? $"{Root}/{name}" : null;
 

@@ -1,4 +1,4 @@
-﻿using System.Text.Json;
+using System.Text.Json;
 using System.Text.Json.Serialization;
 
 namespace Jones.Core.Save;
@@ -56,12 +56,21 @@ public sealed class InterfaceSettings
     /// `Jones.App.UiFont.Current` â€” false for the game's own font 10, true for Quicksand.
     ///
     /// <para>
-    /// FALSE IS THE DEFAULT AND FALSE IS THE ORIGINAL. A settings file that predates this
-    /// property, or none at all, leaves the interface drawn exactly as the shipped game draws
-    /// it; the outline face is only ever on because someone turned it on.
+    /// NO LONGER READ, AND TRUE BY DEFAULT. This was a switch, and the switch is gone: the
+    /// game is set in Quicksand by Zain's decision, as deliberately as the buildings carry
+    /// his names. It is still WRITTEN, so a settings file says which face drew the game that
+    /// wrote it, and it is still in the format so an older file deserialises; but nothing
+    /// loads it back, because honouring a stored `false` would strand anyone who had once
+    /// tried the comparison toggle on the bitmap face with no way off it.
+    /// </para>
+    ///
+    /// <para>
+    /// FALSE USED TO BE THE DEFAULT, AND FALSE WAS THE ORIGINAL'S. That is still true of
+    /// Sierra's game and no longer true of this one. `JONES_UI_FONT=bitmap` forces font 10
+    /// for a side-by-side.
     /// </para>
     /// </summary>
-    public bool QuicksandInterfaceFont { get; set; }
+    public bool QuicksandInterfaceFont { get; set; } = true;
 
 }
 
@@ -167,6 +176,19 @@ public static class SettingsStore
     public static string Path => System.IO.Path.Combine(SaveStore.Directory, "settings.json");
 
     /// <summary>
+    /// Raised after the file is written or removed. Exists for the browser head, whose
+    /// filesystem does not survive the tab - see <see cref="SaveStore.Written"/>, which this
+    /// mirrors exactly and for the same reason.
+    /// </summary>
+    public static event Action? Written;
+
+    private static void Announce()
+    {
+        try { Written?.Invoke(); }
+        catch (Exception) { /* a failed mirror must not fail the write */ }
+    }
+
+    /// <summary>
     /// Reads the switches, or returns null when there is nothing usable to read â€” no file, an
     /// unreadable one, the wrong magic, or a version this build does not know. Null means
     /// "leave the defaults alone": there is no half-loaded case, for the same reason
@@ -252,6 +274,7 @@ public static class SettingsStore
             System.IO.Directory.CreateDirectory(SaveStore.Directory);
             File.WriteAllText(temp, JsonSerializer.Serialize(file, SettingsFormat.Options));
             File.Move(temp, Path, overwrite: true);
+            Announce();
             return true;
         }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException
@@ -267,6 +290,7 @@ public static class SettingsStore
     {
         try { if (File.Exists(Path)) File.Delete(Path); }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException) { /* leave it */ }
+        Announce();
     }
 }
 

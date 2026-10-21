@@ -290,20 +290,11 @@
                exactly the same reason, and this is the only surface a phone can reach.
 
                The glyph is a lower-case "a" twice: blocky on the left, round on the right. -->
-          <ToggleButton Classes="snd" IsChecked="{Binding QuicksandFont, Mode=TwoWay}"
-                        IsVisible="{x:Static vm:MainViewModel.QuicksandFontAvailable}"
-                        ToolTip.Tip="Interface font: the game's own, or Quicksand">
-            <Panel Width="26" Height="26">
-              <TextBlock Text="a" FontFamily="Consolas,Courier New,monospace"
-                         FontSize="15" FontWeight="Bold" Foreground="#F0F0F0"
-                         HorizontalAlignment="Left" VerticalAlignment="Center" Margin="3,0,0,0" />
-              <TextBlock Text="a" FontFamily="avares://Jones.App/Assets/fonts#Quicksand"
-                         FontSize="17" FontWeight="Medium" Foreground="#F0F0F0"
-                         HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,3,0" />
-              <Path Stroke="#FF4B4B" StrokeThickness="2.6" StrokeLineCap="Round"
-                    Data="M4,22 L22,4" IsVisible="{Binding !QuicksandFont}" />
-            </Panel>
-          </ToggleButton>
+          <!-- THE FONT SWITCH IS GONE, AND THAT IS THE POINT. It existed to make the two
+               faces comparable while the choice was open; the choice is made. Quicksand is
+               what this game is set in, the way the buildings are Zain's and not Sierra's.
+               `JONES_UI_FONT=bitmap` still forces font 10 for a side-by-side, which is the
+               only reason that escape hatch survives. See UiFont. -->
 
           <!-- THE IN-LOCATION PANEL SIZE. On - the default - draws a building's interior at
                three quarters, which is the largest it can be while leaving all thirteen of the

@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk.WebAssembly">
+<Project Sdk="Microsoft.NET.Sdk.WebAssembly">
   <PropertyGroup>
     <TargetFramework>net10.0-browser</TargetFramework>
     <OutputType>Exe</OutputType>
@@ -29,6 +29,34 @@
          warning above rather than failing. See BROWSER.md.
          ================================================================== -->
     <WasmBuildNative>true</WasmBuildNative>
+
+    <!-- ==================================================================
+         WITHOUT THIS, SAVING AND SETTINGS THROW - AND THEY THROW SILENTLY.
+
+         The WebAssembly SDK turns OFF reflection-based System.Text.Json, because reflection
+         is what trimming cannot see through. Every JSON call in this port is the plain
+         `JsonSerializer.Serialize(value, options)` kind, so on this head every one of them
+         raised
+
+             InvalidOperationException: JsonSerializerIsReflectionDisabled
+
+         SaveStore.Write and SettingsStore.Write catch IOException, UnauthorizedAccess,
+         NotSupported and Security - the things a DISK does - and this is none of them, so it
+         went straight past them, out of the caller, and into the browser console where
+         nobody was looking. The visible symptom was that saving a game appeared to work and
+         the save was simply never there afterwards.
+
+         IT WAS WARNED ABOUT AND THE WARNING WAS READ AND SHELVED. Seven IL2026 trim warnings
+         name these exact call sites, every publish, and they were noted as "unverified,
+         could fail" for days. They were not unverified; they were unexamined.
+
+         THE PROPER FIX IS A SOURCE-GENERATED JsonSerializerContext over the save, settings
+         and network types, which would delete the warnings rather than silence the symptom
+         and would trim better. That is a change to Jones.Core and Jones.Net and deserves its
+         own run at it. This is the supported switch that makes the existing code work, and
+         it is honest about what it costs: the reflection stack stays in the download.
+         ================================================================== -->
+    <JsonSerializerIsReflectionEnabledByDefault>true</JsonSerializerIsReflectionEnabledByDefault>
   </PropertyGroup>
 
   <ItemGroup>
@@ -37,6 +65,10 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Jones.App\Jones.App.csproj" />
+
+    <!-- The synthesiser. Music and effects are generated in managed code rather than
+         played from a device, which is the only reason this head can have them at all. -->
+    <ProjectReference Include="..\..\Jones.Audio\Jones.Audio.csproj" />
   </ItemGroup>
 
   <!-- ==================================================================
@@ -86,6 +118,60 @@
           DestinationFiles="@(JonesArtFile->'$(JonesArtOut)%(ArtDir)\%(Filename)%(Extension)')" />
     <WriteLinesToFile File="$(JonesArtManifest)"
                       Lines="@(JonesArtFile->'%(ArtDir)/%(Filename)%(Extension)')"
+                      Overwrite="true" WriteOnlyWhenDifferent="true" />
+  </Target>
+
+  <!-- ==================================================================
+       THE GAME'S TEXT, SUBTITLES AND MUSIC — THE OTHER HALF OF THE HEAD.
+
+       THE ART WAS PUBLISHED AND NOTHING ELSE WAS, and the consequence was a game that
+       looked finished and was hollow. The desktop head calls `SciText.Load`,
+       `Subtitles.Load` and `LipSync.SetDirectory` at startup; the Android head does the
+       same through `JonesRuntime`. THIS HEAD CALLED NONE OF THEM, because the files were
+       not here to call them with.
+
+       What that cost, all from one omission: the Statistics page drew its frame and its
+       DONE button over an EMPTY WHITE SHEET, because every line on it is a string in
+       text 2xx. No speech balloon ever appeared, because the balloon shows a subtitle and
+       `Subtitles.Load` had found no file. And nothing made a sound.
+
+       SMALL ENOUGH TO SHIP WHOLE: 41 text resources at 82 KB, one subtitles file at 36 KB,
+       34 MIDI scores at 162 KB. The 22 MB of speech is NOT here and is the next job; it
+       belongs on the art's lazy path, not in the initial download.
+
+       NOT `raw\font` — the bitmap faces are already compiled into Jones.App as
+       AvaloniaResource, which is how the interface draws before any of this arrives.
+       ================================================================== -->
+  <PropertyGroup>
+    <JonesDataOut>$(MSBuildThisFileDirectory)wwwroot\res\</JonesDataOut>
+    <JonesDataManifest>$(JonesDataOut)data-manifest.txt</JonesDataManifest>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <JonesDataFile Include="$(JonesAssetRoot)raw\text\*.text"     ResDir="raw/text" />
+    <JonesDataFile Include="$(JonesAssetRoot)audio\subtitles.json" ResDir="audio" />
+    <JonesDataFile Include="$(JonesAssetRoot)audio\midi\*"         ResDir="audio/midi" />
+    <JonesDataFile Include="$(JonesAssetRoot)audio\sync\*"         ResDir="audio/sync" />
+
+    <!-- THE SPEECH IS COPIED BUT NOT LISTED, and the distinction is the whole design.
+         Everything in the manifest is fetched at startup; 22 MB of voices is not. These
+         are asked for one at a time, by URL, when a shopkeeper actually speaks - the same
+         bargain the art makes, for the same reason. -->
+    <JonesSpeechFile Include="$(JonesAssetRoot)audio\speech\*.wav" />
+  </ItemGroup>
+
+  <!-- The project file is an input for the same reason it is one above: without it,
+       REMOVING a line leaves every remaining input older than the output and MSBuild
+       publishes the previous set. -->
+  <Target Name="PublishJonesData" BeforeTargets="BeforeBuild"
+          Inputs="@(JonesDataFile);$(MSBuildProjectFullPath)" Outputs="$(JonesDataManifest)">
+    <RemoveDir Directories="$(JonesDataOut)" />
+    <Copy SourceFiles="@(JonesDataFile)"
+          DestinationFiles="@(JonesDataFile->'$(JonesDataOut)%(ResDir)\%(Filename)%(Extension)')" />
+    <Copy SourceFiles="@(JonesSpeechFile)"
+          DestinationFiles="@(JonesSpeechFile->'$(JonesDataOut)audio\speech\%(Filename)%(Extension)')" />
+    <WriteLinesToFile File="$(JonesDataManifest)"
+                      Lines="@(JonesDataFile->'%(ResDir)/%(Filename)%(Extension)')"
                       Overwrite="true" WriteOnlyWhenDifferent="true" />
   </Target>
 
