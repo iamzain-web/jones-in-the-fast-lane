@@ -534,6 +534,73 @@ public sealed class TextVm
             ? SciFont.Load(n)
             : size <= 7 ? SciFont.Small : SciFont.Default;
 
+        // THE RASTERISED LINE, FROM THE CACHE.
+        //
+        // THIS CONSTRUCTOR USED TO RENDER A BITMAP, EVERY TIME, AND IT IS CALLED FAR MORE
+        // OFTEN THAN ANYONE WRITING IT WOULD GUESS. `BuildScreen` rebuilds every label on
+        // the screen, and while the marble is walking it is driven from `WalkTick` at 40Hz
+        // - so a board showing a dozen labels rasterised FIVE HUNDRED LINES OF TEXT A
+        // SECOND, glyph by glyph, to produce the same pixels each time. On the desktop
+        // that is waste; on the browser head, which has one thread and the event loop on
+        // it, it is the walk itself slowing down, because a tick that arrives late is a
+        // journey that takes longer.
+        //
+        // The arguments fully determine the pixels, and they are already captured as a
+        // record for the network protocol - so the record is the key. A line whose text,
+        // place, face and colours are unchanged is rendered ONCE and then found.
+        //
+        // WHAT THIS DEPENDS ON, STATED BECAUSE IT IS NOT OBVIOUS: that nothing outside
+        // these arguments can change the pixels. `UiFont` is the one thing that could, and
+        // it no longer changes while the game runs - the comparison toggle is gone and the
+        // face is fixed at startup. If a live font switch ever comes back, this cache has
+        // to be cleared with it.
+        Args = new Jones.Net.TextDto(text, x, y, size, colour, bold, fontNumber, background,
+                                     shadow, value);
+
+        if (!Rendered.TryGetValue(Args, out var art))
+        {
+            art = Rasterise(text, value, size, colour, fontNumber, background, shadow);
+
+            // BOUNDED. Every distinct cash figure and clock reading is its own entry, so
+            // this grows with the game rather than with the screen. Clearing wholesale is
+            // right: the next frame re-renders what is actually on it, which is a dozen
+            // lines, and the alternative is tracking a recency order for something that
+            // costs a fraction of a millisecond to rebuild.
+            if (Rendered.Count > 4096) Rendered.Clear();
+            Rendered[Args] = art;
+        }
+
+        Image = art.Image;
+        Smooth = art.Smooth;
+        Dx = art.Dx;
+        Dy = art.Dy;
+        W = art.W;
+        H = art.H;
+        ImageW = art.ImageW;
+        ImageH = art.ImageH;
+    }
+
+    /// <summary>One rasterised line: the bitmap and the measurements taken with it.</summary>
+    private readonly record struct Raster(
+        Bitmap? Image, bool Smooth, double Dx, double Dy,
+        double W, double H, double ImageW, double ImageH);
+
+    /// <summary>
+    /// Every line rendered so far, keyed by the arguments that produced it. See the note in
+    /// the constructor for why this exists and what it assumes.
+    /// </summary>
+    private static readonly Dictionary<Jones.Net.TextDto, Raster> Rendered = [];
+
+    private static Raster Rasterise(string text, string? value, double size, string colour,
+                                    int? fontNumber, int background, int shadow)
+    {
+        // `size` selects a font rather than scaling one: the original has several fixed
+        // bitmap faces and picks between them. 6-7 maps to the small face, larger to the
+        // standard one.
+        var font = fontNumber is { } n
+            ? SciFont.Load(n)
+            : size <= 7 ? SciFont.Small : SciFont.Default;
+
         var argb = ToArgb(colour);
         uint? shadowArgb = shadow == 0 ? null : SciPalette.Argb(shadow);
         uint? backArgb = background < 0 ? null : SciPalette.Argb(background);
@@ -546,36 +613,67 @@ public sealed class TextVm
         // the shipped game that is deliberately ported.
         var interfaceText = fontNumber is null or 10;
         var outline = UiFont.Enabled && interfaceText && text.Length > 0;
-        Smooth = outline;
+
+        Bitmap? image;
+        double dx = 0, dy = 0;
 
         if (outline)
         {
             var line = UiFont.Lay(text, value is null ? text : text[..^value.Length], value ?? "");
-            Image = UiFont.Render(line, argb, shadowArgb, backArgb);
-            Dx = UiFont.BoxLeft;
-            Dy = UiFont.BoxTop;
+            image = UiFont.Render(line, argb, shadowArgb, backArgb);
+            dx = UiFont.BoxLeft;
+            dy = UiFont.BoxTop;
         }
         else
         {
-            Image = font?.Render(text, argb, shadowArgb, backArgb);
+            image = font?.Render(text, argb, shadowArgb, backArgb);
         }
 
-        // W and H stay FONT 10's — several callers centre a label by measuring one of these
+        // W and H stay FONT 10's - several callers centre a label by measuring one of these
         // and halving its width, and the outline face is fitted into the bitmap face's own
         // width rather than given a new one.
         var offset = shadowArgb is null ? 0 : 1;
-        W = outline ? (font?.Measure(text) ?? 0) + offset : Image?.PixelSize.Width ?? 0;
-        H = outline ? (font?.Height ?? 0) + offset : Image?.PixelSize.Height ?? 0;
+        var w = outline ? (font?.Measure(text) ?? 0) + offset : image?.PixelSize.Width ?? 0;
+        var h = outline ? (font?.Height ?? 0) + offset : image?.PixelSize.Height ?? 0;
 
-        ImageW = (Image?.PixelSize.Width ?? 0) / (double)(outline ? UiFont.TextScale : 1);
-        ImageH = (Image?.PixelSize.Height ?? 0) / (double)(outline ? UiFont.TextScale : 1);
-
-        Args = new Jones.Net.TextDto(text, x, y, size, colour, bold, fontNumber, background,
-                                     shadow, value);
+        return new Raster(
+            image, outline, dx, dy, w, h,
+            (image?.PixelSize.Width ?? 0) / (double)(outline ? UiFont.TextScale : 1),
+            (image?.PixelSize.Height ?? 0) / (double)(outline ? UiFont.TextScale : 1));
     }
 
     /// <summary>What this line was built from, so a network joiner can build it identically.</summary>
     internal Jones.Net.TextDto Args { get; }
+
+    /// <summary>
+    /// Two labels that are INTERCHANGEABLE ON SCREEN, so the rebuild can leave the one
+    /// already there alone rather than destroying and recreating its control.
+    ///
+    /// <para>
+    /// EXACT, NOT APPROXIMATE, and it costs nothing to be: the arguments that produced the
+    /// line are already captured as a record for the network protocol, and a record compares
+    /// by value. Equal arguments and the same panel transform mean identical pixels in an
+    /// identical place.
+    /// </para>
+    ///
+    /// <para>
+    /// A label takes no clicks, which is why this is simpler than <see cref="SpriteVm"/>'s:
+    /// there is no command whose closure could be stale, so there is nothing to refuse.
+    /// </para>
+    /// </summary>
+    public static readonly IEqualityComparer<TextVm> Interchangeable = new SameOnScreen();
+
+    private sealed class SameOnScreen : IEqualityComparer<TextVm>
+    {
+        public bool Equals(TextVm? a, TextVm? b)
+        {
+            if (ReferenceEquals(a, b)) return true;
+            if (a is null || b is null) return false;
+            return a.Args == b.Args && a.T.Equals(b.T);
+        }
+
+        public int GetHashCode(TextVm t) => t.Args.GetHashCode();
+    }
 
     public string Text { get; }
     public double X { get; }

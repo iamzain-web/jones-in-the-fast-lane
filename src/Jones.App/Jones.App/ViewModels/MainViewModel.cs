@@ -295,9 +295,9 @@ public sealed partial class MainViewModel : ViewModelBase
         // cels, coalesced to a frame by OnArtArrived, against a stale screen for the life of
         // the process.
         Sprites.EndBuild(_artJustArrived ? null : SpriteVm.Interchangeable);
-        _artJustArrived = false;
         Hotspots.EndBuild();
-        Texts.EndBuild();
+        Texts.EndBuild(_artJustArrived ? null : TextVm.Interchangeable);
+        _artJustArrived = false;
         Actions.EndBuild();
         GoalTracks.EndBuild();
         MenuLines.EndBuild();
