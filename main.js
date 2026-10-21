@@ -65,7 +65,14 @@ globalThis.jonesAudioStart = (sampleRate) => {
 globalThis.jonesAudioPush = (bytes) => {
     if (!actx) return 0;
     try {
-        const f = new Float32Array(bytes.buffer, bytes.byteOffset, bytes.byteLength >> 2);
+        // COPIED, NOT VIEWED, AND THAT IS THE WHOLE BUG. `bytes` is a view straight onto
+        // the WebAssembly heap, and its byteOffset is wherever .NET happened to put the
+        // array - not necessarily a multiple of four. Constructing a Float32Array over an
+        // unaligned offset throws RangeError, which the catch below turned into a quiet
+        // `return 0`: no exception in C#, no error in the console, the pump running every
+        // 60ms, and not one sample ever scheduled. The copy is always aligned.
+        const copy = new Uint8Array(bytes);
+        const f = new Float32Array(copy.buffer);
         const frames = f.length >> 1;
         if (frames <= 0) return 0;
 
@@ -86,7 +93,14 @@ globalThis.jonesAudioPush = (bytes) => {
         src.start(cursor);
         cursor += frames / actx.sampleRate;
         return cursor - now;
-    } catch { return 0; }
+    } catch (e) {
+        // SAID ONCE. Returning 0 in silence is exactly how this went unnoticed.
+        if (!globalThis.__jonesAudioComplained) {
+            globalThis.__jonesAudioComplained = true;
+            console.warn('Jones: audio push failed:', e);
+        }
+        return 0;
+    }
 };
 
 // Lets anyone - including whoever is debugging this next - SEE whether sound is running,
