@@ -64,13 +64,31 @@ let starved = 0;       // frames the node wanted and the ring could not give
 // A ring has no boundaries. The node asks for samples at the rate the hardware consumes
 // them and takes whatever is there; a stall costs silence for its duration and nothing
 // else, and the stream either side of it is unbroken.
-const RING_SECONDS = 4;
+const RING_SECONDS = 8;   // twice the deepest head start the pump will ask for
 let ring = null, wi = 0, ri = 0, filled = 0;
+
+let starts = 0;
 
 globalThis.jonesAudioStart = (sampleRate) => {
     try {
         const Ctx = window.AudioContext || window.webkitAudioContext;
         if (!Ctx) return 0;
+
+        // IDEMPOTENT, BECAUSE A SECOND GRAPH IS WORSE THAN NO GRAPH. Called twice, this
+        // used to leave the first ScriptProcessor connected and running: TWO nodes pulling
+        // from ONE ring, draining it at twice the rate the pump fills it, so the ring
+        // reported healthy while both nodes starved - and the analyser, wired to the newer
+        // bus, measured silence from a graph that was not the one making the noise. On the
+        // deployed page that showed up as 13,440 starved frames every 800ms against a ring
+        // holding 0.4 seconds, which is a contradiction until you realise there are two of
+        // everything.
+        if (actx) {
+            try { if (node) { node.onaudioprocess = null; node.disconnect(); } } catch { }
+            try { actx.close(); } catch { }
+            actx = null; node = null; bus = null; analyser = null;
+        }
+        starts++;
+
         actx = new Ctx({ sampleRate });
 
         ring = new Float32Array(actx.sampleRate * RING_SECONDS * 2);
@@ -122,6 +140,15 @@ globalThis.jonesAudioStart = (sampleRate) => {
 // the C# side paces itself by.
 globalThis.jonesAudioPush = (bytes) => {
     if (!actx || !ring) return 0;
+
+    // NOTHING IS CONSUMING YET. Until the player's first click the context is suspended by
+    // the browser's autoplay rule, so the node is not pulling - and the pump, seeing an
+    // empty ring, cheerfully filled all four seconds of it. The player would then click
+    // and hear four seconds of whatever the game was doing before they arrived, before the
+    // live stream caught up. Reporting the ring as full backs the pump off until there is
+    // somewhere for the samples to go.
+    if (actx.state !== 'running') return RING_SECONDS;
+
     try {
         // `bytes` IS NOT A TYPED ARRAY. .NET's MemoryView marshalling hands over a wrapper
         // around a span of the WebAssembly heap - it has `length` and `slice`, and it does
@@ -176,6 +203,7 @@ globalThis.jonesAudioStatus = () => {
         rate: actx.sampleRate,
         bufferedAhead: +(filled / 2 / actx.sampleRate).toFixed(3),
         starvedFrames: starved,          // every one of these is an audible hole
+        starts,                          // more than one means a graph was rebuilt
         pushedFrames,
         pushedPeak: +pushedPeak.toFixed(4),
         outputPeak: +outPeak.toFixed(4),
