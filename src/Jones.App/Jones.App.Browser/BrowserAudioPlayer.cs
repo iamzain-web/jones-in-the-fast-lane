@@ -54,8 +54,23 @@ internal sealed partial class BrowserAudioPlayer : IAudioPlayer
     [JSImport("globalThis.jonesSpeechPosition")]
     private static partial double SpeechAt();
 
-    /// <summary>How far ahead of the playhead to keep the queue, in seconds.</summary>
-    private const double TargetBuffer = 0.30;
+    /// <summary>
+    /// How far ahead of the playhead to keep the queue, in seconds.
+    ///
+    /// <para>
+    /// 0.30 WAS NOT ENOUGH AND IT WAS MEASURED, NOT GUESSED. At that depth the queue sat
+    /// between 0.0 and 0.2 and went NEGATIVE - an underrun, heard as a gap in the music.
+    /// The pump is a dispatcher timer at Background priority and it is competing with this
+    /// head's own screen rebuilds for the single thread it shares with them, so it loses
+    /// whole ticks at a time.
+    /// </para>
+    ///
+    /// <para>
+    /// Two thirds of a second of slack costs two thirds of a second of latency on a volume
+    /// change, which nobody can hear, and buys roughly ten missed ticks of tolerance.
+    /// </para>
+    /// </summary>
+    private const double TargetBuffer = 0.65;
 
     /// <summary>One chunk, in frames. 1/20th of a second at the mixer's rate.</summary>
     private const int ChunkFrames = JonesAudioMixerRate / 20;
@@ -86,6 +101,11 @@ internal sealed partial class BrowserAudioPlayer : IAudioPlayer
         try { _started = Start(JonesAudioMixerRate) > 0; }
         catch (Exception) { _started = false; }
 
+        // Delivered when the dispatcher starts running, which is after this constructor
+        // returns and after Avalonia is up. See StartPump.
+        try { Dispatcher.UIThread.Post(StartPump, DispatcherPriority.Background); }
+        catch (Exception) { /* no dispatcher at all: the game is still playable, silently */ }
+
         // REPORTED RATHER THAN ASSUMED, for the same reason the art reports what it found:
         // silence and silence-because-nothing-was-built look identical from the outside,
         // and this head has already shipped silent once with nothing to say why.
@@ -97,22 +117,25 @@ internal sealed partial class BrowserAudioPlayer : IAudioPlayer
     private bool _pumping;
 
     /// <summary>
-    /// Starts the pump, the first time the game asks for a sound.
+    /// Queues the pump to start as soon as Avalonia's dispatcher is running.
     ///
     /// <para>
-    /// NOT IN THE CONSTRUCTOR, AND THAT COST AN HOUR. This player is built in
-    /// <c>Program.Main</c>, BEFORE <c>StartBrowserAppAsync</c> - so there is no Avalonia
-    /// dispatcher yet, and a <c>DispatcherTimer</c> created there never ticks. The context
-    /// came up "running", the game asked for music, and not one sample was ever queued:
-    /// `bufferedAhead: 0`, with nothing raised anywhere to say so.
+    /// POSTED, NOT STARTED, AND THIS IS THE SECOND TIME THE SAME TRAP HAS BITTEN. A
+    /// <c>DispatcherTimer</c> created before the dispatcher exists never ticks - it is
+    /// created happily, reports nothing, and is simply dead. This player is built in
+    /// <c>Program.Main</c>, which runs BEFORE <c>StartBrowserAppAsync</c>, so anything the
+    /// constructor starts directly is on the wrong side of that line.
     /// </para>
     ///
     /// <para>
-    /// By the time anything asks for a sound, Avalonia is running by definition - the ask
-    /// comes from a screen it drew.
+    /// Starting it on the first sound instead only moved the trap: a sound requested before
+    /// the app was up - which is exactly what a startup probe does - latched the "started"
+    /// flag onto a timer that could never fire, and KILLED AUDIO FOR THE SESSION. A Post
+    /// made before the loop is running is queued and delivered when it starts, so there is
+    /// no window in which this can be done too early.
     /// </para>
     /// </summary>
-    private void EnsurePump()
+    private void StartPump()
     {
         if (_pumping || _engine is null || !_started) return;
         _pumping = true;
@@ -134,9 +157,30 @@ internal sealed partial class BrowserAudioPlayer : IAudioPlayer
 
         try
         {
-            for (var i = 0; i < 4; i++)
+            // Up to eight chunks - 400ms of audio - in one tick, so a pump that has just
+            // lost several ticks can catch up in one rather than crawling back a chunk at
+            // a time and underrunning again on the way.
+            for (var i = 0; i < 8; i++)
             {
-                _engine.RenderStereo(_samples);
+                var rendered = _engine.RenderStereo(_samples);
+
+                // WHAT CAME OUT, NOT WHETHER IT WAS ASKED FOR. A pump that is faithfully
+                // scheduling silence looks identical, from every other indicator, to one
+                // that is playing music - which is precisely how this head reported itself
+                // healthy while making no sound at all. Reported for the first few seconds
+                // and then never again.
+                if (_reports < 3)
+                {
+                    float peak = 0;
+                    foreach (var v in _samples) { var a = v < 0 ? -v : v; if (a > peak) peak = a; }
+                    if (peak > 0 || ++_quiet % 50 == 0)
+                    {
+                        _reports++;
+                        Console.WriteLine($"Jones: audio rendered={rendered}, "
+                                          + $"music={_engine.MusicPlaying}, peak={peak:0.0000}");
+                    }
+                }
+
                 Buffer.BlockCopy(_samples, 0, _bytes, 0, _bytes.Length);
                 if (Push(_bytes) >= TargetBuffer) return;
             }
@@ -155,6 +199,8 @@ internal sealed partial class BrowserAudioPlayer : IAudioPlayer
     }
 
     private bool _reported;
+    private int _reports;
+    private int _quiet;
 
     // ------------------------------------------------------------------
     // Speech - the browser's own player, by its resource id
@@ -191,9 +237,7 @@ internal sealed partial class BrowserAudioPlayer : IAudioPlayer
 
     public void PlayMusic(int soundResource, bool loop = true)
     {
-        if (!_enabled) return;
-        EnsurePump();
-        _engine?.PlayMusic(soundResource, loop);
+        if (_enabled) _engine?.PlayMusic(soundResource, loop);
     }
 
     public void StopMusic() => _engine?.StopMusic();
@@ -202,18 +246,14 @@ internal sealed partial class BrowserAudioPlayer : IAudioPlayer
 
     public void PlayEffect(int soundResource, bool loop = false, bool resumeMusicWhenDone = false)
     {
-        if (!_enabled) return;
-        EnsurePump();
-        _engine?.PlayEffect(soundResource, loop, resumeMusicWhenDone);
+        if (_enabled) _engine?.PlayEffect(soundResource, loop, resumeMusicWhenDone);
     }
 
     public void EndEffectLoop() => _engine?.EndEffectLoop();
 
     public void PlayEffect2(int soundResource)
     {
-        if (!_enabled) return;
-        EnsurePump();
-        _engine?.PlayEffect2(soundResource);
+        if (_enabled) _engine?.PlayEffect2(soundResource);
     }
 
     public void StopEffects() => _engine?.StopEffects();
