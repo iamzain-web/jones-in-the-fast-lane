@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Net.Http;
 using System.Threading.Tasks;
 using Jones.App;
@@ -98,6 +99,10 @@ internal sealed class HttpArtStore : ArtStore
                 Listed++;
             }
             _listing = listing;
+
+            // THE REPLACEMENT SET, WHOLE AND NOW. Not awaited: it runs behind the game, and
+            // the game is playable in Sierra's cels while it does. See PrefetchSet.
+            _ = PrefetchSet($"{Root}/png4x-cast0");
         }
         catch (Exception e)
         {
@@ -155,6 +160,63 @@ internal sealed class HttpArtStore : ArtStore
     {
         var key = $"{directory}/{file}";
         return !_bytes.ContainsKey(key) && !_absent.Contains(key) && Exists(directory, file);
+    }
+
+    /// <summary>
+    /// Fetches the WHOLE art set up front, in the background, instead of a cel at a time as
+    /// the screen asks for it.
+    ///
+    /// <para>
+    /// WHY: the walk cycle is ninety-six separate cels, and lazily they arrive one by one -
+    /// so while that is happening, each FRAME of the animation is drawn from whichever set
+    /// has landed. The marble's own figure alternated between Sierra's sprite and ours,
+    /// frame by frame, for as long as the fetching took. Zain, twice: "It keeps switching
+    /// between Sierras art and mine", "It swops between Sierras art and mine for the man."
+    /// </para>
+    ///
+    /// <para>
+    /// Lazy fetching is right for the 1,071 cels of the PORTED set, which is 58 MB and
+    /// mostly interiors a given game never opens. It is wrong for the REPLACEMENT set,
+    /// which is 184 cels and 9 MB, is the whole reason this game looks like Zain's, and is
+    /// the one set where a half-arrived state is visible as flicker rather than as
+    /// softness. The two are not the same problem and no longer get the same answer.
+    /// </para>
+    ///
+    /// <para>
+    /// SIX AT A TIME, and started only once the manifest is in so nothing is requested that
+    /// is known not to exist. Every arrival raises <c>Arrived</c>, which the view model
+    /// already coalesces into one rebuild a frame.
+    /// </para>
+    /// </summary>
+    private async Task PrefetchSet(string directory)
+    {
+        if (_listing is null || !_listing.TryGetValue(directory, out var files)) return;
+
+        // The walker first: he is on screen from the first board draw and he is the one
+        // that visibly alternates. Everything else follows in whatever order it comes.
+        var ordered = files
+            .OrderByDescending(f => f.StartsWith("view_28", StringComparison.Ordinal))
+            .ToArray();
+
+        foreach (var batch in ordered.Chunk(6))
+        {
+            await Task.WhenAll(batch.Select(async file =>
+            {
+                var key = $"{directory}/{file}";
+                if (_bytes.ContainsKey(key) || _absent.Contains(key)) return;
+                if (!_inFlight.Add(key)) return;
+
+                try
+                {
+                    var response = await _http.GetAsync(key);
+                    if (!response.IsSuccessStatusCode) { _absent.Add(key); return; }
+                    _bytes[key] = await response.Content.ReadAsByteArrayAsync();
+                }
+                catch (Exception) { _absent.Add(key); }
+            }));
+
+            NotifyArrived();
+        }
     }
 
     private void Begin(string key)

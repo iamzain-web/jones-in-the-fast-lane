@@ -151,13 +151,20 @@
     <JonesDataFile Include="$(JonesAssetRoot)raw\text\*.text"     ResDir="raw/text" />
     <JonesDataFile Include="$(JonesAssetRoot)audio\subtitles.json" ResDir="audio" />
     <JonesDataFile Include="$(JonesAssetRoot)audio\midi\*"         ResDir="audio/midi" />
-    <JonesDataFile Include="$(JonesAssetRoot)audio\sync\*"         ResDir="audio/sync" />
+    <!-- THE LIP-SYNC FRAMES ARE NOT IN THE MANIFEST, and that is a performance decision
+         with a symptom attached. Everything listed here is fetched AT STARTUP, and 543 of
+         these tiny files made the startup fetch 619 requests - competing with the ART for
+         the one thread and the one connection, so every screen painted Sierra's 1x
+         fallback first and popped to ours seconds later. Zain: "It keeps switching between
+         Sierras art and mine". They are published for the lazy path to find; nothing but
+         speech needs them, and speech is itself lazy. -->
 
     <!-- THE SPEECH IS COPIED BUT NOT LISTED, and the distinction is the whole design.
          Everything in the manifest is fetched at startup; 22 MB of voices is not. These
          are asked for one at a time, by URL, when a shopkeeper actually speaks - the same
          bargain the art makes, for the same reason. -->
     <JonesSpeechFile Include="$(JonesAssetRoot)audio\speech\*.wav" />
+    <JonesSyncFile Include="$(JonesAssetRoot)audio\sync\*" />
   </ItemGroup>
 
   <!-- The project file is an input for the same reason it is one above: without it,
@@ -170,6 +177,8 @@
           DestinationFiles="@(JonesDataFile->'$(JonesDataOut)%(ResDir)\%(Filename)%(Extension)')" />
     <Copy SourceFiles="@(JonesSpeechFile)"
           DestinationFiles="@(JonesSpeechFile->'$(JonesDataOut)audio\speech\%(Filename)%(Extension)')" />
+    <Copy SourceFiles="@(JonesSyncFile)"
+          DestinationFiles="@(JonesSyncFile->'$(JonesDataOut)audio\sync\%(Filename)%(Extension)')" />
     <WriteLinesToFile File="$(JonesDataManifest)"
                       Lines="@(JonesDataFile->'%(ResDir)/%(Filename)%(Extension)')"
                       Overwrite="true" WriteOnlyWhenDifferent="true" />

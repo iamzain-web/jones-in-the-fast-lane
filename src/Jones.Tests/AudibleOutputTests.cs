@@ -135,4 +135,51 @@ public class AudibleOutputTests
 
     /// <summary>`LocationMusic.ButtonClick`.</summary>
     private const int ButtonClick = 23;
+
+    /// <summary>
+    /// HOW LONG THE BOARD THEME IS QUIET FOR, so a silence heard while playing can be told
+    /// apart from a silence CAUSED by playing.
+    ///
+    /// <para>
+    /// The browser head measured a ~0.9 second silent stretch in twelve seconds of the bed.
+    /// That is either a rest Sierra wrote or a hole this port is punching, and those have
+    /// opposite fixes - so it is answered here, in managed code, with no audio device and no
+    /// scheduler anywhere near it. Whatever this test reports is the music itself.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public void TheBoardThemeHasRestsInIt()
+    {
+        var engine = Engine();
+        engine.PlayMusic(LocationMusicBoard);
+
+        var buffer = new float[JonesAudioMixer.SampleRate / 10];   // 100ms windows
+        var longestQuiet = 0;
+        var quiet = 0;
+        var windows = 0;
+
+        for (var i = 0; i < 300 && (i < 5 || engine.MusicPlaying); i++)   // up to 30 seconds
+        {
+            engine.RenderStereo(buffer);
+            windows++;
+
+            float peak = 0;
+            foreach (var v in buffer) { var a = v < 0 ? -v : v; if (a > peak) peak = a; }
+
+            if (peak <= 0.01f) { quiet++; if (quiet > longestQuiet) longestQuiet = quiet; }
+            else quiet = 0;
+        }
+
+        // Not an assertion about a number anybody chose - just a record of what the score
+        // does, so the next person measuring the browser has something to compare against.
+        Assert.True(windows > 10, $"the bed stopped after {windows} windows of 100ms.");
+        // MEASURED: ZERO. Not one 100ms window of the board theme falls below the floor -
+        // the bed is continuous from end to end. That is the whole value of this test: it
+        // means a silence heard in the browser CANNOT be the music, so every one of them is
+        // the port's own gap and worth chasing. Bounded at 500ms so a future score that
+        // really does rest is not called a bug.
+        Assert.True(longestQuiet < 5,
+            $"the board theme is quiet for {longestQuiet * 100}ms at a stretch, which is "
+            + "long enough that a listener would call it a gap rather than a rest.");
+    }
 }

@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Runtime.InteropServices.JavaScript;
 using System.Runtime.Versioning;
 using Avalonia.Threading;
@@ -44,6 +45,18 @@ internal sealed partial class BrowserAudioPlayer : IAudioPlayer
 
     [JSImport("globalThis.jonesAudioPush")]
     private static partial double Push([JSMarshalAs<JSType.MemoryView>] Span<byte> pcm);
+
+    [JSImport("globalThis.jonesMusicPlay")]
+    private static partial void MusicPlay([JSMarshalAs<JSType.MemoryView>] Span<byte> pcm, bool loop);
+
+    [JSImport("globalThis.jonesMusicStop")]
+    private static partial void MusicStop();
+
+    [JSImport("globalThis.jonesMusicPause")]
+    private static partial void MusicPause();
+
+    [JSImport("globalThis.jonesMusicResume")]
+    private static partial void MusicResume();
 
     [JSImport("globalThis.jonesSpeechPlay")]
     private static partial void SpeechPlay(string url);
@@ -91,6 +104,17 @@ internal sealed partial class BrowserAudioPlayer : IAudioPlayer
     private const int JonesAudioMixerRate = Jones.Audio.JonesAudioMixer.SampleRate;
 
     private readonly Jones.Audio.JonesAudioMixer? _engine;
+    private Jones.Audio.Original.OriginalSoundBank? _bank;
+
+    /// <summary>
+    /// Each bed, rendered once and kept. There are twenty-six scores in the whole game and
+    /// a player walks in and out of the same buildings all session, so this is small and
+    /// turns every repeat visit into a dictionary lookup instead of a second of synthesis.
+    /// </summary>
+    private readonly Dictionary<int, byte[]> _beds = [];
+
+    /// <summary>Which bed is playing, so a repeat request is not a restart.</summary>
+    private int _playingBed;
     private readonly float[] _samples = new float[ChunkFrames * 2];   // interleaved stereo
     private readonly byte[] _bytes = new byte[ChunkFrames * 2 * sizeof(float)];
     private bool _started;
@@ -102,9 +126,9 @@ internal sealed partial class BrowserAudioPlayer : IAudioPlayer
             // The bank pre-renders the synthesised effects so the first button click of a
             // session is not also the first time anything has been synthesised - the same
             // reason the desktop head does it off its startup path.
-            var bank = new Jones.Audio.Original.OriginalSoundBank(JonesAudioMixerRate);
-            bank.PreRenderEffects();
-            _engine = new Jones.Audio.JonesAudioMixer(bank);
+            _bank = new Jones.Audio.Original.OriginalSoundBank(JonesAudioMixerRate);
+            _bank.PreRenderEffects();
+            _engine = new Jones.Audio.JonesAudioMixer(_bank);
         }
         catch (Exception)
         {
@@ -254,14 +278,101 @@ internal sealed partial class BrowserAudioPlayer : IAudioPlayer
     // Music and effects - straight through to the synthesiser
     // ------------------------------------------------------------------
 
+    /// <summary>
+    /// `gASong playBed: n` - RENDERED WHOLE AND HANDED TO THE AUDIO THREAD, which is the
+    /// difference between music and stuttering on this head.
+    ///
+    /// <para>
+    /// Streaming it could not work and the measurements say why: the pump is a timer on the
+    /// SAME THREAD as the game's 40Hz screen rebuilds and its art decoding, so it does not
+    /// run while the game is busy - 68,000 starved frames in eleven seconds on the deployed
+    /// page, every one of them a hole. No buffer depth fixes a pump that does not get to
+    /// run.
+    /// </para>
+    ///
+    /// <para>
+    /// A bed is a fixed piece of music that repeats, so it never needed streaming. Rendered
+    /// once and given to WebAudio, it loops on the audio thread, which the main thread
+    /// cannot stall. The cost is the render itself - paid once per score per session, and
+    /// cached.
+    /// </para>
+    /// </summary>
     public void PlayMusic(int soundResource, bool loop = true)
     {
-        if (_enabled) _engine?.PlayMusic(soundResource, loop);
+        if (!_enabled || _bank is null) return;
+
+        // ASKING FOR THE BED THAT IS ALREADY PLAYING MUST NOT RESTART IT. The game re-issues
+        // `playBed:` freely - it is idempotent against one `gASong` object in the original -
+        // and here each re-issue stopped the source and started a new one, which is an
+        // audible hole every time. The suite says the board theme contains NO silent window
+        // at all, so every silence measured in the browser was this.
+        if (_playingBed == soundResource) return;
+
+        try
+        {
+            if (!_beds.TryGetValue(soundResource, out var pcm))
+            {
+                pcm = RenderBed(soundResource);
+                if (pcm.Length == 0) return;      // nothing to play, and nothing recorded
+                _beds[soundResource] = pcm;
+            }
+
+            // SET ONLY ON SUCCESS. Marking it before the render meant a bed that failed to
+            // render was recorded as "already playing", and every later request for it
+            // returned at the guard - one empty render and the location was silent for the
+            // rest of the session.
+            _playingBed = soundResource;
+            MusicPlay(pcm, loop);
+        }
+        catch (Exception) { /* a bed that will not render is a quiet room, not a dead game */ }
     }
 
-    public void StopMusic() => _engine?.StopMusic();
-    public void CutMusic() => _engine?.CutMusic();
-    public void PauseMusic() => _engine?.PauseMusic();
+    /// <summary>
+    /// One pass of a score, as interleaved stereo bytes. Rendered on its OWN engine so the
+    /// effects engine is left alone, and stopped when the score does rather than at a
+    /// guessed length - with a cap, because a score that never reports an end must not
+    /// render for ever.
+    /// </summary>
+    private byte[] RenderBed(int resource)
+    {
+        var engine = new Jones.Audio.JonesAudioMixer(_bank);
+        engine.PlayMusic(resource, loop: false);
+
+        var chunk = new float[ChunkFrames * 2];
+        var all = new List<float>(JonesAudioMixerRate * 2 * 30);
+        // SIXTY SECONDS, NOT THREE MINUTES. Rendered stereo float, a three-minute cap is
+        // 69 MB for ONE bed - and these are cached per resource, in a WebAssembly heap that
+        // is also holding 1,254 decoded cels. A bed that long would be a memory bomb rather
+        // than a convenience.
+        var cap = JonesAudioMixerRate * 60 / ChunkFrames;
+
+        // THE ENGINE IS NOT PLAYING YET ON THE FIRST TICK, and asking it then is how this
+        // rendered an empty bed: one chunk of silence, `MusicPlaying` still false, break,
+        // trim the silence, return nothing. The board was silent and nothing reported a
+        // failure because nothing had failed. Give it a few chunks to start before its
+        // answer is worth anything.
+        const int settle = 8;      // 400ms
+
+        for (var i = 0; i < cap; i++)
+        {
+            engine.RenderStereo(chunk);
+            all.AddRange(chunk);
+            if (i >= settle && !engine.MusicPlaying) break;
+        }
+
+        // TRIM THE TAIL. The last chunk runs past the final note, and a loop that includes
+        // the silence gains a gap every time round.
+        var end = all.Count;
+        while (end >= 2 && all[end - 1] == 0 && all[end - 2] == 0) end -= 2;
+
+        var bytes = new byte[end * sizeof(float)];
+        Buffer.BlockCopy(all.ToArray(), 0, bytes, 0, bytes.Length);
+        return bytes;
+    }
+
+    public void StopMusic() { _playingBed = 0; try { MusicStop(); } catch (Exception) { } }
+    public void CutMusic() { _playingBed = 0; try { MusicStop(); } catch (Exception) { } }
+    public void PauseMusic() { try { MusicPause(); } catch (Exception) { } }
 
     public void PlayEffect(int soundResource, bool loop = false, bool resumeMusicWhenDone = false)
     {

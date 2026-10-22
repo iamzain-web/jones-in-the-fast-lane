@@ -209,7 +209,95 @@ globalThis.jonesAudioStatus = () => {
         outputPeak: +outPeak.toFixed(4),
         outputRms: +Math.sqrt(sum / probe.length).toFixed(4),
         speaking: !!(speech && !speech.paused && !speech.ended),
+        musicSource: !!music,            // is a bed loaded at all
+        musicLooping: music ? !!music.loop : null,
+        musicDucked: !!duckTimer,        // a duck that outlives its sting looks like this
+        musicGain: musicGain ? +musicGain.gain.value.toFixed(2) : null,
     };
+};
+
+// ----------------------------------------------------------------------------------
+// MUSIC: RENDERED ONCE, LOOPED BY THE AUDIO THREAD.
+//
+// The bed is a fixed piece of music that repeats. Streaming it was the whole problem:
+// the pump is a timer on the SAME THREAD as the game's 40Hz screen rebuilds and its art
+// decoding, so it does not run when the game is busy - and no amount of buffering fixes a
+// pump that does not get to run. Measured on the deployed page: 68,000 starved frames in
+// eleven seconds even after the resource bootstrap had finished.
+//
+// Handed over whole, WebAudio loops it on the audio thread, which the main thread cannot
+// stall. The game can rebuild the screen as often as it likes and the music does not care.
+// Effects stay on the pump: they are short, occasional, and a glitch in a button click is
+// not what anybody means by "horrible and broken".
+// ----------------------------------------------------------------------------------
+
+let music = null;
+let musicGain = null;
+
+globalThis.jonesMusicPlay = (bytes, loop) => {
+    if (!actx || !bus) return;
+    try {
+        globalThis.jonesMusicStop();
+
+        const copy = bytes.slice();
+        const f = new Float32Array(copy.buffer, copy.byteOffset, copy.byteLength >> 2);
+        const frames = f.length >> 1;
+        if (frames <= 0) return;
+
+        const buf = actx.createBuffer(2, frames, actx.sampleRate);
+        const L = buf.getChannelData(0), R = buf.getChannelData(1);
+        for (let i = 0; i < frames; i++) { L[i] = f[2 * i]; R[i] = f[2 * i + 1]; }
+
+        if (!musicGain) { musicGain = actx.createGain(); musicGain.connect(bus); }
+        musicGain.gain.value = 1;          // a new bed is never born ducked
+
+        music = actx.createBufferSource();
+        music.buffer = buf;
+        music.loop = !!loop;
+        music.connect(musicGain);
+        music.start();
+    } catch (e) {
+        if (!globalThis.__jonesMusicComplained) {
+            globalThis.__jonesMusicComplained = true;
+            console.warn('Jones: music play failed:', e);
+        }
+    }
+};
+
+globalThis.jonesMusicStop = () => {
+    try { if (music) { music.stop(); music.disconnect(); } } catch { }
+    music = null;
+    globalThis.jonesMusicResume();      // never leave the gain down for the next bed
+};
+
+// `gASong pause: 1` ducks the bed under a sting, and `gASoundEffect play: n gASong` brings
+// it back when the sting ends.
+//
+// THERE IS NO RESUME SIGNAL ON THIS HEAD, and the first version of this did not notice.
+// The resume belongs to the effect finishing, and the effects still run through the
+// streaming mixer while the bed does not - so a duck disconnected the music and NOTHING
+// EVER RECONNECTED IT. Measured: fifteen consecutive silent samples, which is not a
+// dropout, it is a bed that stopped and stayed stopped.
+//
+// So the duck times itself out. It is a sting, it lasts about a second, and a bed that
+// comes back half a second late is a thing nobody can hear - whereas a bed that never
+// comes back is the whole soundtrack gone.
+let duckTimer = null;
+
+globalThis.jonesMusicPause = () => {
+    try {
+        if (!musicGain) return;
+        musicGain.gain.value = 0.25;
+        if (duckTimer) clearTimeout(duckTimer);
+        duckTimer = setTimeout(globalThis.jonesMusicResume, 2500);
+    } catch { }
+};
+
+globalThis.jonesMusicResume = () => {
+    try {
+        if (duckTimer) { clearTimeout(duckTimer); duckTimer = null; }
+        if (musicGain) musicGain.gain.value = 1;
+    } catch { }
 };
 
 globalThis.jonesSpeechPlay = (url) => {
