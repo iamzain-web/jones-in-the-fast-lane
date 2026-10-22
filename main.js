@@ -40,96 +40,112 @@ globalThis.jonesReady = () => {
 // ----------------------------------------------------------------------------------
 
 let actx = null;       // the output context
-let bus = null;        // everything plays through here so it can be measured
-let analyser = null;   // taps the bus: what actually reaches the output
+let bus = null;        // master gain: everything plays through here
+let analyser = null;   // taps the bus, so "is there sound" is a measurement
 let probe = null;      // scratch buffer for the analyser
-let cursor = 0;        // where the next chunk is scheduled, in context time
+let node = null;       // pulls from the ring, continuously
 let speech = null;     // the one speech clip; the original never overlaps two
 let pushedPeak = 0;    // loudest sample handed over since the page loaded
 let pushedFrames = 0;  // how many frames in total
+let starved = 0;       // frames the node wanted and the ring could not give
 
-// THE AUTOPLAY RULE. No browser lets a page make a sound before it has been interacted
-// with, so the context is created suspended and resumed by the player's first click. The
-// game's own first click is the one that starts it, so nobody ever notices.
+// THE RING. Four seconds of interleaved stereo.
+//
+// WHY A RING AND NOT A SCHEDULE. The first version cut the stream into 50ms AudioBuffers
+// and booked each one to start where the last ended. That is seamless only while the
+// arithmetic is perfect, and on this head it cannot be: one thread, the browser's event
+// loop on it, and the game's own screen rebuilds stalling it for runs of ticks at a time.
+// Every stall left a hole, every catch-up left an overlap, and every boundary was a
+// discontinuity in the waveform - which is a CLICK. Zain, listening to it: "the audio
+// sounds horrible and broken". The meter said signal was flowing and it was right; signal
+// flowing and signal being continuous are different claims, and only one of them was
+// measured.
+//
+// A ring has no boundaries. The node asks for samples at the rate the hardware consumes
+// them and takes whatever is there; a stall costs silence for its duration and nothing
+// else, and the stream either side of it is unbroken.
+const RING_SECONDS = 4;
+let ring = null, wi = 0, ri = 0, filled = 0;
+
 globalThis.jonesAudioStart = (sampleRate) => {
     try {
         const Ctx = window.AudioContext || window.webkitAudioContext;
         if (!Ctx) return 0;
         actx = new Ctx({ sampleRate });
-        cursor = 0;
 
-        // A BUS WITH A TAP ON IT. Everything plays through `bus`, and `analyser` watches
-        // what passes - so "is there sound" is a MEASUREMENT rather than an opinion.
-        // Queued is not the same as audible: a buffer full of zeroes schedules exactly as
-        // happily as a buffer full of music, and this head has already been silent twice
-        // while every indicator read healthy.
+        ring = new Float32Array(actx.sampleRate * RING_SECONDS * 2);
+        wi = 0; ri = 0; filled = 0;
+        pushedPeak = 0; pushedFrames = 0; starved = 0;
+
+        // 0.8, because the synthesiser's peaks measured 1.09 and everything above 1.0 is
+        // hard-clipped by the output - which is its own kind of "horrible and broken".
         bus = actx.createGain();
+        bus.gain.value = 0.8;
+
         analyser = actx.createAnalyser();
         analyser.fftSize = 2048;
         probe = new Float32Array(analyser.fftSize);
+
+        // A ScriptProcessor rather than an AudioWorklet: a worklet runs on the audio
+        // thread and would need a SharedArrayBuffer to reach, which needs COOP/COEP
+        // headers, which a static host does not send. This runs on the main thread - the
+        // same thread that stalls - but it PULLS from the ring instead of scheduling into
+        // the future, so a stall is a gap rather than a seam.
+        node = actx.createScriptProcessor(4096, 0, 2);
+        node.onaudioprocess = (e) => {
+            const L = e.outputBuffer.getChannelData(0);
+            const R = e.outputBuffer.getChannelData(1);
+            for (let i = 0; i < L.length; i++) {
+                if (filled >= 2) {
+                    L[i] = ring[ri]; R[i] = ring[ri + 1];
+                    ri = (ri + 2) % ring.length;
+                    filled -= 2;
+                } else {
+                    L[i] = 0; R[i] = 0;
+                    starved++;
+                }
+            }
+        };
+        node.connect(bus);
         bus.connect(analyser);
         bus.connect(actx.destination);
-        pushedPeak = 0;
-        pushedFrames = 0;
+
         const wake = () => { if (actx && actx.state === 'suspended') actx.resume(); };
         for (const e of ['pointerdown', 'keydown', 'touchstart'])
             window.addEventListener(e, wake, { passive: true });
+
         return actx.sampleRate;
     } catch { return 0; }
 };
 
-// Takes a chunk of interleaved stereo float samples and schedules it to play after
-// whatever is already queued. Returns how many seconds are now buffered ahead of the
-// playhead, which is what the C# side paces itself by.
+// Copies a chunk into the ring. Returns how many seconds are now waiting, which is what
+// the C# side paces itself by.
 globalThis.jonesAudioPush = (bytes) => {
-    if (!actx) return 0;
+    if (!actx || !ring) return 0;
     try {
-        // COPIED, NOT VIEWED, AND THAT IS THE WHOLE BUG. `bytes` is a view straight onto
-        // the WebAssembly heap, and its byteOffset is wherever .NET happened to put the
-        // array - not necessarily a multiple of four. Constructing a Float32Array over an
-        // unaligned offset throws RangeError, which the catch below turned into a quiet
-        // `return 0`: no exception in C#, no error in the console, the pump running every
-        // 60ms, and not one sample ever scheduled. The copy is always aligned.
         // `bytes` IS NOT A TYPED ARRAY. .NET's MemoryView marshalling hands over a wrapper
         // around a span of the WebAssembly heap - it has `length` and `slice`, and it does
         // NOT support indexing. `new Uint8Array(view)` therefore produces an array of the
-        // RIGHT LENGTH AND ALL ZEROES, which is the most expensive possible failure: every
-        // frame count, every buffer depth and every scheduling decision stays perfectly
-        // correct while the game plays silence. The synthesiser was rendering peaks of
-        // 0.55 and the speakers got nothing.
-        //
-        // `slice()` is the MemoryView's own copy-out, and returns a real Uint8Array.
+        // RIGHT LENGTH AND ALL ZEROES: every frame count and buffer depth stays perfectly
+        // correct while the game plays silence. `slice()` is its own copy-out.
         const copy = bytes.slice();
         const f = new Float32Array(copy.buffer, copy.byteOffset, copy.byteLength >> 2);
-        const frames = f.length >> 1;
-        if (frames <= 0) return 0;
 
-        const buf = actx.createBuffer(2, frames, actx.sampleRate);
-        const L = buf.getChannelData(0), R = buf.getChannelData(1);
-        for (let i = 0; i < frames; i++) { L[i] = f[2 * i]; R[i] = f[2 * i + 1]; }
-
-        // Measured on the way past: the loudest sample in this chunk. If the synthesiser
-        // is producing silence this stays at zero no matter how much gets scheduled.
         let peak = 0;
         for (let i = 0; i < f.length; i++) { const v = f[i] < 0 ? -f[i] : f[i]; if (v > peak) peak = v; }
         if (peak > pushedPeak) pushedPeak = peak;
-        pushedFrames += frames;
 
-        const src = actx.createBufferSource();
-        src.buffer = buf;
-        src.connect(bus);
+        // Drop rather than overwrite what has not been played yet: a full ring means the
+        // game is producing faster than the hardware consumes, and the oldest samples are
+        // the ones about to be heard.
+        const room = ring.length - filled;
+        const take = Math.min(f.length, room);
+        for (let i = 0; i < take; i++) { ring[wi] = f[i]; wi = (wi + 1) % ring.length; }
+        filled += take;
+        pushedFrames += take >> 1;
 
-        // RE-ANCHOR AFTER A STALL. This head has one thread and the game can hold it for
-        // longer than the buffer lasts; when that happens the cursor is already in the
-        // past and scheduling there plays everything at once. Starting afresh costs a
-        // gap - which is what the player already heard - instead of a burst.
-        const now = actx.currentTime;
-        if (cursor < now + 0.02) cursor = now + 0.08;
-        src.start(cursor);
-        cursor += frames / actx.sampleRate;
-        return cursor - now;
+        return filled / 2 / actx.sampleRate;
     } catch (e) {
-        // SAID ONCE. Returning 0 in silence is exactly how this went unnoticed.
         if (!globalThis.__jonesAudioComplained) {
             globalThis.__jonesAudioComplained = true;
             console.warn('Jones: audio push failed:', e);
@@ -138,13 +154,13 @@ globalThis.jonesAudioPush = (bytes) => {
     }
 };
 
-// Lets anyone - including whoever is debugging this next - SEE whether sound is running,
-// which is otherwise only observable by listening. Audio on this head has already been
-// absent once without a single error to say so.
+globalThis.jonesAudioStopAll = () => {
+    try { filled = 0; ri = wi; } catch { /* nothing to undo */ }
+};
+
 globalThis.jonesAudioStatus = () => {
     if (!actx) return { state: 'no context' };
 
-    // What is passing through the output RIGHT NOW, read off the tap.
     let outPeak = 0, sum = 0;
     try {
         analyser.getFloatTimeDomainData(probe);
@@ -158,17 +174,14 @@ globalThis.jonesAudioStatus = () => {
     return {
         state: actx.state,
         rate: actx.sampleRate,
-        bufferedAhead: +(cursor - actx.currentTime).toFixed(3),
+        bufferedAhead: +(filled / 2 / actx.sampleRate).toFixed(3),
+        starvedFrames: starved,          // every one of these is an audible hole
         pushedFrames,
-        pushedPeak: +pushedPeak.toFixed(4),       // loudest sample ever handed over
-        outputPeak: +outPeak.toFixed(4),          // loudest sample leaving the bus now
+        pushedPeak: +pushedPeak.toFixed(4),
+        outputPeak: +outPeak.toFixed(4),
         outputRms: +Math.sqrt(sum / probe.length).toFixed(4),
         speaking: !!(speech && !speech.paused && !speech.ended),
     };
-};
-
-globalThis.jonesAudioStopAll = () => {
-    try { cursor = 0; } catch { /* nothing to undo */ }
 };
 
 globalThis.jonesSpeechPlay = (url) => {
