@@ -78,6 +78,22 @@ internal sealed partial class Program
         // back on the in-memory "disk" and SaveStore.Exists() is already telling the truth.
         DurableSaves.Install();
 
+        // HOUSE RULE, applied per head rather than in the core so Jones.Core stays a
+        // faithful port and its tests keep measuring Sierra's game rather than ours. Both
+        // other heads set this; THIS ONE NEVER DID, so the web build alone opened on
+        // Sierra's brutal version of week one - the turn-start chain runs on turn one
+        // regardless, a new player has no food, and the starvation notice takes 20 of the
+        // week's 60 hours and arms a doctor roll on top.
+        //
+        // Zain, reading it on the deployed page: "it starts out at less time due to hunger
+        // and a doctors bill", and took it for an old build. It was not an old build; it
+        // was this head missing something the other two were given, which is now the third
+        // time that sentence has been written about this file.
+        //
+        // Set it to false to play Sierra's version exactly. See Player.StartingFoodWeeks
+        // for why handing out food instead does not work.
+        Jones.Core.Model.TurnStart.SkipWeekOneHardship = true;
+
         // SOUND. Without this the head falls through to SilentAudioPlayer, which is what
         // it has always done: no music, no effects, no speech, and nothing saying why.
         Jones.App.ViewModels.MainViewModel.Sound = new BrowserAudioPlayer();
