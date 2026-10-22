@@ -40,8 +40,13 @@ globalThis.jonesReady = () => {
 // ----------------------------------------------------------------------------------
 
 let actx = null;       // the output context
+let bus = null;        // everything plays through here so it can be measured
+let analyser = null;   // taps the bus: what actually reaches the output
+let probe = null;      // scratch buffer for the analyser
 let cursor = 0;        // where the next chunk is scheduled, in context time
 let speech = null;     // the one speech clip; the original never overlaps two
+let pushedPeak = 0;    // loudest sample handed over since the page loaded
+let pushedFrames = 0;  // how many frames in total
 
 // THE AUTOPLAY RULE. No browser lets a page make a sound before it has been interacted
 // with, so the context is created suspended and resumed by the player's first click. The
@@ -52,6 +57,20 @@ globalThis.jonesAudioStart = (sampleRate) => {
         if (!Ctx) return 0;
         actx = new Ctx({ sampleRate });
         cursor = 0;
+
+        // A BUS WITH A TAP ON IT. Everything plays through `bus`, and `analyser` watches
+        // what passes - so "is there sound" is a MEASUREMENT rather than an opinion.
+        // Queued is not the same as audible: a buffer full of zeroes schedules exactly as
+        // happily as a buffer full of music, and this head has already been silent twice
+        // while every indicator read healthy.
+        bus = actx.createGain();
+        analyser = actx.createAnalyser();
+        analyser.fftSize = 2048;
+        probe = new Float32Array(analyser.fftSize);
+        bus.connect(analyser);
+        bus.connect(actx.destination);
+        pushedPeak = 0;
+        pushedFrames = 0;
         const wake = () => { if (actx && actx.state === 'suspended') actx.resume(); };
         for (const e of ['pointerdown', 'keydown', 'touchstart'])
             window.addEventListener(e, wake, { passive: true });
@@ -71,8 +90,17 @@ globalThis.jonesAudioPush = (bytes) => {
         // unaligned offset throws RangeError, which the catch below turned into a quiet
         // `return 0`: no exception in C#, no error in the console, the pump running every
         // 60ms, and not one sample ever scheduled. The copy is always aligned.
-        const copy = new Uint8Array(bytes);
-        const f = new Float32Array(copy.buffer);
+        // `bytes` IS NOT A TYPED ARRAY. .NET's MemoryView marshalling hands over a wrapper
+        // around a span of the WebAssembly heap - it has `length` and `slice`, and it does
+        // NOT support indexing. `new Uint8Array(view)` therefore produces an array of the
+        // RIGHT LENGTH AND ALL ZEROES, which is the most expensive possible failure: every
+        // frame count, every buffer depth and every scheduling decision stays perfectly
+        // correct while the game plays silence. The synthesiser was rendering peaks of
+        // 0.55 and the speakers got nothing.
+        //
+        // `slice()` is the MemoryView's own copy-out, and returns a real Uint8Array.
+        const copy = bytes.slice();
+        const f = new Float32Array(copy.buffer, copy.byteOffset, copy.byteLength >> 2);
         const frames = f.length >> 1;
         if (frames <= 0) return 0;
 
@@ -80,9 +108,16 @@ globalThis.jonesAudioPush = (bytes) => {
         const L = buf.getChannelData(0), R = buf.getChannelData(1);
         for (let i = 0; i < frames; i++) { L[i] = f[2 * i]; R[i] = f[2 * i + 1]; }
 
+        // Measured on the way past: the loudest sample in this chunk. If the synthesiser
+        // is producing silence this stays at zero no matter how much gets scheduled.
+        let peak = 0;
+        for (let i = 0; i < f.length; i++) { const v = f[i] < 0 ? -f[i] : f[i]; if (v > peak) peak = v; }
+        if (peak > pushedPeak) pushedPeak = peak;
+        pushedFrames += frames;
+
         const src = actx.createBufferSource();
         src.buffer = buf;
-        src.connect(actx.destination);
+        src.connect(bus);
 
         // RE-ANCHOR AFTER A STALL. This head has one thread and the game can hold it for
         // longer than the buffer lasts; when that happens the cursor is already in the
@@ -106,9 +141,31 @@ globalThis.jonesAudioPush = (bytes) => {
 // Lets anyone - including whoever is debugging this next - SEE whether sound is running,
 // which is otherwise only observable by listening. Audio on this head has already been
 // absent once without a single error to say so.
-globalThis.jonesAudioStatus = () => actx
-    ? { state: actx.state, rate: actx.sampleRate, bufferedAhead: +(cursor - actx.currentTime).toFixed(3) }
-    : { state: 'no context' };
+globalThis.jonesAudioStatus = () => {
+    if (!actx) return { state: 'no context' };
+
+    // What is passing through the output RIGHT NOW, read off the tap.
+    let outPeak = 0, sum = 0;
+    try {
+        analyser.getFloatTimeDomainData(probe);
+        for (let i = 0; i < probe.length; i++) {
+            const v = probe[i] < 0 ? -probe[i] : probe[i];
+            if (v > outPeak) outPeak = v;
+            sum += probe[i] * probe[i];
+        }
+    } catch { /* leave the zeroes */ }
+
+    return {
+        state: actx.state,
+        rate: actx.sampleRate,
+        bufferedAhead: +(cursor - actx.currentTime).toFixed(3),
+        pushedFrames,
+        pushedPeak: +pushedPeak.toFixed(4),       // loudest sample ever handed over
+        outputPeak: +outPeak.toFixed(4),          // loudest sample leaving the bus now
+        outputRms: +Math.sqrt(sum / probe.length).toFixed(4),
+        speaking: !!(speech && !speech.paused && !speech.ended),
+    };
+};
 
 globalThis.jonesAudioStopAll = () => {
     try { cursor = 0; } catch { /* nothing to undo */ }
@@ -118,6 +175,14 @@ globalThis.jonesSpeechPlay = (url) => {
     try {
         if (speech) { speech.pause(); speech = null; }
         speech = new Audio(url);
+        speech.crossOrigin = 'anonymous';
+
+        // Routed through the same bus as the music, so the analyser measures the voices
+        // too - and so a future volume control has one place to sit.
+        try {
+            if (actx && bus) actx.createMediaElementSource(speech).connect(bus);
+        } catch { /* some browsers refuse a second source; it still plays to the device */ }
+
         speech.play().catch(() => { /* refused before a gesture; the subtitle still shows */ });
     } catch { /* a missing clip is a silent line, not a dead game */ }
 };
