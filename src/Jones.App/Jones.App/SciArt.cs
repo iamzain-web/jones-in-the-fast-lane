@@ -219,14 +219,15 @@ public static class SciArt
         // all: a screen that is never visited must not cost a directory probe per cel.
         RegisterHighRes(oneX, () =>
         {
-            var dir = Resolve(file);
-            Trace($"  resolve({file}) -> {dir ?? "<NOT FOUND>"}");
-            if (dir is not { } d) return null;
+            var found = Locate(file);
+            Trace($"  resolve({file}) -> {found?.Dir ?? "<NOT FOUND>"}"
+                  + (found is { } f && f.File != file ? $" as {f.File}" : ""));
+            if (found is not { Dir: var d, File: var actual }) return null;
 
-            var bmp = LoadCel(d, file);
+            var bmp = LoadCel(d, actual);
             // Nothing came back: say whether that is because the store is still fetching
             // it, which is the one case HighRes must not write down.
-            _twinPending = bmp is null && RenderScale.Store.Pending(d, file);
+            _twinPending = bmp is null && RenderScale.Store.Pending(d, actual);
             return bmp;
         });
     }
@@ -238,10 +239,31 @@ public static class SciArt
     /// if it has one and the ported copy otherwise, which is what lets a set replace
     /// twenty views and stay silent about the other eight hundred.
     /// </summary>
-    private static string? Resolve(string file)
+    private static string? Resolve(string file) => Locate(file)?.Dir;
+
+    /// <summary>
+    /// The directory to load from AND the cel to load, which are not always the one asked
+    /// for - see <see cref="Jones.Core.Model.CastWalkers"/>.
+    /// </summary>
+    private static (string Dir, string File)? Locate(string file)
     {
         var dirs = RenderScale.ArtDirectories;
         var store = RenderScale.Store;
+
+        // The set's own copy, first and preferred.
+        if (dirs.Length > 0 && store.Exists(dirs[0], file)) return (dirs[0], file);
+
+        // A GAP INSIDE A CHARACTER THE SET HAS REBUILT IS FILLED FROM THAT CHARACTER. Doing
+        // this before the loop below is the whole point: the loop's next stop is the ported
+        // 1990 art, and for a walker that is not an older picture of the same thing, it is a
+        // DIFFERENT PERSON walking around in a game that replaced him.
+        if (dirs.Length > 0 && Jones.Core.Model.CastWalkers.StandIn(file) is { } standIn
+            && store.Exists(dirs[0], standIn))
+        {
+            NoteFallback(file);
+            return (dirs[0], standIn);
+        }
+
         for (var i = 0; i < dirs.Length; i++)
         {
             if (!store.Exists(dirs[i], file)) continue;
@@ -249,7 +271,7 @@ public static class SciArt
             // i > 0 means the art set was asked first and did not have it, so this cel is
             // SIERRA'S while the rest of the screen is not. See NoteFallback.
             if (i > 0) NoteFallback(file);
-            return dirs[i];
+            return (dirs[i], file);
         }
         return null;
     }
