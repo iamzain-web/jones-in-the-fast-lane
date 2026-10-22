@@ -72,11 +72,19 @@ internal sealed partial class BrowserAudioPlayer : IAudioPlayer
     /// </para>
     ///
     /// <para>
-    /// 1.2 seconds of slack costs 1.2 seconds of latency on a volume change, which is a
-    /// background music bed and nobody can hear it. A gap in the music, everybody hears.
+    /// MEASURED A THIRD TIME, AND THE THIRD MEASUREMENT IS THE ONE THAT MATTERS. With 1.2
+    /// the queue never actually REACHED 1.2: it alternated between 0.3 and EMPTY, roughly
+    /// 25,000 starved frames per cycle - a stutter rather than a gap. One pump tick fills
+    /// about a second, so the pattern says the tick itself is being starved of the thread
+    /// for about a second at a time. A one-second head start cannot cover a one-second
+    /// stall; it can only just fail to.
+    ///
+    /// Three seconds covers it with room, and the cost is three seconds of latency on a
+    /// volume change to a background bed, which nobody can hear. A stutter, everybody
+    /// hears.
     /// </para>
     /// </summary>
-    private const double TargetBuffer = 1.20;
+    private const double TargetBuffer = 3.00;
 
     /// <summary>One chunk, in frames. 1/20th of a second at the mixer's rate.</summary>
     private const int ChunkFrames = JonesAudioMixerRate / 20;
@@ -168,10 +176,10 @@ internal sealed partial class BrowserAudioPlayer : IAudioPlayer
 
         try
         {
-            // Up to twenty chunks - a full second of audio - in one tick, so a pump that
-            // has just lost a run of ticks catches up in ONE rather than crawling back a
-            // chunk at a time and underrunning again on the way back.
-            for (var i = 0; i < 20; i++)
+            // Up to eighty chunks - four seconds - in one tick. The loop stops the moment
+            // the target is met, so this is a CEILING for catching up after a long stall,
+            // not work done every tick.
+            for (var i = 0; i < 80; i++)
             {
                 var rendered = _engine.RenderStereo(_samples);
 
