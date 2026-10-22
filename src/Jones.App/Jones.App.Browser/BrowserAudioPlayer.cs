@@ -58,19 +58,25 @@ internal sealed partial class BrowserAudioPlayer : IAudioPlayer
     /// How far ahead of the playhead to keep the queue, in seconds.
     ///
     /// <para>
-    /// 0.30 WAS NOT ENOUGH AND IT WAS MEASURED, NOT GUESSED. At that depth the queue sat
-    /// between 0.0 and 0.2 and went NEGATIVE - an underrun, heard as a gap in the music.
-    /// The pump is a dispatcher timer at Background priority and it is competing with this
-    /// head's own screen rebuilds for the single thread it shares with them, so it loses
-    /// whole ticks at a time.
+    /// MEASURED TWICE, DEEPENED TWICE. At 0.30 the queue sat between 0.0 and 0.2 and went
+    /// negative - an underrun, heard as a gap. At 0.65 it survived a local page and STILL
+    /// went negative on the deployed one, where the same thread is also fetching art and
+    /// speech: readings of -0.029 and -0.120, with a silent frame between them.
     /// </para>
     ///
     /// <para>
-    /// Two thirds of a second of slack costs two thirds of a second of latency on a volume
-    /// change, which nobody can hear, and buys roughly ten missed ticks of tolerance.
+    /// The pump shares ONE THREAD with everything this head does, including the screen
+    /// rebuilds that are its whole performance problem, so it does not lose single ticks -
+    /// it loses runs of them. The buffer has to be deeper than the longest stall, not
+    /// deeper than the average one.
+    /// </para>
+    ///
+    /// <para>
+    /// 1.2 seconds of slack costs 1.2 seconds of latency on a volume change, which is a
+    /// background music bed and nobody can hear it. A gap in the music, everybody hears.
     /// </para>
     /// </summary>
-    private const double TargetBuffer = 0.65;
+    private const double TargetBuffer = 1.20;
 
     /// <summary>One chunk, in frames. 1/20th of a second at the mixer's rate.</summary>
     private const int ChunkFrames = JonesAudioMixerRate / 20;
@@ -143,8 +149,13 @@ internal sealed partial class BrowserAudioPlayer : IAudioPlayer
 
         // 60 ms against a 300 ms buffer: five chances to refill before it runs dry, which
         // is the margin that survives the screen rebuilds this head is prone to.
+        // NORMAL PRIORITY, NOT BACKGROUND. Background is behind the screen rebuilds, and
+        // those are exactly what stalls this head - so the one thing that must not be late
+        // was queued behind the one thing that is always late. A frame arriving a
+        // millisecond after the audio refill is invisible; the reverse is a hole in the
+        // music.
         DispatcherTimer.Run(() => { Pump(); return true; },
-                            TimeSpan.FromMilliseconds(60), DispatcherPriority.Background);
+                            TimeSpan.FromMilliseconds(60), DispatcherPriority.Normal);
     }
 
     /// <summary>
@@ -157,10 +168,10 @@ internal sealed partial class BrowserAudioPlayer : IAudioPlayer
 
         try
         {
-            // Up to eight chunks - 400ms of audio - in one tick, so a pump that has just
-            // lost several ticks can catch up in one rather than crawling back a chunk at
-            // a time and underrunning again on the way.
-            for (var i = 0; i < 8; i++)
+            // Up to twenty chunks - a full second of audio - in one tick, so a pump that
+            // has just lost a run of ticks catches up in ONE rather than crawling back a
+            // chunk at a time and underrunning again on the way back.
+            for (var i = 0; i < 20; i++)
             {
                 var rendered = _engine.RenderStereo(_samples);
 
