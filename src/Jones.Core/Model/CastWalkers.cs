@@ -31,17 +31,32 @@ namespace Jones.Core.Model;
 /// </para>
 ///
 /// <para>
-/// SO A GAP INSIDE A REBUILT CHARACTER IS FILLED FROM THAT CHARACTER, not from Sierra. The
-/// stand-in is the casual outfit, which is what a player wears by default and what the
-/// set's other cels were shot in.
+/// SO EVERY WALKER VIEW IS ANSWERED FROM THE REBUILT CHARACTER, and Sierra's people are
+/// off the board entirely. Zain, having first seen one of them appear mid-game: "replace
+/// ALL instances of the other character with him."
 /// </para>
 ///
 /// <para>
-/// THIS IS A STAND-IN AND NOT A FIX, and the difference should not be blurred. The game
-/// means "this player has run out of clothes" and will be showing them fully dressed, so
-/// the state is no longer legible on the board. The real answer is the shorts-and-vest
-/// sheet for 283; this is what the game does until that exists. Characters two, three and
-/// four are not covered at all - there is one man - and nothing here invents them.
+/// The mapping keeps the CLOTHING STATE and changes only the person: a second player in a
+/// business suit gets the rebuilt character's business suit, not his casual outfit. The
+/// one state with no art of its own - "nothing left to wear" - borrows the casual one,
+/// which is what a player starts in and what the rest of the set was shot in.
+/// </para>
+///
+/// <para>
+/// WHAT THIS COSTS, SAID PLAINLY. All four players now look the same. In a four-handed
+/// game the figure on the board no longer says WHOSE turn it is - the token beside him
+/// still does, and the screen says so in words, but the walker does not. That is a worse
+/// game than four distinct characters and a better one than a cast half-replaced, and it
+/// is the trade Zain asked for. It stops being a trade the moment three more people are
+/// photographed: give any of 284, 290 or 294 its own cels and that character stops
+/// borrowing, automatically, with no change here.
+/// </para>
+///
+/// <para>
+/// IT IS STILL A STAND-IN AND NOT A FIX for 283. The game means "this player has run out
+/// of clothes" and will be showing them dressed, so that state is no longer legible on the
+/// board. The real answer is the shorts-and-vest sheet.
 /// </para>
 /// </summary>
 /// <para>
@@ -72,17 +87,30 @@ public static class CastWalkers
         var rest = file.AsSpan(5);
         var underscore = rest.IndexOf('_');
         if (underscore <= 0) return null;
-
         if (!int.TryParse(rest[..underscore], out var view)) return null;
 
-        // The undressed view of each character is its base + 3. Everything else either has
-        // its own art or has none at all.
+        // Which character's view is this, and which clothing state within it.
         var baseView = view switch
         {
-            283 => 280,
+            >= 280 and <= 283 => 280,
+            >= 284 and <= 287 => 284,
+            >= 290 and <= 293 => 290,
+            >= 294 and <= 297 => 294,
             _ => 0,
         };
+        if (baseView == 0) return null;
 
-        return baseView == 0 ? null : $"view_{baseView + 2}{rest[underscore..]}";
+        // THE SAME CLOTHING STATE ON THE REBUILT CHARACTER. The set has the suit, the
+        // dress clothes and the casual outfit; it has no "nothing left to wear", so that
+        // state borrows the casual one - which is what the player is in by default and
+        // what the rest of the set was shot in.
+        var state = Math.Min(view - baseView, 2);
+        var target = Rebuilt + state;
+
+        // A view that already has its own art needs no stand-in.
+        return target == view ? null : $"view_{target}{rest[underscore..]}";
     }
+
+    /// <summary>The one character the replacement set covers: views 280, 281, 282.</summary>
+    private const int Rebuilt = 280;
 }
