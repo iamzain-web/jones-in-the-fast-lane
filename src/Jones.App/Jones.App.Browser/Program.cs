@@ -126,27 +126,27 @@ internal sealed partial class Program
         // the menu bar size themselves from this; see TouchUi.
         TouchUi.Enabled = true;
 
-        // SMOOTH MOTION OFF HERE, AND IT IS A PERFORMANCE DECISION WITH A MEASURED CAUSE.
+        // SMOOTH MOTION IS BACK ON, AND IT IS THE SAME HERE AS EVERYWHERE ELSE.
         //
-        // `BuildScreen` clears nine collections and rebuilds every sprite, control, hotspot
-        // and text on screen. While the marble is walking it is called from TWO timers:
-        // WalkTick at 40Hz and SmoothTick at ~60Hz. That is about a hundred full screen
-        // teardowns a second, each destroying and recreating every visual.
+        // It was turned off on this head alone, for a measured reason: `BuildScreen` tore
+        // down and rebuilt every visual, WalkTick and SmoothTick between them drove about a
+        // hundred rebuilds a second, and on one thread a tick that arrives late is a journey
+        // that takes longer. Zain: "the mans walk is very slow". Disabling the tween removed
+        // sixty of those rebuilds and bought the walk back.
         //
-        // The desktop absorbs it. This head does not: it has one thread, the browser's event
-        // loop is on it, and when those ticks slip the WALK ITSELF SLOWS DOWN - the marble
-        // advances one path step per WalkTick, so a tick that arrives late is a journey that
-        // takes longer. Zain: "the mans walk is very slow, and it takes a very long time for
-        // him to get to where he is going." That is the mechanism, not a frame rate.
+        // THE CAUSE IS FIXED NOW, which is what makes this safe rather than optimistic. The
+        // expensive part of a rebuild was never the rebuild: `TextVm`'s constructor
+        // RASTERISED every label, so a board with a dozen of them redrew five hundred lines
+        // of text a second to produce identical pixels. That is cached, and `Sprites` and
+        // `Texts` reconcile instead of being cleared.
         //
-        // Turning this off removes roughly 60 of those 100 rebuilds immediately. The cost is
-        // the original's own stepping between path nodes rather than tweened movement - which
-        // is exactly what Sierra's game does, and what `Jones Original` runs with.
+        // AND IT HAS TO COME BACK, because the three heads must not look different. Zain:
+        // "ALL versions need to look the same... testers are going to be testing all 3
+        // platforms." A marble that glides on desktop and steps on the web is a difference a
+        // tester reports as a bug on whichever one they saw second. The port's own stepping
+        // is what `Jones Original` is for.
         //
-        // THE REAL FIX IS THAT BuildScreen SHOULD NOT CLEAR. Reconciling the collections
-        // instead of tearing them down would help every head, and it is a change to shared
-        // code that deserves its own run at it rather than being smuggled in here.
-        Jones.App.ViewModels.MainViewModel.SmoothMotion = false;
+        // Jones.Tests asserts the three heads agree about this; see PlatformParityTests.
 
         // NO RenderingMode OVERRIDE HERE, AND THAT WAS CHECKED RATHER THAN ASSUMED. The
         // obvious first move on a slow browser build is "turn the GPU on" - but Avalonia

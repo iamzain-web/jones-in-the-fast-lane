@@ -71,6 +71,40 @@ the price's right edge.
 `PARITY.md` drifted into claiming Sound was unimplemented long after speech worked, and
 percentages were quoted from it. A status file that flatters progress is worse than none.
 
+## 7. All three heads look the same, and ship together
+
+There are three platforms — Desktop, Android, Browser — and **the same people test all of
+them**. Zain: *"Whenever changes are made, ALL versions need to look the same. I don't want
+the Mobile version and the Web Version to look different because testers are going to be
+testing all 3 platforms."*
+
+This has already been broken twice, both times silently:
+
+- `TurnStart.SkipWeekOneHardship` was set by Desktop and Android and **not** by the browser,
+  so the web build alone opened on Sierra's starvation notice. It was reported as "this
+  looks like a very old version of the game".
+- `SmoothMotion` was turned off on the browser alone as a performance workaround, so the
+  marble glided on two platforms and stepped on the third.
+
+Neither was caught by anything. Both were found by a person looking at two builds.
+
+**So:**
+
+1. **A change is not done until all three are built with it.** Shared code reaches every
+   head, but only once that head is rebuilt — an Android APK from last week has none of it.
+   `assets/` changes need a rebuild too: Desktop reads them from disk, Android bundles them,
+   the browser publishes them.
+2. **A setting that changes what the player sees goes in shared code**, not in a head's
+   startup. If it must live per head, it goes in `PlatformParityTests` so the next
+   difference fails a test instead of reaching a tester.
+3. **Input affordances may differ; looks may not.** `TouchUi` is on for Android and the
+   browser and off for Desktop, because a phone has no pointer. That is the only sanctioned
+   difference and it is pinned by a test.
+
+`PlatformParityTests` reads all three startup files and compares them. It is a crude
+instrument — it parses source text, because Jones.Tests cannot reference Jones.App — and a
+crude instrument that fires beats a precise one that does not exist.
+
 ## Environment
 
 - **The Bash tool times out on this machine. Use PowerShell.** PowerShell 5.1:
