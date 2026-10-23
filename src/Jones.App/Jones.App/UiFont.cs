@@ -122,7 +122,6 @@ public static class UiFont
             var want = Resolve(value);
             if (_face == want) return;
             _face = want;
-            _em = null;
         }
     }
 
@@ -151,6 +150,44 @@ public static class UiFont
 
     /// <summary>True when the interface is being drawn in the outline face.</summary>
     public static bool Enabled => Current == Face.Quicksand;
+
+    // ---- which bitmap face is being stood in for ---------------------------
+
+    /// <summary>
+    /// The bitmap face this outline is currently replacing. Null means font 10.
+    ///
+    /// <para>
+    /// THIS CLASS USED TO BE FONT 10 AND NOTHING ELSE, and the consequence was visible in
+    /// every spoken line: the employer list came up in Quicksand and the shopkeeper's
+    /// speech balloon beside it came up in 1990 bitmap, because the balloon is font 1 and
+    /// nothing here could stand in for it. Zain: "WHY is the text still ugly here? check
+    /// all the text boxes, nothing should be ugly like that."
+    /// </para>
+    ///
+    /// <para>
+    /// Every size below - the em, the baseline, the box - was derived from
+    /// <c>SciFont.Interface</c> directly. They now derive from whichever face is being
+    /// replaced, so the outline sits on THAT face's baseline at THAT face's cap height and
+    /// the layout the scripts specify is untouched. The balloon is still wrapped and sized
+    /// by font 1's own metrics; only the glyphs change.
+    /// </para>
+    /// </summary>
+    private static SciFont? _standingIn;
+
+    private static SciFont? Face1 => _standingIn ?? SciFont.Interface;
+
+    /// <summary>
+    /// Runs <paramref name="body"/> with this class standing in for <paramref name="face"/>.
+    /// Scoped and restored, because it is ambient state on a single thread and a leak would
+    /// render one screen's text at another screen's size.
+    /// </summary>
+    private static T StandingIn<T>(SciFont? face, Func<T> body)
+    {
+        var previous = _standingIn;
+        _standingIn = face;
+        try { return body(); }
+        finally { _standingIn = previous; }
+    }
 
     /// <summary>Whether the outline face is available at all — false hides the switch.</summary>
     public static bool Available => Metrics is not null;
@@ -214,24 +251,40 @@ public static class UiFont
     {
         get
         {
-            if (_em is { } e) return e;
-            var cap = SciFont.Interface?.Metrics?.CapHeight ?? 5;
-            _em = Metrics?.EmForCapHeight(cap) ?? 0;
-            return _em.Value;
+            var face = Face1;
+            var cap = face?.Metrics?.CapHeight ?? 5;
+            return Metrics?.EmForCapHeight(cap) ?? 0;
         }
     }
-
-    private static double? _em;
 
     /// <summary>
     /// The baseline, in game pixels below a line's own top — font 10's, so that the outline
     /// face sits on exactly the baseline the bitmap face sat on and every `nsTop` in the
     /// scripts keeps meaning what it meant.
     /// </summary>
-    public static int Baseline => SciFont.Interface?.Metrics?.Baseline ?? 5;
+    public static int Baseline => Face1?.Metrics?.Baseline ?? 5;
 
     /// <summary>Measures a string in the outline face, in game pixels.</summary>
     public static double Measure(string text) => Metrics?.Measure(text, EmSize) ?? 0;
+
+    /// <summary>The same, standing in for <paramref name="face"/>.</summary>
+    public static double MeasureFor(SciFont? face, string text)
+        => StandingIn(face, () => Measure(text));
+
+    /// <summary>The drawn box's top offset when standing in for <paramref name="face"/>.</summary>
+    public static int BoxTopFor(SciFont? face) => StandingIn(face, () => BoxTop);
+
+    /// <summary>The drawn box's height when standing in for <paramref name="face"/>.</summary>
+    public static int BoxHeightFor(SciFont? face) => StandingIn(face, () => BoxHeight);
+
+    /// <summary>Lays a line out against <paramref name="face"/>'s own column stop.</summary>
+    public static LaidOutLine LayFor(SciFont? face, string full, string label, string value)
+        => StandingIn(face, () => Lay(full, label, value));
+
+    /// <summary>Draws a line in place of <paramref name="face"/>.</summary>
+    public static Bitmap? RenderFor(SciFont? face, LaidOutLine line, uint argb,
+                                    uint? shadowArgb, uint? backArgb)
+        => StandingIn(face, () => Render(line, argb, shadowArgb, backArgb));
 
     /// <summary>
     /// Lays a padded resource string out against the column stop font 10 gives it.
@@ -239,7 +292,7 @@ public static class UiFont
     /// </summary>
     public static LaidOutLine Lay(string full, string label, string value)
     {
-        var stop = SciFont.Interface?.Measure(full) ?? 0;
+        var stop = Face1?.Measure(full) ?? 0;
         return ColumnLayout.Lay(label, value, stop, Measure, EmSize);
     }
 
@@ -300,7 +353,7 @@ public static class UiFont
         if (Metrics is null) return null;
 
         var key = string.Create(CultureInfo.InvariantCulture,
-            $"{argb:X8}|{shadowArgb?.ToString("X8") ?? "-"}|{backArgb?.ToString("X8") ?? "-"}|{line.Width:F2}|")
+            $"f{Face1?.Number ?? 10}|{argb:X8}|{shadowArgb?.ToString("X8") ?? "-"}|{backArgb?.ToString("X8") ?? "-"}|{line.Width:F2}|")
             + string.Join('\u0001', RunKeys(line));
 
         if (Cache.TryGetValue(key, out var cached)) return cached;
@@ -335,7 +388,7 @@ public static class UiFont
             if (backArgb is { } back)
             {
                 var top = (0 - BoxTop) * scale;
-                var h = (SciFont.Interface?.Height ?? 6) * scale;
+                var h = (Face1?.Height ?? 6) * scale;
                 ctx.FillRectangle(new SolidColorBrush(back),
                     new Rect(-BoxLeft * scale, top, Math.Ceiling(line.Width) * scale, h));
             }

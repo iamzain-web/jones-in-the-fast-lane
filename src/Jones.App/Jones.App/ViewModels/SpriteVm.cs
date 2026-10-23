@@ -605,33 +605,41 @@ public sealed class TextVm
         uint? shadowArgb = shadow == 0 ? null : SciPalette.Argb(shadow);
         uint? backArgb = background < 0 ? null : SciPalette.Argb(background);
 
-        // INTERFACE TEXT ONLY. `fontNumber` null resolves to font 10 (`SciFont.Small` and
-        // `SciFont.Default` are both the interface face), and 10 is what the outline face
-        // replaces. The balloon's font 1, the newspaper's 3, the goals and statistics
-        // screens' 4, the calculator's 14 and the winner plate's 8 are left exactly as they
-        // are: each has its own geometry, and the calculator's creeping readout is a quirk of
-        // the shipped game that is deliberately ported.
-        var interfaceText = fontNumber is null or 10;
-        var outline = UiFont.Enabled && interfaceText && text.Length > 0;
+        // EVERY FACE, NOT JUST FONT 10.
+        //
+        // This used to read `fontNumber is null or 10` and leave everything else in 1990
+        // bitmap, on the grounds that each other face has its own geometry. It does - and
+        // the outline face can now be told whose geometry to use, so that is an argument
+        // for passing the face along rather than for giving up. What the restriction
+        // actually produced was two typefaces on one screen: the employment office drew its
+        // employer list in Quicksand and the shopkeeper's balloon beside it in font 1.
+        // Zain: "WHY is the text still ugly here? check all the text boxes, nothing should
+        // be ugly like that."
+        //
+        // The SIZE and the BASELINE still come from the bitmap face being replaced - the
+        // newspaper's font 3, the goals screen's 4, the calculator's 14 - so every `nsTop`
+        // and every column stop in the scripts keeps meaning exactly what it meant. Only
+        // the glyphs change.
+        var outline = UiFont.Enabled && text.Length > 0 && font is not null;
 
         Bitmap? image;
         double dx = 0, dy = 0;
 
         if (outline)
         {
-            var line = UiFont.Lay(text, value is null ? text : text[..^value.Length], value ?? "");
-            image = UiFont.Render(line, argb, shadowArgb, backArgb);
+            var line = UiFont.LayFor(font, text, value is null ? text : text[..^value.Length], value ?? "");
+            image = UiFont.RenderFor(font, line, argb, shadowArgb, backArgb);
             dx = UiFont.BoxLeft;
-            dy = UiFont.BoxTop;
+            dy = UiFont.BoxTopFor(font);
         }
         else
         {
             image = font?.Render(text, argb, shadowArgb, backArgb);
         }
 
-        // W and H stay FONT 10's - several callers centre a label by measuring one of these
-        // and halving its width, and the outline face is fitted into the bitmap face's own
-        // width rather than given a new one.
+        // W and H stay THE BITMAP FACE'S - several callers centre a label by measuring one
+        // of these and halving its width, and the outline face is fitted into the face it
+        // replaces rather than given a width of its own.
         var offset = shadowArgb is null ? 0 : 1;
         var w = outline ? (font?.Measure(text) ?? 0) + offset : image?.PixelSize.Width ?? 0;
         var h = outline ? (font?.Height ?? 0) + offset : image?.PixelSize.Height ?? 0;

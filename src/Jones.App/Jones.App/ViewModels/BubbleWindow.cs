@@ -27,6 +27,20 @@ public sealed class BalloonPartVm
     public Bitmap? Image { get; init; }
 
     /// <summary>
+    /// Whether this part is OUTLINE text and must be resampled rather than point-sampled.
+    ///
+    /// <para>
+    /// Everything else in a balloon - the fills, the corner cels, the tail, and the bitmap
+    /// face when it is in use - is point-sampled on purpose: they are flat shapes and 1990
+    /// glyphs, and smoothing them is how a crisp game turns into a blurry one. The outline
+    /// face is the opposite case. It is rasterised ABOVE the screen's scale and fitted
+    /// down, so it needs the resample; drawn with None it comes out jagged, which is the
+    /// ugliness this change was supposed to remove.
+    /// </para>
+    /// </summary>
+    public bool Smooth { get; init; }
+
+    /// <summary>
     /// The in-location panel transform this part was built under — see
     /// <see cref="PanelScale"/>. A shopkeeper's balloon is pinned to their mouth by its tail
     /// tip, so when the interior is drawn smaller the balloon has to come with it or the
@@ -159,7 +173,7 @@ public static class BubbleWindow
     /// width, then report the width actually used — the balloon shrinks to the longest
     /// real line rather than always being <paramref name="width"/> wide.
     /// </summary>
-    private static List<string> Wrap(SciFont font, string text, int width)
+    private static List<string> Wrap(Func<string, double> measure, string text, int width)
     {
         var lines = new List<string>();
 
@@ -169,7 +183,7 @@ public static class BubbleWindow
             foreach (var word in paragraph.Split(' '))
             {
                 var candidate = current.Length == 0 ? word : current + " " + word;
-                if (current.Length > 0 && font.Measure(candidate) > width)
+                if (current.Length > 0 && measure(candidate) > width)
                 {
                     lines.Add(current);
                     current = word;
@@ -265,9 +279,29 @@ public static class BubbleWindow
         var scheme = SchemeFor(schemeArg);
         var loop = scheme.Loop;
 
-        var lines = Wrap(font, text, wrapWidth);
-        var textW = lines.Count == 0 ? 0 : lines.Max(font.Measure);
-        var textH = lines.Count * font.Height;
+        // WRAPPED AND MEASURED BY THE FACE THAT WILL BE DRAWN, which was the whole bug the
+        // first time this was tried. The balloon was wrapped and sized by font 1 while the
+        // glyphs came out of the outline face - and Quicksand is wider than font 1 at the
+        // same cap height, so every line it had just fitted now ran past the edge. Zain:
+        // "looks REALLY ugly!!! doesn't even fit in the balloon!"
+        //
+        // The kernel's own rule is unchanged: break at spaces so no line exceeds the
+        // requested width, then shrink the box to the longest real line. It is simply asked
+        // of the right face.
+        var useOutline = UiFont.Enabled && UiFont.Available;
+        Func<string, double> measure = useOutline
+            ? t => UiFont.MeasureFor(font, t)
+            : t => font.Measure(t);
+
+        var lines = Wrap(measure, text, wrapWidth);
+        var textW = lines.Count == 0 ? 0 : (int)Math.Ceiling(lines.Max(measure));
+
+        // The outline face has real ascenders and descenders, so its box is taller than the
+        // bitmap face's line height. Stepping by the smaller of the two would overlap the
+        // lines; stepping by the larger keeps them clear and lets the balloon grow, which
+        // is what `setSize` does with any text that needs more room.
+        var lineStep = useOutline ? Math.Max(font.Height, UiFont.BoxHeightFor(font)) : font.Height;
+        var textH = lines.Count * lineStep;
         if (textW <= 0) return false;
 
         // Dialog:setSize -> the box is the measured text plus a 5px margin all round.
@@ -444,15 +478,45 @@ public static class BubbleWindow
         var argb = TextVm.ToArgb(scheme.Text);
         for (var i = 0; i < lines.Count; i++)
         {
-            var bmp = font.Render(lines[i], argb);
+            // THE BALLOON IN THE OUTLINE FACE. Every spoken line in the game comes through
+            // here, so leaving it on the bitmap face meant the shopkeeper talked in 1990
+            // type beside a shop list set in Quicksand - which is what Zain was looking at.
+            //
+            // THE BALLOON ITSELF DOES NOT MOVE. It is wrapped, sized, centred and stepped by
+            // FONT 1's metrics exactly as before - `Wrap`, `textW` and `font.Height` above
+            // are untouched - and only the glyphs are drawn by the outline face, standing in
+            // at font 1's cap height on font 1's baseline. A balloon that resized itself
+            // would re-wrap Sierra's own line breaks, which is a different game.
+            Bitmap? bmp;
+            double dx = 0, dy = 0;
+
+            if (UiFont.Enabled && lines[i].Length > 0)
+            {
+                bmp = UiFont.RenderFor(font, UiFont.LayFor(font, lines[i], lines[i], ""),
+                                       argb, null, null);
+                dx = UiFont.BoxLeft;
+                dy = UiFont.BoxTopFor(font);
+            }
+            else
+            {
+                bmp = font.Render(lines[i], argb);
+            }
+
             if (bmp is null) continue;
+
+            // The outline face rasterises above the screen's scale and is fitted down, so
+            // the drawn size is its pixel size divided by that scale rather than taken raw.
+            var drawn = UiFont.Enabled && lines[i].Length > 0;
+            var scale = drawn ? UiFont.TextScale : 1;
 
             into.Add(new BalloonPartVm
             {
-                X = left + Margin + (mode == 1 ? (textW - bmp.PixelSize.Width) / 2 : 0),
-                Y = top + Margin + i * font.Height,
-                W = bmp.PixelSize.Width,
-                H = bmp.PixelSize.Height,
+                X = left + Margin + dx
+                    + (mode == 1 ? (textW - (double)bmp.PixelSize.Width / scale) / 2 : 0),
+                Y = top + Margin + i * lineStep + dy,
+                W = bmp.PixelSize.Width / (double)scale,
+                H = bmp.PixelSize.Height / (double)scale,
+                Smooth = drawn,
                 Image = bmp,
             });
         }
@@ -478,16 +542,38 @@ public static class BubbleWindow
             AddVLine(into, pen, x, by + 1, by + buttonH - 2);
             AddVLine(into, pen, x + bw - 1, by + 1, by + buttonH - 2);
 
-            var label = buttonFont!.Render(btns[i].Text, argb);
+            // THE BUTTON LABEL IN THE OUTLINE FACE TOO. OK and CANCEL sitting in 1990
+            // bitmap under a balloon whose text is Quicksand is the same split that
+            // started this, one line further down.
+            //
+            // The button's BOX is untouched: its width came from `ButtonWidth` measuring
+            // the bitmap face and its height from that face's `Height`, both already
+            // computed above, so the frame drawn around this label is exactly the frame
+            // Sierra drew. Only the glyphs inside it change, and they are centred on the
+            // bitmap face's own measurement so a wider outline glyph cannot shift them.
+            var outline = UiFont.Enabled && btns[i].Text.Length > 0;
+            var labelW = buttonFont!.Measure(btns[i].Text);
+
+            var label = outline
+                ? UiFont.RenderFor(buttonFont,
+                                   UiFont.LayFor(buttonFont, btns[i].Text, btns[i].Text, ""),
+                                   argb, null, null)
+                : buttonFont.Render(btns[i].Text, argb);
+
             if (label is not null)
+            {
+                var scale = outline ? UiFont.TextScale : 1;
                 into.Add(new BalloonPartVm
                 {
-                    X = x + (bw - label.PixelSize.Width) / 2,
-                    Y = by + (buttonH - buttonFont.Height) / 2,
-                    W = label.PixelSize.Width,
-                    H = label.PixelSize.Height,
+                    X = x + (bw - labelW) / 2 + (outline ? UiFont.BoxLeft : 0),
+                    Y = by + (buttonH - buttonFont.Height) / 2
+                          + (outline ? UiFont.BoxTopFor(buttonFont) : 0),
+                    W = label.PixelSize.Width / scale,
+                    H = label.PixelSize.Height / scale,
                     Image = label,
+                    Smooth = outline,
                 });
+            }
 
             hits?.Add(new BalloonButtonRect(x, by, bw, buttonH, btns[i].Text, btns[i].Value));
 

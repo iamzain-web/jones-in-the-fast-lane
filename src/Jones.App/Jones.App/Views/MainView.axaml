@@ -1,4 +1,4 @@
-﻿<UserControl xmlns="https://github.com/avaloniaui"
+<UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
@@ -172,6 +172,45 @@
           <Border DockPanel.Dock="Right" VerticalAlignment="Center" Margin="0,0,6,0"
                   Background="Transparent" Padding="0">
         <StackPanel Orientation="Horizontal" Spacing="2">
+
+          <!-- NETWORK PLAY: START NEW NETWORK GAME. The host's half of the join switch below,
+               offered on the same terms (title screen only, never in the browser, never on a
+               copy that has joined someone else) and kept up for as long as this copy hosts.
+
+               Tapping it makes THIS copy the host and opens a box holding this machine's
+               addresses - the 192.168.x.x one for someone on the same Wi-Fi, the 100.x.y.z one
+               for someone on Tailscale - in a read-only box so they can be copied. Then Play,
+               as for any game, once the others have joined. The cross stops hosting.
+
+               The glyph is a mast sending: white before hosting, amber while it waits for
+               someone, green once anyone has joined. -->
+          <Button x:Name="HostButton" Classes="snd" IsVisible="{Binding ShowHostSwitch}"
+                  Command="{Binding StartHostCommand}"
+                  ToolTip.Tip="Start New Network Game">
+            <Panel Width="26" Height="26">
+              <Path Stroke="#F0F0F0" StrokeThickness="2" StrokeLineCap="Round" IsVisible="{Binding !IsHosting}"
+                    Data="M13,13 L13,23 M9.5,9.5 A5,5 0 0 0 9.5,16.5 M16.5,9.5 A5,5 0 0 1 16.5,16.5 M6,6 A10,10 0 0 0 6,20 M20,6 A10,10 0 0 1 20,20" />
+              <Path Stroke="#F0B43C" StrokeThickness="2" StrokeLineCap="Round" IsVisible="{Binding IsHosting}"
+                    Data="M13,13 L13,23 M9.5,9.5 A5,5 0 0 0 9.5,16.5 M16.5,9.5 A5,5 0 0 1 16.5,16.5 M6,6 A10,10 0 0 0 6,20 M20,6 A10,10 0 0 1 20,20" />
+              <Path Stroke="#5BD75B" StrokeThickness="2" StrokeLineCap="Round" IsVisible="{Binding HasJoiners}"
+                    Data="M13,13 L13,23 M9.5,9.5 A5,5 0 0 0 9.5,16.5 M16.5,9.5 A5,5 0 0 1 16.5,16.5 M6,6 A10,10 0 0 0 6,20 M20,6 A10,10 0 0 1 20,20" />
+              <Ellipse Width="4" Height="4" Fill="#F0F0F0"
+                       HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,0,0,0" />
+            </Panel>
+            <Button.Flyout>
+              <Flyout Placement="BottomEdgeAlignedRight">
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                  <TextBox Width="230" IsReadOnly="True" AcceptsReturn="True"
+                           Text="{Binding HostAddressesText, Mode=OneWay}" />
+                  <Button Command="{Binding StopHostCommand}" Width="44" Height="36" Padding="0"
+                          VerticalAlignment="Top" ToolTip.Tip="Stop hosting">
+                    <Path Stroke="#FF4B4B" StrokeThickness="2.4" StrokeLineCap="Round"
+                          Data="M5,5 L17,17 M17,5 L5,17" />
+                  </Button>
+                </StackPanel>
+              </Flyout>
+            </Button.Flyout>
+          </Button>
 
           <!-- NETWORK PLAY: JOIN. Not in the original, which has no network play at all; see
                MainViewModel.Network.cs. A phone has no command line, so `- -join` cannot reach
@@ -774,10 +813,20 @@
             <Panel Width="{Binding DrawW, Converter={x:Static app:RenderScale.Scale}}"
                    Height="{Binding DrawH, Converter={x:Static app:RenderScale.Scale}}">
               <Border Background="{Binding Fill}" />
+              <!-- Two images, one per sampling mode, for the reason the text layer has two:
+                   the mode cannot be bound, so the choice is made by which one is visible.
+                   Flat shapes and bitmap glyphs stay point-sampled; the outline face is
+                   rasterised above the screen's scale and must be fitted down. -->
               <Image Source="{Binding Image, Converter={x:Static app:RenderScale.HighRes}}"
+                     IsVisible="{Binding !Smooth}"
                      Width="{Binding DrawW, Converter={x:Static app:RenderScale.Scale}}"
                      Height="{Binding DrawH, Converter={x:Static app:RenderScale.Scale}}"
                      RenderOptions.BitmapInterpolationMode="None" />
+              <Image Source="{Binding Image, Converter={x:Static app:RenderScale.HighRes}}"
+                     IsVisible="{Binding Smooth}"
+                     Width="{Binding DrawW, Converter={x:Static app:RenderScale.Scale}}"
+                     Height="{Binding DrawH, Converter={x:Static app:RenderScale.Scale}}"
+                     RenderOptions.BitmapInterpolationMode="HighQuality" />
             </Panel>
           </DataTemplate>
         </ItemsControl.ItemTemplate>
