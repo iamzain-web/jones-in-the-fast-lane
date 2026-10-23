@@ -44,6 +44,37 @@
            button is worse than no button. */
         :fullscreen #fs, #fs[hidden] { display: none; }
 
+        /* THE AD SLOT.
+           Top left, below the menu bar so it never sits on Game/Options/Status, and small
+           enough to leave the board alone. It is page furniture, not part of the game:
+           Avalonia owns the canvas and this sits above it, so nothing in the port had to
+           learn about advertising. */
+        #ad {
+            position: fixed; left: 10px; top: 46px; z-index: 9;
+            display: none;                  /* nothing to show unless one is configured */
+            max-width: 300px;
+            padding: 6px 24px 6px 8px;
+            background: rgba(16, 16, 16, .72);
+            border: 1px solid rgba(255, 255, 255, .14);
+            border-radius: 6px;
+            font: 12px/1.35 system-ui, sans-serif;
+            color: #d8d8d8;
+            backdrop-filter: blur(2px);
+            transition: opacity .35s ease;
+        }
+        #ad.show { display: block; }
+        #ad.fade { opacity: 0; }
+        /* Only the card takes clicks; the board underneath keeps every pixel it had. */
+        #ad, #ad * { pointer-events: auto; }
+        #ad-close {
+            position: absolute; top: 2px; right: 4px;
+            background: none; border: 0; cursor: pointer;
+            color: #9a9a9a; font-size: 15px; line-height: 1; padding: 2px 4px;
+        }
+        #ad-close:hover { color: #fff; }
+        /* A phone has no room for a 300px card beside a 320px game. */
+        @media (max-width: 560px) { #ad { max-width: 170px; font-size: 11px; } }
+
         /* The loading screen. Black, because the game's own letterbox is black and the
            handover should not flash. */
         #boot {
@@ -87,6 +118,15 @@
      drew from the 838 1x cels compiled into the assembly, so Sierra's 1990 board appeared
      and was then replaced by ours. C# takes this away instead, once the real art has
      landed; see jonesReady in main.js. -->
+<!-- THE AD SLOT. Empty by default, and INVISIBLE when empty - a player never sees a
+     placeholder. Paste the network's tag inside #ad-body (an AdSense <ins>, an image and
+     a link, whatever it is) and it appears once per run. `?adpreview=1` shows the outline
+     without a tag, for positioning. -->
+<div id="ad">
+    <button id="ad-close" title="Close" aria-label="Close">&times;</button>
+    <div id="ad-body"><!-- ad tag goes here --></div>
+</div>
+
 <div id="boot">
     <div class="boot-mark"><span></span><span></span><span></span></div>
 </div>

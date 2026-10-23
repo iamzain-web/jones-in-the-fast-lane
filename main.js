@@ -22,11 +22,58 @@ globalThis.jonesStorageRemove = (key) => {
 // when Avalonia starts drawing: the art is fetched over the network and the 1x cels
 // compiled into the assembly are what the game falls back to meanwhile, so an earlier
 // handover shows Sierra's 1990 town for a second before ours replaces it.
+// ----------------------------------------------------------------------------------
+// THE AD, ONCE PER RUN.
+//
+// "Once per run" is taken literally: once per load of the page, shown after the game is
+// up, dismissible, and gone for the rest of that session whether it is closed or ignored.
+// It is NOT remembered across runs - a reload is a new run and shows it again - because
+// that is what was asked for and because storing it would make the count depend on
+// whether the player's browser keeps site data.
+//
+// EMPTY MEANS INVISIBLE. With no tag in #ad-body the card never appears at all, so the
+// default build looks exactly as it did and nobody is shown an empty box. `?adpreview=1`
+// draws it anyway, for checking placement without a network.
+//
+// It sits BELOW the menu bar and above the canvas, and only the card itself takes
+// pointer events, so the board keeps every pixel it had.
+let adShown = false;
+
+const showAdOnce = () => {
+    if (adShown) return;
+    adShown = true;
+
+    const ad = document.getElementById('ad');
+    if (!ad) return;
+
+    const body = document.getElementById('ad-body');
+    const preview = new URLSearchParams(location.search).has('adpreview');
+    const hasTag = body && body.children.length > 0;
+
+    if (!hasTag && !preview) return;          // nothing to show, so show nothing
+    if (!hasTag && preview) body.textContent = 'ad slot';
+
+    ad.classList.add('show');
+
+    const close = () => {
+        ad.classList.add('fade');
+        setTimeout(() => ad.remove(), 400);
+    };
+    document.getElementById('ad-close')?.addEventListener('click', close);
+
+    // Takes itself away. An ad that has to be dismissed to keep playing is not
+    // unobtrusive, whatever size it is.
+    setTimeout(close, 25000);
+};
+
 globalThis.jonesReady = () => {
     const boot = document.getElementById('boot');
     if (!boot) return;
     boot.classList.add('gone');
     setTimeout(() => boot.remove(), 400);
+
+    // After the game is on screen, not over the loading screen.
+    setTimeout(showAdOnce, 1200);
 };
 
 // ----------------------------------------------------------------------------------
